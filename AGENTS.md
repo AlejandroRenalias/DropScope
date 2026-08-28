@@ -10,7 +10,7 @@
 ## Delivery rules
 
 - Use an issue-sized scope, focused tests, and a small reviewable diff.
-- CI, review, and merge approval apply to one exact commit SHA. Do not merge a newer SHA than the one CI and required review approved.
+- CI, review, and merge approval apply to one exact commit SHA. While GitHub Actions is paused for the monthly minute limit, successful local `npm run typecheck` and `npm test` evidence replaces CI; do not merge a newer SHA than the one locally verified and required-review approved.
 - Routine low-risk work uses CI plus the Active Commander gate. Independent Codex review is required only for milestones, architecture/contracts, orchestration or state transitions, persistence/migrations, security-sensitive changes, and significant releases.
 - An independent reviewer is read-only and uses a separate Codex context. Apply targeted fixes only; after two unsuccessful fix/review cycles, diagnose and escalate to the user.
 - Involve the user only for important product, architecture, permission, destructive, or scope-expanding decisions.

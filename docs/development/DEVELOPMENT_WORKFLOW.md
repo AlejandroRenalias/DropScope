@@ -27,10 +27,6 @@ This workflow governs Codex agents developing DropScope. It is separate from the
 
 CI and review approvals are evidence about a particular Git commit, not a branch name. Any change creates a new SHA and requires fresh CI; required review must cover that new SHA or its explicitly scoped delta. The Active Commander must compare the PR head SHA with the approved SHA immediately before merge.
 
-### Temporary local-verification fallback
-
-GitHub Actions is paused while the repository has no available Actions minutes. Until it is restored, a successful local `npm run typecheck` and `npm test` run recorded against the exact head SHA replaces the CI gate. The PR must include the commands, success output summary, and SHA. Required independent review and the Active Commander gate remain unchanged. Do not make the repository public solely to bypass this temporary limit. Restore the normal GitHub Actions gate when minutes are available again.
-
 ## Risk-based independent review
 
 Independent review is mandatory for:

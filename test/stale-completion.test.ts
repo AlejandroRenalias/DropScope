@@ -15,9 +15,9 @@ describe("stale completion handling", () => {
       historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl"),
     });
     const duplicateCompletion: MissionEvent = {
-      ...completedMission.events[3],
-      sequenceNumber: 6,
-      eventId: "stale-completion-demo-6",
+      ...completedMission.events[4],
+      sequenceNumber: 7,
+      eventId: "stale-completion-demo-7",
     };
 
     const result = handleProposedEvent(completedMission.events, duplicateCompletion);

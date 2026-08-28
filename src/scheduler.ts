@@ -73,7 +73,11 @@ export async function runSimulatedSchedule(options: {
     await store.append(event);
   };
   await append("MissionCreated", { totalBudget: options.totalBudget, missionSeed: options.missionSeed });
-  for (const task of options.tasks) await append("TaskScheduled", { taskId: task.taskId, attemptId: `${task.taskId}:a1`, objective: task.objective, cost: task.cost, dependencies: task.dependencies ?? [] });
+  for (const task of options.tasks) {
+    const attemptId = `${task.taskId}:a1`;
+    await append("TaskScheduled", { taskId: task.taskId, attemptId, objective: task.objective, cost: task.cost, dependencies: task.dependencies ?? [] });
+    await append("BudgetReserved", { attemptId, cost: task.cost });
+  }
 
   const pending = new Map(options.tasks.map((task) => [task.taskId, task]));
   const completed = new Set<string>();

@@ -20,6 +20,7 @@ const proposal = (taskId: string, workClass: WorkClass, cost: number) => ({
   cost,
   workClass,
   researchKey: taskId,
+  ...(workClass === "OPTIONAL" ? { gapId: "optional-gap" } : {}),
   authorizationReason: workClass === "MANDATORY" ? "MANDATORY_BASELINE" as const : "GAP_RESOLUTION" as const,
   dependencies: [],
 });
@@ -41,9 +42,9 @@ describe("computed mandatory budget protection", () => {
   });
 
   it("rejects optional work that would consume the computed mandatory protection", () => {
-    const history = [missionCreated, authorize(2, "optional-exploration", "OPTIONAL", 11), schedule(3, "optional-exploration", "OPTIONAL", 11), authorize(4, "required-review", "MANDATORY", 20), schedule(5, "required-review", "MANDATORY", 20)];
+    const history = [missionCreated, event(2, "GapOpened", { gapId: "optional-gap", researchKey: "optional-exploration", affectedDecisionType: "CONFIDENCE", reason: "Need more evidence." }), authorize(3, "optional-exploration", "OPTIONAL", 11), schedule(4, "optional-exploration", "OPTIONAL", 11), authorize(5, "required-review", "MANDATORY", 20), schedule(6, "required-review", "MANDATORY", 20)];
     const stateBeforeReservation = replay(history);
-    const rejected = handleProposedEvent(history, event(6, "BudgetReserved", { attemptId: "optional-exploration:a1", cost: 11 }));
+    const rejected = handleProposedEvent(history, event(7, "BudgetReserved", { attemptId: "optional-exploration:a1", cost: 11 }));
 
     expect(rejected.events.at(-1)?.type).toBe("TransitionRejected");
     expect(rejected.state.budget).toEqual(stateBeforeReservation.budget);

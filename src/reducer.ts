@@ -25,6 +25,7 @@ export interface MissionState {
   tasks: Record<string, TaskRecord>;
   attempts: Record<string, AttemptRecord>;
   rejections: { attemptedEventType: string; reason: string }[];
+  staleCompletionAttemptIds: string[];
 }
 
 export const initialMissionState = (): MissionState => ({
@@ -35,6 +36,7 @@ export const initialMissionState = (): MissionState => ({
   tasks: {},
   attempts: {},
   rejections: [],
+  staleCompletionAttemptIds: [],
 });
 
 function applyEvent(state: MissionState, event: MissionEvent): MissionState {
@@ -106,6 +108,8 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     }
     case "TransitionRejected":
       return { ...state, rejections: [...state.rejections, event.payload] };
+    case "StaleCompletionIgnored":
+      return { ...state, staleCompletionAttemptIds: [...state.staleCompletionAttemptIds, event.payload.attemptId] };
     case "FindingSubmitted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;

@@ -8,6 +8,9 @@ const eventBase = z.object({
   timestamp: z.string().datetime(),
 });
 
+export const workClassSchema = z.enum(["MANDATORY", "OPTIONAL"]);
+export type WorkClass = z.infer<typeof workClassSchema>;
+
 export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({
     type: z.literal("MissionCreated"),
@@ -20,6 +23,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
       attemptId: z.string().min(1),
       objective: z.string().min(1),
       cost: z.number().int().positive(),
+      workClass: workClassSchema,
       dependencies: z.array(z.string().min(1)),
     }),
   }),

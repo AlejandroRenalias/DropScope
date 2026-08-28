@@ -2,6 +2,7 @@ export interface SimulatedTask {
   taskId: string;
   objective: string;
   cost: number;
+  workClass?: WorkClass;
   durationMs: number;
   dependencies?: string[];
 }
@@ -75,7 +76,10 @@ export async function runSimulatedSchedule(options: {
   await append("MissionCreated", { totalBudget: options.totalBudget, missionSeed: options.missionSeed });
   for (const task of options.tasks) {
     const attemptId = `${task.taskId}:a1`;
-    await append("TaskScheduled", { taskId: task.taskId, attemptId, objective: task.objective, cost: task.cost, dependencies: task.dependencies ?? [] });
+    await append("TaskScheduled", { taskId: task.taskId, attemptId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", dependencies: task.dependencies ?? [] });
+  }
+  for (const task of options.tasks) {
+    const attemptId = `${task.taskId}:a1`;
     await append("BudgetReserved", { attemptId, cost: task.cost });
   }
 
@@ -121,4 +125,4 @@ export async function runSimulatedSchedule(options: {
   return { executionIntervals: intervals, maxConcurrentAttempts, taskOutcomes, completionOrder };
 }
 import { JsonlEventStore } from "./event-store.js";
-import type { MissionEvent } from "./contracts.js";
+import type { MissionEvent, WorkClass } from "./contracts.js";

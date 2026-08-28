@@ -57,7 +57,7 @@ describe("four-state budget ledger", () => {
       eventId: "unaffordable-reservation-demo-4",
       timestamp: "2026-08-28T00:00:04.000Z",
       type: "TaskScheduled",
-      payload: { taskId: "too-expensive", attemptId: "too-expensive:a1", objective: "Exceed the remaining budget", cost: 111, dependencies: [] },
+      payload: { taskId: "too-expensive", attemptId: "too-expensive:a1", objective: "Exceed the remaining budget", cost: 111, workClass: "OPTIONAL", dependencies: [] },
     };
     const unaffordableReservation: MissionEvent = {
       schemaVersion: 1,

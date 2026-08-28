@@ -19,14 +19,18 @@ export interface ScheduleResult {
 }
 
 const wait = (durationMs: number) => new Promise<void>((resolve) => setTimeout(resolve, durationMs));
-const seededDelay = (seed: number, taskId: string, baseDurationMs: number) => {
+const seededDelay = (seed: number, taskId: string, attemptNumber: number, baseDurationMs: number) => {
   const taskHash = [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0);
-  return baseDurationMs + 9 - ((seed + taskHash) % 10);
+  return baseDurationMs + 9 - ((seed + taskHash + attemptNumber) % 10);
 };
-const seededOutcome = (seed: number, taskId: string, attemptNumber = 1) =>
+const seededOutcome = (seed: number, taskId: string, attemptNumber: number) =>
   ((seed * 17 + [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0) + attemptNumber) % 5 === 0
     ? "FAILED_TRANSIENT"
     : "COMPLETED") as "COMPLETED" | "FAILED_TRANSIENT";
+export const deriveAttemptDecision = (seed: number, taskId: string, attemptNumber: number, baseDurationMs: number) => ({
+  simulatedDelayMs: seededDelay(seed, taskId, attemptNumber, baseDurationMs),
+  outcome: seededOutcome(seed, taskId, attemptNumber),
+});
 
 function validateDependencyGraph(tasks: SimulatedTask[]): void {
   const byId = new Map(tasks.map((task) => [task.taskId, task]));
@@ -86,11 +90,12 @@ export async function runSimulatedSchedule(options: {
       if (!canStart(task)) continue;
       pending.delete(task.taskId);
       const startedAt = Date.now();
-      const durationMs = seededDelay(options.missionSeed, task.taskId, task.durationMs);
+      const attemptNumber = 1;
+      const durationMs = seededDelay(options.missionSeed, task.taskId, attemptNumber, task.durationMs);
       await append("TaskStarted", { attemptId: `${task.taskId}:a1`, simulatedDelayMs: durationMs });
       running.set(task.taskId, wait(durationMs).then(() => {
         intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
-        return { taskId: task.taskId, outcome: seededOutcome(options.missionSeed, task.taskId) };
+        return { taskId: task.taskId, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
       }));
       maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
     }

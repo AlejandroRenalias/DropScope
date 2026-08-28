@@ -5,9 +5,12 @@ import { join } from "node:path";
 
 import { JsonlEventStore } from "../src/event-store.js";
 import { replay } from "../src/reducer.js";
-import { runSimulatedSchedule } from "../src/scheduler.js";
+import { deriveAttemptDecision, runSimulatedSchedule } from "../src/scheduler.js";
 
 describe("dependency-aware asynchronous scheduler", () => {
+  it("derives decisions with explicit attempt identity", () => {
+    expect(deriveAttemptDecision(3, "pulse", 1, 20)).not.toEqual(deriveAttemptDecision(3, "pulse", 2, 20));
+  });
   it("runs independent tasks with real overlap", async () => {
     const result = await runSimulatedSchedule({
       missionId: "scheduler-overlap-demo",

@@ -11,7 +11,7 @@ const eventBase = z.object({
 export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({
     type: z.literal("MissionCreated"),
-    payload: z.object({ totalBudget: z.number().int().positive(), missionSeed: z.number().int().optional() }),
+    payload: z.object({ totalBudget: z.number().int().positive(), missionSeed: z.number().int() }),
   }),
   eventBase.extend({
     type: z.literal("TaskScheduled"),

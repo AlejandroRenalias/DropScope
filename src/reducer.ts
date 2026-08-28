@@ -25,9 +25,12 @@ interface AuthorizationRecord {
   cost: number;
   workClass: WorkClass;
   researchKey: string;
+  gapId?: string;
   authorizationReason: AuthorizationReason;
   dependencies: string[];
 }
+type GapStatus = "OPEN" | "RESOLVED" | "REOPENED";
+interface GapRecord { researchKey: string; affectedDecisionType: string; status: GapStatus; reason: string; }
 
 export interface MissionState {
   missionId: string | null;
@@ -37,6 +40,7 @@ export interface MissionState {
   tasks: Record<string, TaskRecord>;
   attempts: Record<string, AttemptRecord>;
   authorizations: Record<string, AuthorizationRecord>;
+  gaps: Record<string, GapRecord>;
   rejections: { attemptedEventType: string; reason: string }[];
   staleCompletionAttemptIds: string[];
 }
@@ -49,6 +53,7 @@ export const initialMissionState = (): MissionState => ({
   tasks: {},
   attempts: {},
   authorizations: {},
+  gaps: {},
   rejections: [],
   staleCompletionAttemptIds: [],
 });
@@ -92,6 +97,12 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (proposal.workClass === "OPTIONAL" && proposal.authorizationReason !== "GAP_RESOLUTION") {
         throw new Error("Optional work requires a gap-resolution authorization.");
       }
+      if (proposal.authorizationReason === "GAP_RESOLUTION") {
+        const gap = proposal.gapId ? state.gaps[proposal.gapId] : undefined;
+        if (!gap || !["OPEN", "REOPENED"].includes(gap.status) || gap.researchKey !== proposal.researchKey) {
+          throw new Error("Gap-resolution work requires a matching actionable gap.");
+        }
+      }
       if (proposal.dependencies.some((dependency) => state.tasks[dependency]?.status !== "COMPLETED")) {
         throw new Error("All task dependencies must be completed before authorization.");
       }
@@ -108,6 +119,20 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         throw new Error("Optional work would consume mandatory budget protection.");
       }
       return { ...state, authorizations: { ...state.authorizations, [proposal.taskId]: proposal } };
+    }
+    case "GapOpened":
+      if (state.status !== "RUNNING") throw new Error("Cannot open a gap for a non-running mission.");
+      if (state.gaps[event.payload.gapId]) throw new Error("Gap already exists.");
+      return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { researchKey: event.payload.researchKey, affectedDecisionType: event.payload.affectedDecisionType, status: "OPEN", reason: event.payload.reason } } };
+    case "GapResolved": {
+      const gap = state.gaps[event.payload.gapId];
+      if (!gap || !["OPEN", "REOPENED"].includes(gap.status)) throw new Error("Only an actionable gap can be resolved.");
+      return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { ...gap, status: "RESOLVED", reason: event.payload.reason } } };
+    }
+    case "GapReopened": {
+      const gap = state.gaps[event.payload.gapId];
+      if (!gap || gap.status !== "RESOLVED") throw new Error("Only a resolved gap can be reopened.");
+      return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { ...gap, status: "REOPENED", reason: event.payload.reason } } };
     }
     case "TaskScheduled": {
       if (state.status !== "RUNNING") throw new Error("Cannot schedule work for a non-running mission.");

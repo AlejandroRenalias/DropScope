@@ -11,6 +11,7 @@ describe("dependency-aware asynchronous scheduler", () => {
   it("runs independent tasks with real overlap", async () => {
     const result = await runSimulatedSchedule({
       missionId: "scheduler-overlap-demo",
+      missionSeed: 11,
       totalBudget: 120,
       tasks: [
         { taskId: "pulse", objective: "Discover trends", cost: 10, durationMs: 30 },
@@ -29,6 +30,7 @@ describe("dependency-aware asynchronous scheduler", () => {
   it("does not start a dependent task until its prerequisite completes", async () => {
     const result = await runSimulatedSchedule({
       missionId: "scheduler-dependency-demo",
+      missionSeed: 12,
       totalBudget: 120,
       tasks: [
         { taskId: "pulse", objective: "Discover trends", cost: 10, durationMs: 20 },
@@ -42,6 +44,7 @@ describe("dependency-aware asynchronous scheduler", () => {
   it("rejects a cyclic dependency graph", async () => {
     await expect(runSimulatedSchedule({
       missionId: "scheduler-cycle-demo",
+      missionSeed: 13,
       totalBudget: 120,
       tasks: [
         { taskId: "pulse", objective: "Discover trends", cost: 10, durationMs: 1, dependencies: ["echo"] },
@@ -53,6 +56,7 @@ describe("dependency-aware asynchronous scheduler", () => {
   it("rejects a mixed graph before any independent task can run", async () => {
     await expect(runSimulatedSchedule({
       missionId: "scheduler-mixed-cycle-demo",
+      missionSeed: 14,
       totalBudget: 120,
       tasks: [
         { taskId: "independent", objective: "Independent work", cost: 10, durationMs: 1 },
@@ -114,6 +118,7 @@ describe("dependency-aware asynchronous scheduler", () => {
 
     expect(events.map((event) => event.type)).toContain("TaskFailedTransient");
     expect(events[0].payload).toMatchObject({ missionSeed: 3 });
+    expect(events.find((event) => event.type === "TaskStarted")?.payload).toMatchObject({ simulatedDelayMs: expect.any(Number) });
     expect(replayed.tasks.pulse.status).toBe("FAILED_TRANSIENT");
     expect(replayed.tasks.echo.status).toBe("COMPLETED");
     expect(replayed.budget.spent).toBe(20);
@@ -124,6 +129,7 @@ describe("dependency-aware asynchronous scheduler", () => {
     const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "dependency.jsonl");
     await runSimulatedSchedule({
       missionId: "scheduler-event-order-demo",
+      missionSeed: 15,
       totalBudget: 120,
       historyPath,
       tasks: [
@@ -143,6 +149,7 @@ describe("dependency-aware asynchronous scheduler", () => {
   it("rejects unaffordable work before any task can start", async () => {
     await expect(runSimulatedSchedule({
       missionId: "scheduler-budget-demo",
+      missionSeed: 16,
       totalBudget: 10,
       tasks: [
         { taskId: "pulse", objective: "Discover trends", cost: 10, durationMs: 1 },

@@ -25,7 +25,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   }),
   eventBase.extend({
     type: z.literal("TaskStarted"),
-    payload: z.object({ attemptId: z.string().min(1) }),
+    payload: z.object({ attemptId: z.string().min(1), simulatedDelayMs: z.number().int().nonnegative() }),
   }),
   eventBase.extend({
     type: z.literal("RecoveryStarted"),

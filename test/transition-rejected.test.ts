@@ -22,7 +22,7 @@ describe("illegal transition handling", () => {
       eventId: "rejection-demo-2",
       timestamp: "2026-08-28T00:00:01.000Z",
       type: "TaskStarted",
-      payload: { attemptId: "not-scheduled:a1" },
+      payload: { attemptId: "not-scheduled:a1", simulatedDelayMs: 0 },
     };
 
     const result = handleProposedEvent([missionCreated], invalidStart);

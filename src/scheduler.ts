@@ -47,7 +47,7 @@ function validateDependencyGraph(tasks: SimulatedTask[]): void {
 
 export async function runSimulatedSchedule(options: {
   missionId: string;
-  missionSeed?: number;
+  missionSeed: number;
   historyPath?: string;
   totalBudget: number;
   tasks: SimulatedTask[];
@@ -85,12 +85,12 @@ export async function runSimulatedSchedule(options: {
       if (running.size >= maxConcurrency) break;
       if (!canStart(task)) continue;
       pending.delete(task.taskId);
-      await append("TaskStarted", { attemptId: `${task.taskId}:a1` });
       const startedAt = Date.now();
-      const durationMs = options.missionSeed === undefined ? task.durationMs : seededDelay(options.missionSeed, task.taskId, task.durationMs);
+      const durationMs = seededDelay(options.missionSeed, task.taskId, task.durationMs);
+      await append("TaskStarted", { attemptId: `${task.taskId}:a1`, simulatedDelayMs: durationMs });
       running.set(task.taskId, wait(durationMs).then(() => {
         intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
-        return { taskId: task.taskId, outcome: options.missionSeed === undefined ? "COMPLETED" : seededOutcome(options.missionSeed, task.taskId) };
+        return { taskId: task.taskId, outcome: seededOutcome(options.missionSeed, task.taskId) };
       }));
       maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
     }

@@ -3,6 +3,7 @@ export interface SimulatedTask {
   objective: string;
   cost: number;
   workClass?: WorkClass;
+  researchKey?: string;
   durationMs: number;
   dependencies?: string[];
 }
@@ -67,21 +68,14 @@ export async function runSimulatedSchedule(options: {
   }
   const store = options.historyPath ? new JsonlEventStore(options.historyPath) : undefined;
   const events: MissionEvent[] = [];
+  let state = initialMissionState();
   const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {
-    if (!store) return;
     const event = { schemaVersion: 1 as const, sequenceNumber: events.length + 1, missionId: options.missionId, eventId: `${options.missionId}-${events.length + 1}`, timestamp: new Date().toISOString(), type, payload } as MissionEvent;
     events.push(event);
-    await store.append(event);
+    state = reduce(state, event);
+    if (store) await store.append(event);
   };
   await append("MissionCreated", { totalBudget: options.totalBudget, missionSeed: options.missionSeed });
-  for (const task of options.tasks) {
-    const attemptId = `${task.taskId}:a1`;
-    await append("TaskScheduled", { taskId: task.taskId, attemptId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", dependencies: task.dependencies ?? [] });
-  }
-  for (const task of options.tasks) {
-    const attemptId = `${task.taskId}:a1`;
-    await append("BudgetReserved", { attemptId, cost: task.cost });
-  }
 
   const pending = new Map(options.tasks.map((task) => [task.taskId, task]));
   const completed = new Set<string>();
@@ -93,14 +87,35 @@ export async function runSimulatedSchedule(options: {
 
   const canStart = (task: SimulatedTask) => (task.dependencies ?? []).every((dependency) => completed.has(dependency));
   const startEligibleTasks = async () => {
+    const eligible: SimulatedTask[] = [];
     for (const task of pending.values()) {
-      if (running.size >= maxConcurrency) break;
+      if (running.size + eligible.length >= maxConcurrency) break;
       if (!canStart(task)) continue;
       pending.delete(task.taskId);
+      eligible.push(task);
+    }
+    for (const task of eligible) {
+      await append("TaskAuthorized", {
+        taskId: task.taskId,
+        objective: task.objective,
+        cost: task.cost,
+        workClass: task.workClass ?? "MANDATORY",
+        researchKey: task.researchKey ?? task.taskId,
+        authorizationReason: task.workClass === "OPTIONAL" ? "GAP_RESOLUTION" : "MANDATORY_BASELINE",
+        dependencies: task.dependencies ?? [],
+      });
+    }
+    for (const task of eligible) {
+      const attemptId = `${task.taskId}:a1`;
+      await append("TaskScheduled", { taskId: task.taskId, attemptId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", researchKey: task.researchKey ?? task.taskId, dependencies: task.dependencies ?? [] });
+    }
+    for (const task of eligible) {
+      const attemptId = `${task.taskId}:a1`;
+      await append("BudgetReserved", { attemptId, cost: task.cost });
       const startedAt = Date.now();
       const attemptNumber = 1;
       const durationMs = seededDelay(options.missionSeed, task.taskId, attemptNumber, task.durationMs);
-      await append("TaskStarted", { attemptId: `${task.taskId}:a1`, simulatedDelayMs: durationMs });
+      await append("TaskStarted", { attemptId, simulatedDelayMs: durationMs });
       running.set(task.taskId, wait(durationMs).then(() => {
         intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
         return { taskId: task.taskId, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
@@ -126,3 +141,4 @@ export async function runSimulatedSchedule(options: {
 }
 import { JsonlEventStore } from "./event-store.js";
 import type { MissionEvent, WorkClass } from "./contracts.js";
+import { initialMissionState, reduce } from "./reducer.js";

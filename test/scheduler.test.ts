@@ -142,13 +142,12 @@ describe("dependency-aware asynchronous scheduler", () => {
     });
     const events = await new JsonlEventStore(historyPath).readAll();
     const echoSchedule = events.find((event) => event.type === "TaskScheduled" && event.payload.taskId === "echo");
-    const firstReservation = events.findIndex((event) => event.type === "BudgetReserved");
-    const lastSchedule = events.reduce((lastIndex, event, index) => event.type === "TaskScheduled" ? index : lastIndex, -1);
+    const echoAuthorization = events.findIndex((event) => event.type === "TaskAuthorized" && event.payload.taskId === "echo");
     const pulseCompletion = events.findIndex((event) => event.type === "FindingSubmitted" && event.payload.attemptId === "pulse:a1");
     const echoStart = events.findIndex((event) => event.type === "TaskStarted" && event.payload.attemptId === "echo:a1");
 
     expect(echoSchedule?.payload).toMatchObject({ dependencies: ["pulse"] });
-    expect(firstReservation).toBeGreaterThan(lastSchedule);
+    expect(echoStart).toBeGreaterThan(echoAuthorization);
     expect(echoStart).toBeGreaterThan(pulseCompletion);
   });
 
@@ -162,5 +161,17 @@ describe("dependency-aware asynchronous scheduler", () => {
         { taskId: "echo", objective: "Validate problems", cost: 10, durationMs: 1 },
       ],
     })).rejects.toThrow("Insufficient mission budget for scheduled task attempts.");
+  });
+
+  it("rejects concurrent tasks that claim the same research key", async () => {
+    await expect(runSimulatedSchedule({
+      missionId: "scheduler-duplicate-key-demo",
+      missionSeed: 17,
+      totalBudget: 120,
+      tasks: [
+        { taskId: "first", researchKey: "same-question", objective: "First answer", cost: 10, durationMs: 1 },
+        { taskId: "second", researchKey: "same-question", objective: "Second answer", cost: 10, durationMs: 1 },
+      ],
+    })).rejects.toThrow("An active or completed task already covers this research key.");
   });
 });

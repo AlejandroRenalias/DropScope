@@ -10,11 +10,25 @@ const eventBase = z.object({
 
 export const workClassSchema = z.enum(["MANDATORY", "OPTIONAL"]);
 export type WorkClass = z.infer<typeof workClassSchema>;
+export const authorizationReasonSchema = z.enum(["MANDATORY_BASELINE", "GAP_RESOLUTION"]);
+export type AuthorizationReason = z.infer<typeof authorizationReasonSchema>;
 
 export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({
     type: z.literal("MissionCreated"),
     payload: z.object({ totalBudget: z.number().int().positive(), missionSeed: z.number().int() }),
+  }),
+  eventBase.extend({
+    type: z.literal("TaskAuthorized"),
+    payload: z.object({
+      taskId: z.string().min(1),
+      objective: z.string().min(1),
+      cost: z.number().int().positive(),
+      workClass: workClassSchema,
+      researchKey: z.string().min(1),
+      authorizationReason: authorizationReasonSchema,
+      dependencies: z.array(z.string().min(1)),
+    }),
   }),
   eventBase.extend({
     type: z.literal("TaskScheduled"),
@@ -24,6 +38,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
       objective: z.string().min(1),
       cost: z.number().int().positive(),
       workClass: workClassSchema,
+      researchKey: z.string().min(1),
       dependencies: z.array(z.string().min(1)),
     }),
   }),

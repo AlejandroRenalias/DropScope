@@ -39,12 +39,22 @@ export async function beginWalkingSkeletonMission(options: Required<MissionOptio
   if (existingEvents.length > 0) throw new Error("A new mission cannot be appended to existing history.");
 
   await appendEvent(store, existingEvents, options.missionId, "MissionCreated", { totalBudget: options.totalBudget, missionSeed: 0 });
+  await appendEvent(store, existingEvents, options.missionId, "TaskAuthorized", {
+    taskId: "system-check",
+    objective: "Verify the DropScope engine can complete one task.",
+    cost: 10,
+    workClass: "MANDATORY",
+    researchKey: "engine-system-check",
+    authorizationReason: "MANDATORY_BASELINE",
+    dependencies: [],
+  });
   await appendEvent(store, existingEvents, options.missionId, "TaskScheduled", {
     taskId: "system-check",
     attemptId: "system-check:a1",
     objective: "Verify the DropScope engine can complete one task.",
     cost: 10,
     workClass: "MANDATORY",
+    researchKey: "engine-system-check",
     dependencies: [],
   });
   await appendEvent(store, existingEvents, options.missionId, "BudgetReserved", { attemptId: "system-check:a1", cost: 10 });
@@ -69,9 +79,10 @@ export async function recoverWalkingSkeletonMission(options: Omit<MissionOptions
   await appendEvent(store, events, options.missionId, "TaskScheduled", {
     taskId: "system-check",
     attemptId: "system-check:a2",
-    objective: "Verify the DropScope engine can complete one task after recovery.",
+    objective: "Verify the DropScope engine can complete one task.",
     cost: 10,
     workClass: "MANDATORY",
+    researchKey: "engine-system-check",
     dependencies: [],
   });
   await appendEvent(store, events, options.missionId, "BudgetReserved", { attemptId: "system-check:a2", cost: 10 });

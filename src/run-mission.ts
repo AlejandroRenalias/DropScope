@@ -38,14 +38,15 @@ export async function beginWalkingSkeletonMission(options: Required<MissionOptio
   const existingEvents = await store.readAll();
   if (existingEvents.length > 0) throw new Error("A new mission cannot be appended to existing history.");
 
-  await appendEvent(store, existingEvents, options.missionId, "MissionCreated", { totalBudget: options.totalBudget });
+  await appendEvent(store, existingEvents, options.missionId, "MissionCreated", { totalBudget: options.totalBudget, missionSeed: 0 });
   await appendEvent(store, existingEvents, options.missionId, "TaskScheduled", {
     taskId: "system-check",
     attemptId: "system-check:a1",
     objective: "Verify the DropScope engine can complete one task.",
     cost: 10,
+    dependencies: [],
   });
-  await appendEvent(store, existingEvents, options.missionId, "TaskStarted", { attemptId: "system-check:a1" });
+  await appendEvent(store, existingEvents, options.missionId, "TaskStarted", { attemptId: "system-check:a1", simulatedDelayMs: 0 });
   return { events: await store.readAll(), state: replay(await store.readAll()) };
 }
 
@@ -68,8 +69,9 @@ export async function recoverWalkingSkeletonMission(options: Omit<MissionOptions
     attemptId: "system-check:a2",
     objective: "Verify the DropScope engine can complete one task after recovery.",
     cost: 10,
+    dependencies: [],
   });
-  await appendEvent(store, events, options.missionId, "TaskStarted", { attemptId: "system-check:a2" });
+  await appendEvent(store, events, options.missionId, "TaskStarted", { attemptId: "system-check:a2", simulatedDelayMs: 0 });
   await Promise.resolve();
   await appendEvent(store, events, options.missionId, "FindingSubmitted", { attemptId: "system-check:a2", finding: "Recovered system check completed." });
   await appendEvent(store, events, options.missionId, "MissionCompleted", {});

@@ -10,7 +10,7 @@ const missionCreated: MissionEvent = {
   eventId: "rejection-demo-1",
   timestamp: "2026-08-28T00:00:00.000Z",
   type: "MissionCreated",
-  payload: { totalBudget: 120 },
+  payload: { totalBudget: 120, missionSeed: 0 },
 };
 
 describe("illegal transition handling", () => {
@@ -22,7 +22,7 @@ describe("illegal transition handling", () => {
       eventId: "rejection-demo-2",
       timestamp: "2026-08-28T00:00:01.000Z",
       type: "TaskStarted",
-      payload: { attemptId: "not-scheduled:a1" },
+      payload: { attemptId: "not-scheduled:a1", simulatedDelayMs: 0 },
     };
 
     const result = handleProposedEvent([missionCreated], invalidStart);

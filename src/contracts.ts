@@ -11,7 +11,7 @@ const eventBase = z.object({
 export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({
     type: z.literal("MissionCreated"),
-    payload: z.object({ totalBudget: z.number().int().positive() }),
+    payload: z.object({ totalBudget: z.number().int().positive(), missionSeed: z.number().int() }),
   }),
   eventBase.extend({
     type: z.literal("TaskScheduled"),
@@ -20,11 +20,12 @@ export const missionEventSchema = z.discriminatedUnion("type", [
       attemptId: z.string().min(1),
       objective: z.string().min(1),
       cost: z.number().int().positive(),
+      dependencies: z.array(z.string().min(1)),
     }),
   }),
   eventBase.extend({
     type: z.literal("TaskStarted"),
-    payload: z.object({ attemptId: z.string().min(1) }),
+    payload: z.object({ attemptId: z.string().min(1), simulatedDelayMs: z.number().int().nonnegative() }),
   }),
   eventBase.extend({
     type: z.literal("RecoveryStarted"),
@@ -32,6 +33,10 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   }),
   eventBase.extend({
     type: z.literal("TaskInterrupted"),
+    payload: z.object({ attemptId: z.string().min(1), reason: z.string().min(1) }),
+  }),
+  eventBase.extend({
+    type: z.literal("TaskFailedTransient"),
     payload: z.object({ attemptId: z.string().min(1), reason: z.string().min(1) }),
   }),
   eventBase.extend({

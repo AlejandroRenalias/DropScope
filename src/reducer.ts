@@ -1,8 +1,8 @@
 import type { MissionEvent } from "./contracts.js";
 
 export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
-export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED";
-export type AttemptStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED";
+export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT";
+export type AttemptStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT";
 
 interface TaskRecord {
   objective: string;
@@ -104,6 +104,17 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
         tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "INTERRUPTED" } },
         attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "INTERRUPTED" } },
+      };
+    }
+    case "TaskFailedTransient": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
+      return {
+        ...state,
+        budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
+        tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "FAILED_TRANSIENT" } },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "FAILED_TRANSIENT" } },
       };
     }
     case "TransitionRejected":

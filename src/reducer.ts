@@ -9,6 +9,7 @@ export interface MissionState {
   status: MissionStatus;
   budget: { total: number; committed: number; spent: number; available: number };
   tasks: Record<string, { objective: string; cost: number; status: TaskStatus; finding?: string }>;
+  rejections: { attemptedEventType: string; reason: string }[];
 }
 
 export const initialMissionState = (): MissionState => ({
@@ -17,6 +18,7 @@ export const initialMissionState = (): MissionState => ({
   status: "NOT_STARTED",
   budget: { total: 0, committed: 0, spent: 0, available: 0 },
   tasks: {},
+  rejections: [],
 });
 
 function applyEvent(state: MissionState, event: MissionEvent): MissionState {
@@ -70,6 +72,8 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         tasks: { ...state.tasks, [event.payload.taskId]: { ...task, status: "INTERRUPTED" } },
       };
     }
+    case "TransitionRejected":
+      return { ...state, rejections: [...state.rejections, event.payload] };
     case "FindingSubmitted": {
       const task = state.tasks[event.payload.taskId];
       if (!task || task.status !== "RUNNING") throw new Error("Only a running task can submit a finding.");

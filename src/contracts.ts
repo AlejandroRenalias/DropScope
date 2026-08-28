@@ -34,6 +34,10 @@ export const missionEventSchema = z.discriminatedUnion("type", [
     payload: z.object({ taskId: z.string().min(1), reason: z.string().min(1) }),
   }),
   eventBase.extend({
+    type: z.literal("TransitionRejected"),
+    payload: z.object({ attemptedEventType: z.string().min(1), reason: z.string().min(1) }),
+  }),
+  eventBase.extend({
     type: z.literal("FindingSubmitted"),
     payload: z.object({ taskId: z.string().min(1), finding: z.string().min(1) }),
   }),

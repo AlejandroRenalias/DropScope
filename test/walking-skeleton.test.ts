@@ -20,6 +20,7 @@ describe("Milestone 1A.0 walking skeleton", () => {
     expect(result.state.budget.available).toBe(110);
     expect(result.events.map((event) => event.type)).toEqual([
       "MissionCreated",
+      "TaskAuthorized",
       "TaskScheduled",
       "BudgetReserved",
       "TaskStarted",
@@ -38,6 +39,7 @@ describe("Milestone 1A.0 walking skeleton", () => {
     expect(result.state.budget.spent).toBe(20); // Interrupted work remains charged; the recovery attempt costs 10 more.
     expect(result.events.map((event) => event.type)).toEqual([
       "MissionCreated",
+      "TaskAuthorized",
       "TaskScheduled",
       "BudgetReserved",
       "TaskStarted",
@@ -49,8 +51,9 @@ describe("Milestone 1A.0 walking skeleton", () => {
       "FindingSubmitted",
       "MissionCompleted",
     ]);
-    expect(result.events.slice(0, 4).map((event) => event.type)).toEqual([
+    expect(result.events.slice(0, 5).map((event) => event.type)).toEqual([
       "MissionCreated",
+      "TaskAuthorized",
       "TaskScheduled",
       "BudgetReserved",
       "TaskStarted",

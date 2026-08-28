@@ -1,4 +1,4 @@
-import type { MissionEvent, WorkClass } from "./contracts.js";
+import type { AuthorizationReason, MissionEvent, WorkClass } from "./contracts.js";
 
 export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
 export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT";
@@ -8,6 +8,7 @@ interface TaskRecord {
   objective: string;
   cost: number;
   workClass: WorkClass;
+  researchKey: string;
   status: TaskStatus;
   attemptIds: string[];
 }
@@ -19,6 +20,15 @@ interface AttemptRecord {
   finding?: string;
 }
 
+interface AuthorizationRecord {
+  objective: string;
+  cost: number;
+  workClass: WorkClass;
+  researchKey: string;
+  authorizationReason: AuthorizationReason;
+  dependencies: string[];
+}
+
 export interface MissionState {
   missionId: string | null;
   lastSequenceNumber: number;
@@ -26,6 +36,7 @@ export interface MissionState {
   budget: { total: number; reserved: number; committed: number; spent: number; available: number };
   tasks: Record<string, TaskRecord>;
   attempts: Record<string, AttemptRecord>;
+  authorizations: Record<string, AuthorizationRecord>;
   rejections: { attemptedEventType: string; reason: string }[];
   staleCompletionAttemptIds: string[];
 }
@@ -37,6 +48,7 @@ export const initialMissionState = (): MissionState => ({
   budget: { total: 0, reserved: 0, committed: 0, spent: 0, available: 0 },
   tasks: {},
   attempts: {},
+  authorizations: {},
   rejections: [],
   staleCompletionAttemptIds: [],
 });
@@ -70,8 +82,47 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         status: "RUNNING",
         budget: { total: event.payload.totalBudget, reserved: 0, committed: 0, spent: 0, available: event.payload.totalBudget },
       };
+    case "TaskAuthorized": {
+      const proposal = event.payload;
+      if (state.status !== "RUNNING") throw new Error("Cannot authorize work for a non-running mission.");
+      if (state.authorizations[proposal.taskId]) throw new Error("Task is already authorized.");
+      if (proposal.workClass === "MANDATORY" && proposal.authorizationReason !== "MANDATORY_BASELINE") {
+        throw new Error("Mandatory work requires a baseline authorization.");
+      }
+      if (proposal.workClass === "OPTIONAL" && proposal.authorizationReason !== "GAP_RESOLUTION") {
+        throw new Error("Optional work requires a gap-resolution authorization.");
+      }
+      if (proposal.dependencies.some((dependency) => state.tasks[dependency]?.status !== "COMPLETED")) {
+        throw new Error("All task dependencies must be completed before authorization.");
+      }
+      if (
+        Object.values(state.authorizations).some((authorization) => authorization.researchKey === proposal.researchKey)
+        || Object.values(state.tasks).some((task) => task.researchKey === proposal.researchKey && ["SCHEDULED", "RUNNING", "COMPLETED"].includes(task.status))
+      ) {
+        throw new Error("An active or completed task already covers this research key.");
+      }
+      if (
+        proposal.workClass === "OPTIONAL"
+        && state.budget.spent + state.budget.committed + state.budget.reserved + proposal.cost + remainingMandatoryUnreservedCost(state) > state.budget.total
+      ) {
+        throw new Error("Optional work would consume mandatory budget protection.");
+      }
+      return { ...state, authorizations: { ...state.authorizations, [proposal.taskId]: proposal } };
+    }
     case "TaskScheduled": {
       if (state.status !== "RUNNING") throw new Error("Cannot schedule work for a non-running mission.");
+      const authorization = state.authorizations[event.payload.taskId];
+      if (!authorization) throw new Error("Task requires Commander authorization before scheduling.");
+      if (
+        authorization.objective !== event.payload.objective
+        || authorization.cost !== event.payload.cost
+        || authorization.workClass !== event.payload.workClass
+        || authorization.researchKey !== event.payload.researchKey
+        || authorization.dependencies.join("\u0000") !== event.payload.dependencies.join("\u0000")
+      ) throw new Error("Scheduled task does not match its Commander authorization.");
+      if (event.payload.dependencies.some((dependency) => state.tasks[dependency]?.status !== "COMPLETED")) {
+        throw new Error("All task dependencies must be completed before scheduling.");
+      }
       const existingTask = state.tasks[event.payload.taskId];
       if (existingTask && existingTask.status !== "INTERRUPTED") throw new Error("Task cannot receive another attempt.");
       if (existingTask && existingTask.workClass !== event.payload.workClass) throw new Error("A retry cannot change a task's work class.");
@@ -82,6 +133,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
             objective: event.payload.objective,
             cost: event.payload.cost,
             workClass: event.payload.workClass,
+            researchKey: event.payload.researchKey,
             status: "SCHEDULED",
             attemptIds: [event.payload.attemptId],
           };

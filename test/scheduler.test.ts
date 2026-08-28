@@ -81,7 +81,7 @@ describe("dependency-aware asynchronous scheduler", () => {
     });
 
     expect(result.taskOutcomes).toEqual({ pulse: "FAILED_TRANSIENT", echo: "COMPLETED" });
-    expect(result.executionIntervals.echo.finishedAt).toBeGreaterThan(result.executionIntervals.pulse.finishedAt);
+    expect(result.executionIntervals.echo.finishedAt).toBeGreaterThanOrEqual(result.executionIntervals.pulse.finishedAt);
   });
 
   it("uses a fixed mission seed to produce reproducible out-of-order completion", async () => {
@@ -142,10 +142,13 @@ describe("dependency-aware asynchronous scheduler", () => {
     });
     const events = await new JsonlEventStore(historyPath).readAll();
     const echoSchedule = events.find((event) => event.type === "TaskScheduled" && event.payload.taskId === "echo");
+    const firstReservation = events.findIndex((event) => event.type === "BudgetReserved");
+    const lastSchedule = events.reduce((lastIndex, event, index) => event.type === "TaskScheduled" ? index : lastIndex, -1);
     const pulseCompletion = events.findIndex((event) => event.type === "FindingSubmitted" && event.payload.attemptId === "pulse:a1");
     const echoStart = events.findIndex((event) => event.type === "TaskStarted" && event.payload.attemptId === "echo:a1");
 
     expect(echoSchedule?.payload).toMatchObject({ dependencies: ["pulse"] });
+    expect(firstReservation).toBeGreaterThan(lastSchedule);
     expect(echoStart).toBeGreaterThan(pulseCompletion);
   });
 

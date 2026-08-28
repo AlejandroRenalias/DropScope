@@ -1,4 +1,4 @@
-import type { MissionEvent } from "./contracts.js";
+import type { MissionEvent, WorkClass } from "./contracts.js";
 
 export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
 export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT";
@@ -7,6 +7,7 @@ export type AttemptStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED
 interface TaskRecord {
   objective: string;
   cost: number;
+  workClass: WorkClass;
   status: TaskStatus;
   attemptIds: string[];
 }
@@ -40,6 +41,21 @@ export const initialMissionState = (): MissionState => ({
   staleCompletionAttemptIds: [],
 });
 
+export function remainingMandatoryUnreservedCost(state: MissionState): number {
+  return Object.values(state.attempts).reduce((total, attempt) => {
+    const task = state.tasks[attempt.taskId];
+    return total + (task?.workClass === "MANDATORY" && attempt.status === "SCHEDULED" && !attempt.reserved ? task.cost : 0);
+  }, 0);
+}
+
+export function protectedMandatoryBudget(state: MissionState): number {
+  const mandatoryReserved = Object.values(state.attempts).reduce((total, attempt) => {
+    const task = state.tasks[attempt.taskId];
+    return total + (task?.workClass === "MANDATORY" && attempt.status === "SCHEDULED" && attempt.reserved ? task.cost : 0);
+  }, 0);
+  return mandatoryReserved + remainingMandatoryUnreservedCost(state);
+}
+
 function applyEvent(state: MissionState, event: MissionEvent): MissionState {
   if (state.missionId !== null && event.missionId !== state.missionId) {
     throw new Error("Event belongs to a different mission.");
@@ -58,12 +74,14 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (state.status !== "RUNNING") throw new Error("Cannot schedule work for a non-running mission.");
       const existingTask = state.tasks[event.payload.taskId];
       if (existingTask && existingTask.status !== "INTERRUPTED") throw new Error("Task cannot receive another attempt.");
+      if (existingTask && existingTask.workClass !== event.payload.workClass) throw new Error("A retry cannot change a task's work class.");
       if (state.attempts[event.payload.attemptId]) throw new Error("Attempt is already scheduled.");
       const task: TaskRecord = existingTask
         ? { ...existingTask, status: "SCHEDULED", attemptIds: [...existingTask.attemptIds, event.payload.attemptId] }
         : {
             objective: event.payload.objective,
             cost: event.payload.cost,
+            workClass: event.payload.workClass,
             status: "SCHEDULED",
             attemptIds: [event.payload.attemptId],
           };
@@ -98,6 +116,12 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         throw new Error("Only a scheduled attempt can reserve its exact cost.");
       }
       if (task.cost > state.budget.available) throw new Error("Insufficient available budget.");
+      if (
+        task.workClass === "OPTIONAL"
+        && state.budget.spent + state.budget.committed + state.budget.reserved + task.cost + remainingMandatoryUnreservedCost(state) > state.budget.total
+      ) {
+        throw new Error("Optional work would consume mandatory budget protection.");
+      }
       return {
         ...state,
         budget: { ...state.budget, reserved: state.budget.reserved + task.cost, available: state.budget.available - task.cost },

@@ -5,6 +5,7 @@ export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED";
 
 export interface MissionState {
   missionId: string | null;
+  lastSequenceNumber: number;
   status: MissionStatus;
   budget: { total: number; committed: number; spent: number; available: number };
   tasks: Record<string, { objective: string; cost: number; status: TaskStatus; finding?: string }>;
@@ -12,12 +13,13 @@ export interface MissionState {
 
 export const initialMissionState = (): MissionState => ({
   missionId: null,
+  lastSequenceNumber: 0,
   status: "NOT_STARTED",
   budget: { total: 0, committed: 0, spent: 0, available: 0 },
   tasks: {},
 });
 
-export function reduce(state: MissionState, event: MissionEvent): MissionState {
+function applyEvent(state: MissionState, event: MissionEvent): MissionState {
   if (state.missionId !== null && event.missionId !== state.missionId) {
     throw new Error("Event belongs to a different mission.");
   }
@@ -83,6 +85,14 @@ export function reduce(state: MissionState, event: MissionEvent): MissionState {
       }
       return { ...state, status: "COMPLETED" };
   }
+}
+
+export function reduce(state: MissionState, event: MissionEvent): MissionState {
+  const expectedSequenceNumber = state.lastSequenceNumber + 1;
+  if (event.sequenceNumber !== expectedSequenceNumber) {
+    throw new Error(`Expected sequence number ${expectedSequenceNumber}, received ${event.sequenceNumber}.`);
+  }
+  return { ...applyEvent(state, event), lastSequenceNumber: event.sequenceNumber };
 }
 
 export function replay(events: MissionEvent[]): MissionState {

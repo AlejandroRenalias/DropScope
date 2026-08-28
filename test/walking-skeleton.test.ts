@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { beginWalkingSkeletonMission, recoverWalkingSkeletonMission, runWalkingSkeletonMission } from "../src/run-mission.js";
+import { replay } from "../src/reducer.js";
 
 describe("Milestone 1A.0 walking skeleton", () => {
   it("records one completed task and a completed mission", async () => {
@@ -51,5 +52,30 @@ describe("Milestone 1A.0 walking skeleton", () => {
     ]);
     expect(result.state.tasks["system-check"].status).toBe("INTERRUPTED");
     expect(result.state.tasks["system-check:a2"].status).toBe("COMPLETED");
+  });
+
+  it("rejects a history with a skipped sequence number", async () => {
+    const result = await runWalkingSkeletonMission({
+      missionId: "sequence-check-demo",
+      totalBudget: 120,
+      historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl"),
+    });
+    const corruptedHistory = result.events.map((event) => ({ ...event }));
+    corruptedHistory[2] = { ...corruptedHistory[2], sequenceNumber: 5 };
+
+    expect(() => replay(corruptedHistory)).toThrow("Expected sequence number 3, received 5.");
+  });
+
+  it("replays every valid event-history prefix", async () => {
+    const result = await runWalkingSkeletonMission({
+      missionId: "prefix-replay-demo",
+      totalBudget: 120,
+      historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl"),
+    });
+
+    result.events.forEach((_, index) => {
+      const stateAfterPrefix = replay(result.events.slice(0, index + 1));
+      expect(stateAfterPrefix.lastSequenceNumber).toBe(index + 1);
+    });
   });
 });

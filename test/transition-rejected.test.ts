@@ -22,7 +22,7 @@ describe("illegal transition handling", () => {
       eventId: "rejection-demo-2",
       timestamp: "2026-08-28T00:00:01.000Z",
       type: "TaskStarted",
-      payload: { taskId: "not-scheduled" },
+      payload: { attemptId: "not-scheduled:a1" },
     };
 
     const result = handleProposedEvent([missionCreated], invalidStart);
@@ -31,7 +31,7 @@ describe("illegal transition handling", () => {
     expect(result.state.budget).toEqual({ total: 120, committed: 0, spent: 0, available: 120 });
     expect(result.state.tasks).toEqual({});
     expect(result.state.rejections).toEqual([
-      { attemptedEventType: "TaskStarted", reason: "Only a scheduled task can start." },
+      { attemptedEventType: "TaskStarted", reason: "Only a scheduled attempt can start." },
     ]);
   });
 });

@@ -50,8 +50,10 @@ describe("Milestone 1A.0 walking skeleton", () => {
       "TaskScheduled",
       "TaskStarted",
     ]);
-    expect(result.state.tasks["system-check"].status).toBe("INTERRUPTED");
-    expect(result.state.tasks["system-check:a2"].status).toBe("COMPLETED");
+    expect(result.state.tasks["system-check"].status).toBe("COMPLETED");
+    expect(result.state.tasks["system-check"].attemptIds).toEqual(["system-check:a1", "system-check:a2"]);
+    expect(result.state.attempts["system-check:a1"].status).toBe("INTERRUPTED");
+    expect(result.state.attempts["system-check:a2"].status).toBe("COMPLETED");
   });
 
   it("rejects a history with a skipped sequence number", async () => {

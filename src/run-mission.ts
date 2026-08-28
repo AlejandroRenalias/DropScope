@@ -41,10 +41,11 @@ export async function beginWalkingSkeletonMission(options: Required<MissionOptio
   await appendEvent(store, existingEvents, options.missionId, "MissionCreated", { totalBudget: options.totalBudget });
   await appendEvent(store, existingEvents, options.missionId, "TaskScheduled", {
     taskId: "system-check",
+    attemptId: "system-check:a1",
     objective: "Verify the DropScope engine can complete one task.",
     cost: 10,
   });
-  await appendEvent(store, existingEvents, options.missionId, "TaskStarted", { taskId: "system-check" });
+  await appendEvent(store, existingEvents, options.missionId, "TaskStarted", { attemptId: "system-check:a1" });
   return { events: await store.readAll(), state: replay(await store.readAll()) };
 }
 
@@ -53,23 +54,24 @@ export async function recoverWalkingSkeletonMission(options: Omit<MissionOptions
   const events = await store.readAll();
   const state = replay(events);
   if (state.missionId !== options.missionId) throw new Error("Recovery history belongs to a different mission.");
-  const interruptedTaskIds = Object.entries(state.tasks)
-    .filter(([, task]) => task.status === "RUNNING")
-    .map(([taskId]) => taskId);
-  if (interruptedTaskIds.length === 0) throw new Error("There is no running task to recover.");
+  const interruptedAttemptIds = Object.entries(state.attempts)
+    .filter(([, attempt]) => attempt.status === "RUNNING")
+    .map(([attemptId]) => attemptId);
+  if (interruptedAttemptIds.length === 0) throw new Error("There is no running attempt to recover.");
 
-  await appendEvent(store, events, options.missionId, "RecoveryStarted", { interruptedTaskIds });
-  for (const taskId of interruptedTaskIds) {
-    await appendEvent(store, events, options.missionId, "TaskInterrupted", { taskId, reason: "Process stopped before completion." });
+  await appendEvent(store, events, options.missionId, "RecoveryStarted", { interruptedAttemptIds });
+  for (const attemptId of interruptedAttemptIds) {
+    await appendEvent(store, events, options.missionId, "TaskInterrupted", { attemptId, reason: "Process stopped before completion." });
   }
   await appendEvent(store, events, options.missionId, "TaskScheduled", {
-    taskId: "system-check:a2",
+    taskId: "system-check",
+    attemptId: "system-check:a2",
     objective: "Verify the DropScope engine can complete one task after recovery.",
     cost: 10,
   });
-  await appendEvent(store, events, options.missionId, "TaskStarted", { taskId: "system-check:a2" });
+  await appendEvent(store, events, options.missionId, "TaskStarted", { attemptId: "system-check:a2" });
   await Promise.resolve();
-  await appendEvent(store, events, options.missionId, "FindingSubmitted", { taskId: "system-check:a2", finding: "Recovered system check completed." });
+  await appendEvent(store, events, options.missionId, "FindingSubmitted", { attemptId: "system-check:a2", finding: "Recovered system check completed." });
   await appendEvent(store, events, options.missionId, "MissionCompleted", {});
 
   const persistedEvents = await store.readAll();
@@ -81,7 +83,7 @@ export async function runWalkingSkeletonMission(options: Required<MissionOptions
   const store = new JsonlEventStore(options.historyPath);
   const events = started.events;
   await Promise.resolve(); // The deterministic simulated worker has no external dependencies.
-  await appendEvent(store, events, options.missionId, "FindingSubmitted", { taskId: "system-check", finding: "System check completed." });
+  await appendEvent(store, events, options.missionId, "FindingSubmitted", { attemptId: "system-check:a1", finding: "System check completed." });
   await appendEvent(store, events, options.missionId, "MissionCompleted", {});
 
   const persistedEvents = await store.readAll();

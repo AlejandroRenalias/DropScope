@@ -2,13 +2,28 @@ import type { MissionEvent } from "./contracts.js";
 
 export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
 export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED";
+export type AttemptStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED";
+
+interface TaskRecord {
+  objective: string;
+  cost: number;
+  status: TaskStatus;
+  attemptIds: string[];
+}
+
+interface AttemptRecord {
+  taskId: string;
+  status: AttemptStatus;
+  finding?: string;
+}
 
 export interface MissionState {
   missionId: string | null;
   lastSequenceNumber: number;
   status: MissionStatus;
   budget: { total: number; committed: number; spent: number; available: number };
-  tasks: Record<string, { objective: string; cost: number; status: TaskStatus; finding?: string }>;
+  tasks: Record<string, TaskRecord>;
+  attempts: Record<string, AttemptRecord>;
   rejections: { attemptedEventType: string; reason: string }[];
 }
 
@@ -18,6 +33,7 @@ export const initialMissionState = (): MissionState => ({
   status: "NOT_STARTED",
   budget: { total: 0, committed: 0, spent: 0, available: 0 },
   tasks: {},
+  attempts: {},
   rejections: [],
 });
 
@@ -37,18 +53,29 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       };
     case "TaskScheduled": {
       if (state.status !== "RUNNING") throw new Error("Cannot schedule work for a non-running mission.");
-      if (state.tasks[event.payload.taskId]) throw new Error("Task is already scheduled.");
+      const existingTask = state.tasks[event.payload.taskId];
+      if (existingTask && existingTask.status !== "INTERRUPTED") throw new Error("Task cannot receive another attempt.");
+      if (state.attempts[event.payload.attemptId]) throw new Error("Attempt is already scheduled.");
+      const task: TaskRecord = existingTask
+        ? { ...existingTask, status: "SCHEDULED", attemptIds: [...existingTask.attemptIds, event.payload.attemptId] }
+        : {
+            objective: event.payload.objective,
+            cost: event.payload.cost,
+            status: "SCHEDULED",
+            attemptIds: [event.payload.attemptId],
+          };
       return {
         ...state,
-        tasks: {
-          ...state.tasks,
-          [event.payload.taskId]: { ...event.payload, status: "SCHEDULED" },
-        },
+        tasks: { ...state.tasks, [event.payload.taskId]: task },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { taskId: event.payload.taskId, status: "SCHEDULED" } },
       };
     }
     case "TaskStarted": {
-      const task = state.tasks[event.payload.taskId];
-      if (!task || task.status !== "SCHEDULED") throw new Error("Only a scheduled task can start.");
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (!attempt || !task || attempt.status !== "SCHEDULED" || task.status !== "SCHEDULED") {
+        throw new Error("Only a scheduled attempt can start.");
+      }
       if (task.cost > state.budget.available) throw new Error("Insufficient available budget.");
       return {
         ...state,
@@ -57,30 +84,39 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
           committed: state.budget.committed + task.cost,
           available: state.budget.available - task.cost,
         },
-        tasks: { ...state.tasks, [event.payload.taskId]: { ...task, status: "RUNNING" } },
+        tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "RUNNING" } },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "RUNNING" } },
       };
     }
     case "RecoveryStarted":
       if (state.status !== "RUNNING") throw new Error("Only a running mission can be recovered.");
       return state;
     case "TaskInterrupted": {
-      const task = state.tasks[event.payload.taskId];
-      if (!task || task.status !== "RUNNING") throw new Error("Only a running task can be interrupted.");
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+        throw new Error("Only a running attempt can be interrupted.");
+      }
       return {
         ...state,
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
-        tasks: { ...state.tasks, [event.payload.taskId]: { ...task, status: "INTERRUPTED" } },
+        tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "INTERRUPTED" } },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "INTERRUPTED" } },
       };
     }
     case "TransitionRejected":
       return { ...state, rejections: [...state.rejections, event.payload] };
     case "FindingSubmitted": {
-      const task = state.tasks[event.payload.taskId];
-      if (!task || task.status !== "RUNNING") throw new Error("Only a running task can submit a finding.");
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+        throw new Error("Only a running attempt can submit a finding.");
+      }
       return {
         ...state,
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
-        tasks: { ...state.tasks, [event.payload.taskId]: { ...task, status: "COMPLETED", finding: event.payload.finding } },
+        tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "COMPLETED" } },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "COMPLETED", finding: event.payload.finding } },
       };
     }
     case "MissionCompleted":

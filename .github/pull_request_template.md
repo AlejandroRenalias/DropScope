@@ -16,7 +16,8 @@
 
 - [ ] `npm run typecheck`
 - [ ] `npm test`
-- [ ] GitHub Actions passed for the exact head SHA below
+- [ ] GitHub Actions passed for the exact head SHA below, or the approved temporary local-verification fallback is recorded
+- Local verification command output / date:
 
 ## Exact head SHA
 

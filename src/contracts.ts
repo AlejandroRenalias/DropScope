@@ -20,6 +20,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
       attemptId: z.string().min(1),
       objective: z.string().min(1),
       cost: z.number().int().positive(),
+      dependencies: z.array(z.string().min(1)),
     }),
   }),
   eventBase.extend({

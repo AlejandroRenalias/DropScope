@@ -44,6 +44,7 @@ export async function beginWalkingSkeletonMission(options: Required<MissionOptio
     attemptId: "system-check:a1",
     objective: "Verify the DropScope engine can complete one task.",
     cost: 10,
+    dependencies: [],
   });
   await appendEvent(store, existingEvents, options.missionId, "TaskStarted", { attemptId: "system-check:a1" });
   return { events: await store.readAll(), state: replay(await store.readAll()) };
@@ -68,6 +69,7 @@ export async function recoverWalkingSkeletonMission(options: Omit<MissionOptions
     attemptId: "system-check:a2",
     objective: "Verify the DropScope engine can complete one task after recovery.",
     cost: 10,
+    dependencies: [],
   });
   await appendEvent(store, events, options.missionId, "TaskStarted", { attemptId: "system-check:a2" });
   await Promise.resolve();

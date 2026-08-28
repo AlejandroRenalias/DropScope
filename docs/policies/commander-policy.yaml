@@ -1,0 +1,135 @@
+policyName: dropscope-commander-policy
+version: 1
+status: architecture-baseline-v1
+
+limits:
+  totalBudget: 120
+  maxConcurrentSpecialists: 3
+  maxResearchSpecialistsPerMission: 4
+  maxTransientWorkerRetriesPerTask: 1
+  maxRecoveryRestartsPerMission: 1
+  maxFocusedRevisionCycles: 1
+  maxMainRankingCandidates: 5
+
+candidateCount:
+  completedReportMinimum: 1
+  completedReportMaximum: 5
+  insufficientEvidenceWhenAllowedCandidatesClearGates: 0
+  mayWeakenThresholdsToFillList: false
+
+researchPriorityScoring:
+  purpose: investigation_priority_not_profit_prediction
+  scoreRange: [0, 100]
+  dimensions:
+    customerProblemStrength:
+      weight: 30
+      source: customer_problem_evidence_score
+    evidenceQuality:
+      weight: 20
+      source: evidence_quality_score
+    trendDurability:
+      weight: 15
+      source: generic_topic_evidence_score_for_TREND_DURABILITY
+    advertisingHeadroom:
+      weight: 15
+      source: 100_minus_generic_topic_evidence_score_for_ADVERTISING_SATURATION
+    operationalFeasibility:
+      weight: 10
+      source: 100_minus_generic_topic_evidence_score_for_OPERATIONAL_RISK
+    failureResilience:
+      weight: 10
+      source: 100_minus_generic_topic_evidence_score_for_FAILURE_RISK
+  formula: rounded_weighted_sum
+  rankingOrder:
+    first: research_priority_score_descending
+    second: evidence_quality_score_descending
+    third: lexical_candidate_id_ascending
+
+costs:
+  planning: 2
+  specialistAttempt: 10
+  tribunal: 12
+  initialAudit: 8
+  blindAndReconciliationReview: 8
+  focusedRevision: 8
+  focusedReaudit: 4
+  focusedRereview: 6
+  finalReport: 2
+
+ledger:
+  states:
+    AVAILABLE: unallocated
+    RESERVED: authorized_but_unstarted
+    COMMITTED: started_and_assumed_consumed
+    SPENT: finalized_history
+  interruptionCharged: true
+  availableFormula: total_minus_reserved_minus_committed_minus_spent
+  mandatoryProtection: computed_from_authoritative_state
+  optionalReservationInvariant: spent_plus_committed_plus_reserved_plus_optional_cost_plus_remaining_mandatory_unreserved_cost_must_not_exceed_total
+
+taskAdmission:
+  allowedWhenAny:
+    - task_belongs_to_required_baseline_plan
+    - task_research_key_resolves_open_actionable_gap
+  allRequired:
+    - dependencies_completed
+    - dependency_graph_acyclic
+    - no_active_or_completed_task_covers_same_research_key
+    - budget_invariant_holds
+    - mission_nonterminal
+    - tool_and_action_policy_allows_task
+
+gapPolicy:
+  actionableStatuses:
+    - OPEN
+    - REOPENED
+  affectedDecisionTypes:
+    - ELIGIBILITY
+    - RANKING
+    - CONFIDENCE
+    - SAFETY_OR_RISK
+    - BLOCKING_REVIEW
+    - CONTRADICTION
+  mayOpenGap:
+    - BASELINE_PLAN
+    - EVIDENCE_AUDITOR
+    - BLIND_REVIEWER
+    - DIVERGENCE_DETECTOR
+    - FAILURE_HANDLER
+    - CONTRADICTION_DETECTOR
+
+failurePolicy:
+  transientFailure:
+    retrySameTaskMaximum: 1
+    compatibleReassignmentAllowed: true
+  permanentFailure:
+    retrySameWorker: false
+    compatibleReassignmentAllowed: true
+    otherwiseRecordUnresolvedGap: true
+  interruption:
+    consumesTransientRetryAllowance: false
+    createsNewAttemptOnRecovery: true
+    charged: true
+    missionRecoveryRestartMaximum: 1
+
+revisionPolicy:
+  maximumCycles: 1
+  changedClaimsRequireFocusedReaudit: true
+  revisedReportRequiresFocusedRereview: true
+  cannotAcceptWhileBlockingDefectOpen: true
+
+terminalMissionStates:
+  - COMPLETED
+  - COMPLETED_INSUFFICIENT_EVIDENCE
+  - BLOCKED_POLICY
+  - BLOCKED_BUDGET
+  - FAILED_UNRECOVERABLE
+
+insufficientEvidenceTiming:
+  requiredBaselineResearchCompleted: true
+  relevantAuthorizedWorkInFlight: false
+  justifiedGapResolutionExhaustedOrDeclined: true
+
+policyChange:
+  fixtureDrivenTuningProhibited: true
+  requiresSupersedingADR: true

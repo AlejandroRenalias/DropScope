@@ -1,0 +1,74 @@
+policyName: dropscope-evidence-policy
+version: 1
+status: frozen-before-fixtures-b-and-c
+
+strength:
+  minimum: -5
+  maximum: 5
+  neutral: 0
+  directionConsistency:
+    SUPPORTS: positive
+    OPPOSES: negative
+    NEUTRAL: zero
+
+reliabilityWeights:
+  HIGH: 1.0
+  MEDIUM: 0.7
+  LOW: 0.4
+  UNKNOWN: 0.0
+
+independence:
+  minimumIndependentGroupsForNonTentativeDecisiveClaim: 2
+  representativePerGroup: strongest_absolute_weighted_strength
+  equalMagnitudeTieBreak:
+    first: opposing_evidence
+    second: lexical_evidence_id
+
+customerProblemEvidence:
+  canonicalClaimTopic: CUSTOMER_PROBLEM_EXISTS
+  formula:
+    step1: multiply signed strength by reliability weight
+    step2: retain one representative per independence group
+    step3: sum representatives and clamp net to [-10, 10]
+    step4: score equals round((net + 10) * 5)
+  scoreRange: [0, 100]
+  minimumCustomerProblemEvidenceScore: 65
+
+genericTopicEvidenceScore:
+  formula:
+    step1: select evidence for one candidate and one canonical claim topic
+    step2: multiply signed strength by reliability weight
+    step3: retain one representative per independence group
+    step4: sum representatives and clamp net to [-10, 10]
+    step5: score equals round((net + 10) * 5)
+  scoreRange: [0, 100]
+
+evidenceQuality:
+  scoreRange: [0, 100]
+  dimensions:
+    independence:
+      weight: 30
+      rule: average per decisive claim of min(distinct_independence_groups / 2, 1)
+    reliability:
+      weight: 25
+      rule: average reliability weight of contributing group representatives
+    decisiveClaimCoverage:
+      weight: 25
+      rule: decisive claims with at least one valid evidence record divided by all decisive claims
+    contradictionResolution:
+      weight: 20
+      rule: start at full credit and subtract half-dimension credit for each unresolved material contradiction, floor zero
+  minimumEvidenceQualityScore: 70
+  emptyCase:
+    noDecisiveClaimsScore: 0
+    noContributingEvidenceReliabilityScore: 0
+
+tentativeRules:
+  singleIndependentGroupDecisiveClaimMustBeTentative: true
+  unknownReliabilityCannotSupportDecisiveClaim: true
+
+fixtureRules:
+  reliabilityClassIsFixtureDeclaredInMilestone1A: true
+  thresholdsFrozenBeforeFixtureAuthoring: true
+  onUnexpectedFixtureOutcome: change_fixture_not_policy
+  policyChangeRequiresSupersedingADR: true

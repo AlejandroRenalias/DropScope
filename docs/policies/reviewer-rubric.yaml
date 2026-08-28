@@ -1,0 +1,98 @@
+policyName: dropscope-independent-reviewer-rubric
+version: 1
+status: frozen-before-fixtures-b-and-c
+
+purpose: evidential_defensibility
+implementationRule: must_not_share_scoring_implementation_with_commander
+
+blindInputAllowed:
+  - anonymized_candidate_id
+  - claims
+  - evidence_records
+  - confidence_labels
+  - risk_and_eligibility_gate_results
+
+blindInputForbidden:
+  - commander_scores
+  - commander_ranking
+  - commander_eligibility_decisions
+  - tribunal_verdict
+  - presentation_order
+  - agent_identity
+  - agent_personality
+
+dimensions:
+  sourceIndependence:
+    weight: 30
+    emphasis: distinct independence groups and resistance to copied-source inflation
+    formula: average_per_decisive_claim_of_min(distinct_independence_groups_divided_by_2,1)_times_100
+  decisionCriticalCoverage:
+    weight: 25
+    emphasis: whether every eligibility, ranking, confidence, or blocking decision has commissioned evidence
+    formula: covered_required_research_keys_divided_by_all_required_research_keys_times_100
+  contradictionHandling:
+    weight: 20
+    emphasis: whether material opposing evidence is resolved or explicitly left unresolved
+    formula: max(0,100_minus_50_times_unresolved_material_contradiction_count)
+  claimEvidenceAlignment:
+    weight: 15
+    emphasis: whether evidence directly supports or opposes the exact claim
+    formula: audited_aligned_decisive_claims_divided_by_all_decisive_claims_times_100
+  uncertaintyCalibration:
+    weight: 10
+    emphasis: tentative labels, confidence classes, and honest unresolved gaps
+    formula: correctly_labelled_uncertain_decisive_claims_divided_by_all_decisive_claims_requiring_uncertainty_labels_times_100
+
+emptyCases:
+  noDecisiveClaimsReviewerScore: 0
+  noRequiredResearchKeysCoverageScore: 0
+  noClaimsRequiringUncertaintyLabelsUncertaintyScore: 100
+
+overallFormula: rounded_weighted_sum
+
+scoreRange: [0, 100]
+minimumAcceptableReviewerScore: 75
+
+rankingOrder:
+  first: reviewer_score_descending
+  second: source_independence_score_descending
+  third: lexical_anonymized_candidate_id_ascending
+
+blockingDefects:
+  - decisive_claim_has_no_valid_evidence
+  - decisive_single_group_claim_is_not_tentative
+  - unresolved_decision_critical_contradiction
+  - missing_decision_critical_research_key
+  - malformed_or_untraceable_evidence
+  - gate_outcome_used_in_forbidden_ranking_position
+
+verdicts:
+  - ACCEPT
+  - REVISE
+  - REASSIGN
+  - REJECT
+
+divergence:
+  types:
+    - ELIGIBILITY_DIVERGENCE
+    - TOP_CANDIDATE_DIVERGENCE
+    - RANK_POSITION_DIVERGENCE
+    - CONFIDENCE_DIVERGENCE
+    - MISSING_EVIDENCE_DIVERGENCE
+  rankPositionDifferenceThreshold: 2
+  missingEvidenceRequirements:
+    noCompletedOrActiveTaskCoversResearchKey: true
+    mustAffectOneOf:
+      - ELIGIBILITY
+      - RANKING
+      - CONFIDENCE
+      - BLOCKING_DECISION
+
+independenceCeiling:
+  interpretationIndependent: true
+  scopeFullyIndependent: false
+  reviewerMayLaunchResearchInMilestone1A: false
+
+freezeRules:
+  tuneAgainstFixtureOutcomes: prohibited
+  changeRequiresSupersedingADR: true

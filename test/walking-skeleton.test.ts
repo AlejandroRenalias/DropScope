@@ -15,11 +15,13 @@ describe("Milestone 1A.0 walking skeleton", () => {
     });
 
     expect(result.state.status).toBe("COMPLETED");
+    expect(result.state.budget.reserved).toBe(0);
     expect(result.state.budget.spent).toBe(10);
     expect(result.state.budget.available).toBe(110);
     expect(result.events.map((event) => event.type)).toEqual([
       "MissionCreated",
       "TaskScheduled",
+      "BudgetReserved",
       "TaskStarted",
       "FindingSubmitted",
       "MissionCompleted",
@@ -37,17 +39,20 @@ describe("Milestone 1A.0 walking skeleton", () => {
     expect(result.events.map((event) => event.type)).toEqual([
       "MissionCreated",
       "TaskScheduled",
+      "BudgetReserved",
       "TaskStarted",
       "RecoveryStarted",
       "TaskInterrupted",
       "TaskScheduled",
+      "BudgetReserved",
       "TaskStarted",
       "FindingSubmitted",
       "MissionCompleted",
     ]);
-    expect(result.events.slice(0, 3).map((event) => event.type)).toEqual([
+    expect(result.events.slice(0, 4).map((event) => event.type)).toEqual([
       "MissionCreated",
       "TaskScheduled",
+      "BudgetReserved",
       "TaskStarted",
     ]);
     expect(result.state.tasks["system-check"].status).toBe("COMPLETED");

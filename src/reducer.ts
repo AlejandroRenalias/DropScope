@@ -14,6 +14,7 @@ interface TaskRecord {
 interface AttemptRecord {
   taskId: string;
   status: AttemptStatus;
+  reserved: boolean;
   finding?: string;
 }
 
@@ -21,7 +22,7 @@ export interface MissionState {
   missionId: string | null;
   lastSequenceNumber: number;
   status: MissionStatus;
-  budget: { total: number; committed: number; spent: number; available: number };
+  budget: { total: number; reserved: number; committed: number; spent: number; available: number };
   tasks: Record<string, TaskRecord>;
   attempts: Record<string, AttemptRecord>;
   rejections: { attemptedEventType: string; reason: string }[];
@@ -32,7 +33,7 @@ export const initialMissionState = (): MissionState => ({
   missionId: null,
   lastSequenceNumber: 0,
   status: "NOT_STARTED",
-  budget: { total: 0, committed: 0, spent: 0, available: 0 },
+  budget: { total: 0, reserved: 0, committed: 0, spent: 0, available: 0 },
   tasks: {},
   attempts: {},
   rejections: [],
@@ -51,7 +52,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         ...state,
         missionId: event.missionId,
         status: "RUNNING",
-        budget: { total: event.payload.totalBudget, committed: 0, spent: 0, available: event.payload.totalBudget },
+        budget: { total: event.payload.totalBudget, reserved: 0, committed: 0, spent: 0, available: event.payload.totalBudget },
       };
     case "TaskScheduled": {
       if (state.status !== "RUNNING") throw new Error("Cannot schedule work for a non-running mission.");
@@ -69,7 +70,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       return {
         ...state,
         tasks: { ...state.tasks, [event.payload.taskId]: task },
-        attempts: { ...state.attempts, [event.payload.attemptId]: { taskId: event.payload.taskId, status: "SCHEDULED" } },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { taskId: event.payload.taskId, status: "SCHEDULED", reserved: false } },
       };
     }
     case "TaskStarted": {
@@ -78,16 +79,29 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (!attempt || !task || attempt.status !== "SCHEDULED" || task.status !== "SCHEDULED") {
         throw new Error("Only a scheduled attempt can start.");
       }
-      if (task.cost > state.budget.available) throw new Error("Insufficient available budget.");
+      if (!attempt.reserved || task.cost > state.budget.reserved) throw new Error("Attempt has no sufficient reserved budget.");
       return {
         ...state,
         budget: {
           ...state.budget,
+          reserved: state.budget.reserved - task.cost,
           committed: state.budget.committed + task.cost,
-          available: state.budget.available - task.cost,
         },
         tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "RUNNING" } },
-        attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "RUNNING" } },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "RUNNING", reserved: false } },
+      };
+    }
+    case "BudgetReserved": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (!attempt || !task || attempt.status !== "SCHEDULED" || attempt.reserved || event.payload.cost !== task.cost) {
+        throw new Error("Only a scheduled attempt can reserve its exact cost.");
+      }
+      if (task.cost > state.budget.available) throw new Error("Insufficient available budget.");
+      return {
+        ...state,
+        budget: { ...state.budget, reserved: state.budget.reserved + task.cost, available: state.budget.available - task.cost },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, reserved: true } },
       };
     }
     case "RecoveryStarted":
@@ -147,7 +161,10 @@ export function reduce(state: MissionState, event: MissionEvent): MissionState {
   if (event.sequenceNumber !== expectedSequenceNumber) {
     throw new Error(`Expected sequence number ${expectedSequenceNumber}, received ${event.sequenceNumber}.`);
   }
-  return { ...applyEvent(state, event), lastSequenceNumber: event.sequenceNumber };
+  const nextState = { ...applyEvent(state, event), lastSequenceNumber: event.sequenceNumber };
+  const { total, reserved, committed, spent, available } = nextState.budget;
+  if (available !== total - reserved - committed - spent) throw new Error("Budget ledger invariant violated.");
+  return nextState;
 }
 
 export function replay(events: MissionEvent[]): MissionState {

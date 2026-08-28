@@ -24,6 +24,10 @@ export const missionEventSchema = z.discriminatedUnion("type", [
     }),
   }),
   eventBase.extend({
+    type: z.literal("BudgetReserved"),
+    payload: z.object({ attemptId: z.string().min(1), cost: z.number().int().positive() }),
+  }),
+  eventBase.extend({
     type: z.literal("TaskStarted"),
     payload: z.object({ attemptId: z.string().min(1), simulatedDelayMs: z.number().int().nonnegative() }),
   }),

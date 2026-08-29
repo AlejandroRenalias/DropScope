@@ -63,6 +63,20 @@ export const evidenceSchema = z.object({
 });
 export type Evidence = z.infer<typeof evidenceSchema>;
 
+export const riskGateDecisionSchema = z.object({
+  decisionId: idSchema,
+  candidateId: idSchema,
+  outcome: z.enum(["ALLOWED", "RESTRICTED", "MANUAL_REVIEW", "REJECTED"]),
+  reasons: z.array(z.object({
+    category: z.enum(["SAFETY", "REGULATORY", "INTELLECTUAL_PROPERTY", "POLICY", "INSUFFICIENT_INFORMATION"]),
+    code: idSchema,
+    explanation: z.string().min(1),
+    evidenceIds: z.array(idSchema),
+  })),
+  decidedByPolicyVersion: z.string().min(1),
+});
+export type RiskGateDecision = z.infer<typeof riskGateDecisionSchema>;
+
 const uniqueIds = <T extends object>(records: T[], field: keyof T, label: string, context: z.RefinementCtx) => {
   const seen = new Set<string>();
   records.forEach((record, index) => {

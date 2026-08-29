@@ -5,11 +5,22 @@ const names: RiskAttributeName[] = ["intendedUser", "foodOrIngestion", "bodyCont
 const base: RiskGateInput = {
   decisionId: "boundary-decision", candidateId: "boundary-candidate", decidedByPolicyVersion: "risk-policy-v1-draft",
   attributes: { intendedUser: "GENERAL", foodOrIngestion: "NO", bodyContact: "NONE", healthPositioning: "NONE", electricalPower: "NONE", thermalOrFireHazard: "NONE", physicalHazard: "NONE", protectiveFunction: "NONE", chemicalExposure: "NONE_DECLARED", regulatedCategorySignal: "NONE", brandOrCreativeSimilaritySignal: "NONE_OBSERVED", evidenceCompleteness: "SUFFICIENT" },
-  attributeEvidenceIds: Object.fromEntries(names.map((name) => [name, [`ev-${name}`]])) as RiskGateInput["attributeEvidenceIds"],
+  attributeEvidenceIds: {
+    intendedUser: ["ev-intended-user"], foodOrIngestion: ["ev-food"], bodyContact: ["ev-body"],
+    healthPositioning: ["ev-health"], electricalPower: ["ev-electrical"], thermalOrFireHazard: ["ev-thermal"],
+    physicalHazard: ["ev-physical"], protectiveFunction: ["ev-protective"], chemicalExposure: ["ev-chemical"],
+    regulatedCategorySignal: ["ev-regulated"], brandOrCreativeSimilaritySignal: ["ev-brand"], evidenceCompleteness: ["ev-completeness"],
+  },
 };
 
 const evaluate = (overrides: Partial<RiskGateInput["attributes"]>) => evaluateRiskGate({ ...base, attributes: { ...base.attributes, ...overrides } });
-const reason = (category: "SAFETY" | "REGULATORY" | "INTELLECTUAL_PROPERTY" | "INSUFFICIENT_INFORMATION", code: string, explanation: string, evidenceIds: string[]) => ({ category, code, explanation, evidenceIds });
+const approvedEvidenceIds: Record<string, string> = {
+  "ev-intendedUser": "ev-intended-user", "ev-foodOrIngestion": "ev-food", "ev-bodyContact": "ev-body",
+  "ev-healthPositioning": "ev-health", "ev-electricalPower": "ev-electrical", "ev-thermalOrFireHazard": "ev-thermal",
+  "ev-physicalHazard": "ev-physical", "ev-protectiveFunction": "ev-protective", "ev-chemicalExposure": "ev-chemical",
+  "ev-regulatedCategorySignal": "ev-regulated", "ev-brandOrCreativeSimilaritySignal": "ev-brand", "ev-evidenceCompleteness": "ev-completeness",
+};
+const reason = (category: "SAFETY" | "REGULATORY" | "INTELLECTUAL_PROPERTY" | "INSUFFICIENT_INFORMATION", code: string, explanation: string, evidenceIds: string[]) => ({ category, code, explanation, evidenceIds: evidenceIds.map((id) => approvedEvidenceIds[id] ?? id) });
 
 describe("deterministic risk policy v1", () => {
   it("accepts every declared vocabulary value and allows the neutral vector", () => {
@@ -103,5 +114,7 @@ describe("deterministic risk policy v1", () => {
       expect(() => riskGateInputSchema.parse({ ...base, attributes: { ...base.attributes, [attribute]: "NOT_A_DECLARED_VALUE" } })).toThrow();
     }
     expect(() => riskGateInputSchema.parse({ ...base, extra: true })).toThrow();
+    expect(() => riskGateInputSchema.parse({ ...base, attributes: { ...base.attributes, extra: true } })).toThrow();
+    expect(() => riskGateInputSchema.parse({ ...base, attributeEvidenceIds: { ...base.attributeEvidenceIds, extra: ["ev-extra"] } })).toThrow();
   });
 });

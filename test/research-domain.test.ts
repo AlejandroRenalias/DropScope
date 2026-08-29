@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { researchDatasetSchema } from "../src/research-domain.js";
+import {
+  blindReviewResultSchema,
+  divergenceRecordSchema,
+  researchDatasetSchema,
+} from "../src/research-domain.js";
 
 const dataset = {
   candidates: [{ candidateId: "desk-organizer", name: "Cable organizer", category: "Home office" }],
@@ -37,5 +41,90 @@ describe("research domain validation", () => {
 
     expect(() => researchDatasetSchema.parse(missing)).toThrow();
     expect(() => researchDatasetSchema.parse(invalid)).toThrow();
+  });
+});
+
+describe("frozen quality-pipeline contracts", () => {
+  const review = {
+    reviewId: "review-1",
+    candidateAssessments: [{
+      anonymizedCandidateId: "candidate-a",
+      reviewerScore: 82,
+      reviewerEligible: true,
+      confidenceClass: "HIGH",
+      dimensionScores: {
+        sourceIndependence: 90,
+        decisionCriticalCoverage: 75,
+        contradictionHandling: 100,
+        claimEvidenceAlignment: 85,
+        uncertaintyCalibration: 80,
+      },
+      blockingDefects: [],
+      missingResearchKeys: ["pricing"],
+    }],
+    ranking: ["candidate-a"],
+    verdict: "REVISE",
+  };
+
+  it("accepts a complete blind review result", () => {
+    expect(blindReviewResultSchema.parse(review)).toEqual(review);
+  });
+
+  it("enforces blind review enums, score range, and strict fields", () => {
+    expect(() => blindReviewResultSchema.parse({ ...review, verdict: "MAYBE" })).toThrow();
+    expect(() => blindReviewResultSchema.parse({
+      ...review,
+      candidateAssessments: [{ ...review.candidateAssessments[0], reviewerScore: 101 }],
+    })).toThrow();
+    expect(() => blindReviewResultSchema.parse({ ...review, unexpected: true })).toThrow();
+    expect(() => blindReviewResultSchema.parse({
+      ...review,
+      candidateAssessments: [{ ...review.candidateAssessments[0], unexpected: true }],
+    })).toThrow();
+    expect(() => blindReviewResultSchema.parse({
+      ...review,
+      candidateAssessments: [{
+        ...review.candidateAssessments[0],
+        dimensionScores: { ...review.candidateAssessments[0].dimensionScores, sourceIndependence: 101 },
+      }],
+    })).toThrow();
+    expect(() => blindReviewResultSchema.parse({
+      ...review,
+      candidateAssessments: [{
+        ...review.candidateAssessments[0],
+        dimensionScores: { ...review.candidateAssessments[0].dimensionScores, unexpected: 50 },
+      }],
+    })).toThrow();
+  });
+
+  it("accepts divergence records with nullable research and resolution fields", () => {
+    const divergence = {
+      divergenceId: "divergence-1",
+      type: "MISSING_EVIDENCE_DIVERGENCE",
+      candidateIds: ["candidate-a"],
+      researchKey: null,
+      blocking: false,
+      status: "UNRESOLVED_ACCEPTED",
+      resolutionNote: "Accepted pending the next research pass.",
+    };
+
+    expect(divergenceRecordSchema.parse(divergence)).toEqual(divergence);
+  });
+
+  it("enforces divergence enums, IDs, nullability, and strict fields", () => {
+    const divergence = {
+      divergenceId: "divergence-1",
+      type: "ELIGIBILITY_DIVERGENCE",
+      candidateIds: ["candidate-a"],
+      researchKey: "eligibility",
+      blocking: true,
+      status: "OPEN",
+      resolutionNote: null,
+    };
+
+    expect(() => divergenceRecordSchema.parse({ ...divergence, type: "UNKNOWN" })).toThrow();
+    expect(() => divergenceRecordSchema.parse({ ...divergence, candidateIds: [""] })).toThrow();
+    expect(() => divergenceRecordSchema.parse({ ...divergence, researchKey: 3 })).toThrow();
+    expect(() => divergenceRecordSchema.parse({ ...divergence, unexpected: true })).toThrow();
   });
 });

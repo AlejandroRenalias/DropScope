@@ -119,3 +119,46 @@ export const researchDatasetSchema = z.object({
 export type ResearchDataset = z.infer<typeof researchDatasetSchema>;
 
 export const evidenceQualityScoreSchema = scoreSchema;
+
+const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict();
+
+const blindReviewAssessmentSchema = strictObject({
+  anonymizedCandidateId: idSchema,
+  reviewerScore: scoreSchema,
+  reviewerEligible: z.boolean(),
+  confidenceClass: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  dimensionScores: strictObject({
+    sourceIndependence: scoreSchema,
+    decisionCriticalCoverage: scoreSchema,
+    contradictionHandling: scoreSchema,
+    claimEvidenceAlignment: scoreSchema,
+    uncertaintyCalibration: scoreSchema,
+  }),
+  blockingDefects: z.array(z.string()),
+  missingResearchKeys: z.array(z.string()),
+});
+
+export const blindReviewResultSchema = strictObject({
+  reviewId: idSchema,
+  candidateAssessments: z.array(blindReviewAssessmentSchema),
+  ranking: z.array(idSchema),
+  verdict: z.enum(["ACCEPT", "REVISE", "REASSIGN", "REJECT"]),
+});
+export type BlindReviewResult = z.infer<typeof blindReviewResultSchema>;
+
+export const divergenceRecordSchema = strictObject({
+  divergenceId: idSchema,
+  type: z.enum([
+    "ELIGIBILITY_DIVERGENCE",
+    "TOP_CANDIDATE_DIVERGENCE",
+    "RANK_POSITION_DIVERGENCE",
+    "CONFIDENCE_DIVERGENCE",
+    "MISSING_EVIDENCE_DIVERGENCE",
+  ]),
+  candidateIds: z.array(idSchema),
+  researchKey: idSchema.nullable(),
+  blocking: z.boolean(),
+  status: z.enum(["OPEN", "RESOLVED", "UNRESOLVED_ACCEPTED"]),
+  resolutionNote: z.string().nullable(),
+});
+export type DivergenceRecord = z.infer<typeof divergenceRecordSchema>;

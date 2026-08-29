@@ -9,6 +9,7 @@ const base: RiskGateInput = {
 };
 
 const evaluate = (overrides: Partial<RiskGateInput["attributes"]>) => evaluateRiskGate({ ...base, attributes: { ...base.attributes, ...overrides } });
+const reason = (category: "SAFETY" | "REGULATORY" | "INTELLECTUAL_PROPERTY" | "INSUFFICIENT_INFORMATION", code: string, explanation: string, evidenceIds: string[]) => ({ category, code, explanation, evidenceIds });
 
 describe("deterministic risk policy v1", () => {
   it("accepts every declared vocabulary value and allows the neutral vector", () => {
@@ -22,18 +23,56 @@ describe("deterministic risk policy v1", () => {
   });
 
   it.each([
-    ["foodOrIngestion", "FOOD_OR_SUPPLEMENT", "REJECTED", "SAFETY_INGESTION_OR_FOOD"], ["healthPositioning", "MEDICAL_CLAIM_OR_DEVICE", "REJECTED", "REGULATORY_MEDICAL_POSITIONING"], ["intendedUser", "INFANT_OR_TODDLER", "REJECTED", "SAFETY_INFANT_OR_TODDLER"], ["electricalPower", "MAINS_OR_HIGH_POWER", "REJECTED", "SAFETY_HIGH_POWER_ELECTRICAL"], ["thermalOrFireHazard", "OPEN_FLAME_OR_EXTREME_HEAT", "REJECTED", "SAFETY_FLAME_OR_EXTREME_HEAT"], ["physicalHazard", "PRESSURE_OR_PROJECTILE", "REJECTED", "SAFETY_PRESSURE_OR_PROJECTILE"], ["chemicalExposure", "HAZARDOUS_CHEMICAL", "REJECTED", "SAFETY_HAZARDOUS_CHEMICAL"], ["brandOrCreativeSimilaritySignal", "OBVIOUS_BRAND_OR_CHARACTER_REFERENCE", "REJECTED", "INTELLECTUAL_PROPERTY_OBVIOUS_REFERENCE"],
-    ["evidenceCompleteness", "CONFLICTING_MATERIAL_ATTRIBUTE", "MANUAL_REVIEW", "INSUFFICIENT_INFORMATION_MATERIAL_CONFLICT"], ["evidenceCompleteness", "MATERIAL_ATTRIBUTE_MISSING", "MANUAL_REVIEW", "INSUFFICIENT_INFORMATION_MATERIAL_MISSING"], ["intendedUser", "CHILD_UNDER_14", "RESTRICTED", "REGULATORY_CHILD_DIRECTED"], ["chemicalExposure", "COSMETIC_OR_TOPICAL", "RESTRICTED", "REGULATORY_PERSONAL_CARE_OR_SENSITIVE_CONTACT"], ["electricalPower", "BATTERY", "RESTRICTED", "SAFETY_ELECTRICAL_COMPONENT"], ["thermalOrFireHazard", "LOW_HEAT", "RESTRICTED", "SAFETY_PHYSICAL_OR_THERMAL_HAZARD"], ["physicalHazard", "SHARP_OR_CUTTING", "RESTRICTED", "SAFETY_PHYSICAL_OR_THERMAL_HAZARD"], ["protectiveFunction", "SAFETY_OR_PROTECTIVE", "RESTRICTED", "SAFETY_PROTECTIVE_FUNCTION"], ["brandOrCreativeSimilaritySignal", "POSSIBLE_SIMILARITY", "RESTRICTED", "INTELLECTUAL_PROPERTY_POSSIBLE_SIMILARITY"], ["regulatedCategorySignal", "ANIMAL_PRODUCT", "RESTRICTED", "REGULATORY_ELEVATED_CATEGORY"],
-  ] as const)("evaluates %s=%s", (attribute, value, outcome, code) => {
+    ["foodOrIngestion", "FOOD_OR_SUPPLEMENT", "REJECTED", reason("SAFETY", "SAFETY_INGESTION_OR_FOOD", "Food, supplements, and ingestible components are outside the default low-risk scope.", ["ev-foodOrIngestion"])],
+    ["healthPositioning", "MEDICAL_CLAIM_OR_DEVICE", "REJECTED", reason("REGULATORY", "REGULATORY_MEDICAL_POSITIONING", "Medical positioning is outside this research filter.", ["ev-healthPositioning"])],
+    ["intendedUser", "INFANT_OR_TODDLER", "REJECTED", reason("SAFETY", "SAFETY_INFANT_OR_TODDLER", "Infant/toddler-directed products are excluded conservatively.", ["ev-intendedUser"])],
+    ["electricalPower", "MAINS_OR_HIGH_POWER", "REJECTED", reason("SAFETY", "SAFETY_HIGH_POWER_ELECTRICAL", "High-power electrical products are outside the default scope.", ["ev-electricalPower"])],
+    ["thermalOrFireHazard", "OPEN_FLAME_OR_EXTREME_HEAT", "REJECTED", reason("SAFETY", "SAFETY_FLAME_OR_EXTREME_HEAT", "Open flame/extreme heat is excluded.", ["ev-thermalOrFireHazard"])],
+    ["physicalHazard", "PRESSURE_OR_PROJECTILE", "REJECTED", reason("SAFETY", "SAFETY_PRESSURE_OR_PROJECTILE", "Pressure/projectile hazards are excluded.", ["ev-physicalHazard"])],
+    ["chemicalExposure", "HAZARDOUS_CHEMICAL", "REJECTED", reason("SAFETY", "SAFETY_HAZARDOUS_CHEMICAL", "Declared hazardous chemical exposure is excluded.", ["ev-chemicalExposure"])],
+    ["brandOrCreativeSimilaritySignal", "OBVIOUS_BRAND_OR_CHARACTER_REFERENCE", "REJECTED", reason("INTELLECTUAL_PROPERTY", "INTELLECTUAL_PROPERTY_OBVIOUS_REFERENCE", "Obvious reference is excluded as a risk signal.", ["ev-brandOrCreativeSimilaritySignal"])],
+    ["evidenceCompleteness", "CONFLICTING_MATERIAL_ATTRIBUTE", "MANUAL_REVIEW", reason("INSUFFICIENT_INFORMATION", "INSUFFICIENT_INFORMATION_MATERIAL_CONFLICT", "Conflicting material attributes prevent a deterministic safe classification.", ["ev-evidenceCompleteness"])],
+    ["evidenceCompleteness", "MATERIAL_ATTRIBUTE_MISSING", "MANUAL_REVIEW", reason("INSUFFICIENT_INFORMATION", "INSUFFICIENT_INFORMATION_MATERIAL_MISSING", "Missing a material attribute prevents classification.", ["ev-evidenceCompleteness"])],
+    ["intendedUser", "CHILD_UNDER_14", "RESTRICTED", reason("REGULATORY", "REGULATORY_CHILD_DIRECTED", "Child-directed/toy-childcare signals require marked research handling.", ["ev-intendedUser"])],
+    ["chemicalExposure", "COSMETIC_OR_TOPICAL", "RESTRICTED", reason("REGULATORY", "REGULATORY_PERSONAL_CARE_OR_SENSITIVE_CONTACT", "Personal-care or sensitive-contact items are held out of main ranking.", ["ev-chemicalExposure"])],
+    ["electricalPower", "BATTERY", "RESTRICTED", reason("SAFETY", "SAFETY_ELECTRICAL_COMPONENT", "Electrical components exceed the default non-electrical scope.", ["ev-electricalPower"])],
+    ["thermalOrFireHazard", "LOW_HEAT", "RESTRICTED", reason("SAFETY", "SAFETY_PHYSICAL_OR_THERMAL_HAZARD", "Heat or cutting hazards require marked handling.", ["ev-thermalOrFireHazard"])],
+    ["physicalHazard", "SHARP_OR_CUTTING", "RESTRICTED", reason("SAFETY", "SAFETY_PHYSICAL_OR_THERMAL_HAZARD", "Heat or cutting hazards require marked handling.", ["ev-physicalHazard"])],
+    ["protectiveFunction", "SAFETY_OR_PROTECTIVE", "RESTRICTED", reason("SAFETY", "SAFETY_PROTECTIVE_FUNCTION", "Safety/protective claims are held out of the main ranking.", ["ev-protectiveFunction"])],
+    ["brandOrCreativeSimilaritySignal", "POSSIBLE_SIMILARITY", "RESTRICTED", reason("INTELLECTUAL_PROPERTY", "INTELLECTUAL_PROPERTY_POSSIBLE_SIMILARITY", "Possible similarity is a research caution, not an IP conclusion.", ["ev-brandOrCreativeSimilaritySignal"])],
+    ["regulatedCategorySignal", "ANIMAL_PRODUCT", "RESTRICTED", reason("REGULATORY", "REGULATORY_ELEVATED_CATEGORY", "Elevated-category signals are held out of the main ranking.", ["ev-regulatedCategorySignal"])],
+  ] as const)("evaluates exact contract for %s=%s", (attribute, value, outcome, expectedReason) => {
     const result = evaluate({ [attribute]: value });
     expect(result.outcome).toBe(outcome);
-    expect(result.reasons.map((reason) => reason.code)).toContain(code);
+    expect(result.reasons).toEqual([expectedReason]);
   });
 
   it("sorts reasons by category and rule, applies precedence, and preserves all matches", () => {
     const result = evaluate({ foodOrIngestion: "INGESTIBLE_COMPONENT", intendedUser: "INFANT_OR_TODDLER", thermalOrFireHazard: "OPEN_FLAME_OR_EXTREME_HEAT", evidenceCompleteness: "MATERIAL_ATTRIBUTE_MISSING" });
     expect(result.outcome).toBe("REJECTED");
-    expect(result.reasons.map(({ category, code }) => `${category}:${code}`)).toEqual(["SAFETY:SAFETY_INGESTION_OR_FOOD", "SAFETY:SAFETY_INFANT_OR_TODDLER", "SAFETY:SAFETY_FLAME_OR_EXTREME_HEAT", "INSUFFICIENT_INFORMATION:INSUFFICIENT_INFORMATION_MATERIAL_MISSING"]);
+    expect(result.reasons).toEqual([
+      reason("SAFETY", "SAFETY_INGESTION_OR_FOOD", "Food, supplements, and ingestible components are outside the default low-risk scope.", ["ev-foodOrIngestion"]),
+      reason("SAFETY", "SAFETY_INFANT_OR_TODDLER", "Infant/toddler-directed products are excluded conservatively.", ["ev-intendedUser"]),
+      reason("SAFETY", "SAFETY_FLAME_OR_EXTREME_HEAT", "Open flame/extreme heat is excluded.", ["ev-thermalOrFireHazard"]),
+      reason("INSUFFICIENT_INFORMATION", "INSUFFICIENT_INFORMATION_MATERIAL_MISSING", "Missing a material attribute prevents classification.", ["ev-evidenceCompleteness"]),
+    ]);
+  });
+
+  it("replays every approved boundary vector with the full decision contract", () => {
+    const expected = (outcome: ReturnType<typeof evaluateRiskGate>["outcome"], reasons: ReturnType<typeof reason>[]) => ({ decisionId: base.decisionId, candidateId: base.candidateId, outcome, reasons, decidedByPolicyVersion: base.decidedByPolicyVersion });
+    expect(evaluate({})).toEqual(expected("ALLOWED", []));
+    expect(evaluate({ electricalPower: "LOW_VOLTAGE_USB_OR_CORDED" })).toEqual(expected("RESTRICTED", [reason("SAFETY", "SAFETY_ELECTRICAL_COMPONENT", "Electrical components exceed the default non-electrical scope.", ["ev-electricalPower"])]));
+    expect(evaluate({ intendedUser: "CHILD_UNDER_14", regulatedCategorySignal: "TOY_OR_CHILDCARE" })).toEqual(expected("RESTRICTED", [reason("REGULATORY", "REGULATORY_CHILD_DIRECTED", "Child-directed/toy-childcare signals require marked research handling.", ["ev-intendedUser", "ev-regulatedCategorySignal"])]));
+    expect(evaluate({ intendedUser: "INFANT_OR_TODDLER", foodOrIngestion: "INGESTIBLE_COMPONENT" })).toEqual(expected("REJECTED", [
+      reason("SAFETY", "SAFETY_INGESTION_OR_FOOD", "Food, supplements, and ingestible components are outside the default low-risk scope.", ["ev-foodOrIngestion"]),
+      reason("SAFETY", "SAFETY_INFANT_OR_TODDLER", "Infant/toddler-directed products are excluded conservatively.", ["ev-intendedUser"]),
+    ]));
+    expect(evaluate({ chemicalExposure: "UNKNOWN" })).toEqual(expected("MANUAL_REVIEW", [reason("INSUFFICIENT_INFORMATION", "INSUFFICIENT_INFORMATION_ATTRIBUTE_UNKNOWN", "Unknown declared attributes are not assumed safe.", ["ev-chemicalExposure"])]));
+    expect(evaluate({ brandOrCreativeSimilaritySignal: "POSSIBLE_SIMILARITY" })).toEqual(expected("RESTRICTED", [reason("INTELLECTUAL_PROPERTY", "INTELLECTUAL_PROPERTY_POSSIBLE_SIMILARITY", "Possible similarity is a research caution, not an IP conclusion.", ["ev-brandOrCreativeSimilaritySignal"])]));
+    expect(evaluate({ thermalOrFireHazard: "OPEN_FLAME_OR_EXTREME_HEAT", evidenceCompleteness: "MATERIAL_ATTRIBUTE_MISSING" })).toEqual(expected("REJECTED", [
+      reason("SAFETY", "SAFETY_FLAME_OR_EXTREME_HEAT", "Open flame/extreme heat is excluded.", ["ev-thermalOrFireHazard"]),
+      reason("INSUFFICIENT_INFORMATION", "INSUFFICIENT_INFORMATION_MATERIAL_MISSING", "Missing a material attribute prevents classification.", ["ev-evidenceCompleteness"]),
+    ]));
   });
 
   it("uses only matching OR branches and de-duplicates sorted provenance", () => {
@@ -44,21 +83,19 @@ describe("deterministic risk policy v1", () => {
   });
 
   it.each([
-    ["chemicalExposure", "COSMETIC_OR_TOPICAL", "REGULATORY_PERSONAL_CARE_OR_SENSITIVE_CONTACT", "ev-chemicalExposure"],
-    ["bodyContact", "EYE_OR_MUCOSAL_CONTACT", "REGULATORY_PERSONAL_CARE_OR_SENSITIVE_CONTACT", "ev-bodyContact"],
-    ["thermalOrFireHazard", "LOW_HEAT", "SAFETY_PHYSICAL_OR_THERMAL_HAZARD", "ev-thermalOrFireHazard"],
-    ["physicalHazard", "SHARP_OR_CUTTING", "SAFETY_PHYSICAL_OR_THERMAL_HAZARD", "ev-physicalHazard"],
-    ["regulatedCategorySignal", "PERSONAL_CARE", "REGULATORY_ELEVATED_CATEGORY", "ev-regulatedCategorySignal"],
-    ["healthPositioning", "WELLNESS_CLAIM", "REGULATORY_ELEVATED_CATEGORY", "ev-healthPositioning"],
-  ] as const)("keeps provenance to the matching branch for %s=%s", (attribute, value, code, evidenceId) => {
+    ["bodyContact", "EYE_OR_MUCOSAL_CONTACT", reason("REGULATORY", "REGULATORY_PERSONAL_CARE_OR_SENSITIVE_CONTACT", "Personal-care or sensitive-contact items are held out of main ranking.", ["ev-bodyContact"])],
+    ["physicalHazard", "SHARP_OR_CUTTING", reason("SAFETY", "SAFETY_PHYSICAL_OR_THERMAL_HAZARD", "Heat or cutting hazards require marked handling.", ["ev-physicalHazard"])],
+    ["regulatedCategorySignal", "PERSONAL_CARE", reason("REGULATORY", "REGULATORY_ELEVATED_CATEGORY", "Elevated-category signals are held out of the main ranking.", ["ev-regulatedCategorySignal"])],
+    ["healthPositioning", "WELLNESS_CLAIM", reason("REGULATORY", "REGULATORY_ELEVATED_CATEGORY", "Elevated-category signals are held out of the main ranking.", ["ev-healthPositioning"])],
+  ] as const)("keeps exact contract and provenance to the matching branch for %s=%s", (attribute, value, expectedReason) => {
     const result = evaluateRiskGate(riskGateInputSchema.parse({ ...base, attributes: { ...base.attributes, [attribute]: value } }));
-    expect(result.reasons.find((reason) => reason.code === code)?.evidenceIds).toEqual([evidenceId]);
+    expect(result.reasons).toEqual([expectedReason]);
   });
 
   it.each(["intendedUser", "foodOrIngestion", "bodyContact", "healthPositioning", "electricalPower", "thermalOrFireHazard", "physicalHazard", "protectiveFunction", "chemicalExposure", "regulatedCategorySignal", "brandOrCreativeSimilaritySignal"] as const)("reviews UNKNOWN %s with only its provenance", (attribute) => {
     const result = evaluateRiskGate(riskGateInputSchema.parse({ ...base, attributes: { ...base.attributes, [attribute]: "UNKNOWN" } }));
     expect(result.outcome).toBe("MANUAL_REVIEW");
-    expect(result.reasons).toEqual([expect.objectContaining({ code: "INSUFFICIENT_INFORMATION_ATTRIBUTE_UNKNOWN", evidenceIds: [`ev-${attribute}`] })]);
+    expect(result.reasons).toEqual([reason("INSUFFICIENT_INFORMATION", "INSUFFICIENT_INFORMATION_ATTRIBUTE_UNKNOWN", "Unknown declared attributes are not assumed safe.", [`ev-${attribute}`])]);
   });
 
   it("rejects malformed vocabulary and extra fields", () => {

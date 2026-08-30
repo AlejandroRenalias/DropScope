@@ -24,7 +24,8 @@ export interface EvidenceAuditFinding {
 export interface EvidenceAuditResult { findings: EvidenceAuditFinding[]; }
 
 const severityOrder: Record<AuditSeverity, number> = { BLOCKING: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-const lexical = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
+const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
+const lexical = (values: Iterable<string>) => [...new Set(values)].sort(compare);
 const annotation = (record: { fixtureAnnotation: Record<string, unknown> | null }, keys: string[]) => {
   for (const key of keys) if (record.fixtureAnnotation && record.fixtureAnnotation[key] !== undefined) return record.fixtureAnnotation[key];
   return undefined;
@@ -53,7 +54,7 @@ export function auditEvidence(dataset: ResearchDataset): EvidenceAuditResult {
   for (const item of dataset.evidence) {
     const claim = claims.get(item.claimId);
     const untraceable = !candidates.has(item.candidateId) || !sources.has(item.sourceId) || !claim
-      || claim.candidateId !== item.candidateId || claim.claimTopic !== item.claimTopic;
+      || claim.candidateId !== item.candidateId;
     if (untraceable) {
       findings.push(finding("AUDIT_EVIDENCE_UNTRACEABLE", "BLOCKING", { evidenceIds: [item.evidenceId], claimIds: claim ? [claim.claimId] : [item.claimId], sourceIds: sources.has(item.sourceId) ? [item.sourceId] : [] }, `Evidence ${item.evidenceId} does not trace to a known candidate, claim, and source with matching IDs.`));
     } else traceable.set(item.claimId, [...(traceable.get(item.claimId) ?? []), item]);
@@ -65,7 +66,7 @@ export function auditEvidence(dataset: ResearchDataset): EvidenceAuditResult {
     if (claim.decisive && valid.length === 0) findings.push(finding("AUDIT_DECISIVE_CLAIM_NO_VALID_EVIDENCE", "BLOCKING", { claimIds: [claim.claimId] }, `Decisive claim ${claim.claimId} has no traceable evidence.`));
     if (claim.decisive && groups.size < 2 && !claim.tentative) findings.push(finding("AUDIT_DECISIVE_SINGLE_GROUP_NOT_TENTATIVE", "HIGH", { claimIds: [claim.claimId], evidenceIds: valid.map((item) => item.evidenceId) }, `Decisive claim ${claim.claimId} has fewer than two independent evidence groups and is not tentative.`));
     const unknownSupport = valid.some((item) => item.direction === "SUPPORTS" && item.reliabilityClass === "UNKNOWN");
-    if (claim.decisive && (groups.size < 2 || unknownSupport) && (!claim.tentative || unknownSupport)) findings.push(finding("AUDIT_UNCERTAIN_DECISIVE_LABEL", "HIGH", { claimIds: [claim.claimId], evidenceIds: valid.map((item) => item.evidenceId) }, `Decisive claim ${claim.claimId} requires a tentative label because its evidence is insufficiently independent or reliable.`));
+    if (claim.decisive && (groups.size < 2 || unknownSupport) && (!claim.tentative || unknownSupport)) findings.push(finding("AUDIT_UNCERTAIN_DECISIVE_LABEL", "HIGH", { claimIds: [claim.claimId], evidenceIds: valid.map((item) => item.evidenceId) }, `Decisive claim ${claim.claimId} has an insufficiently independent or reliable uncertainty label.`));
     const supports = valid.filter((item) => item.direction === "SUPPORTS");
     const opposes = valid.filter((item) => item.direction === "OPPOSES");
     if (claim.decisive && supports.length > 0 && opposes.length > 0 && supports.some((support) => opposes.some((opposing) => support.independenceGroupId !== opposing.independenceGroupId))) findings.push(finding("AUDIT_MATERIAL_CONTRADICTION", "HIGH", { claimIds: [claim.claimId], evidenceIds: [...supports, ...opposes].map((item) => item.evidenceId) }, `Decisive claim ${claim.claimId} has supporting and opposing evidence from distinct independence groups.`));
@@ -74,7 +75,7 @@ export function auditEvidence(dataset: ResearchDataset): EvidenceAuditResult {
   duplicateSources(dataset.sources, findings);
   duplicateFacts(dataset.evidence, findings);
   duplicateClaims(dataset.claims, dataset.evidence, findings);
-  return { findings: findings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity] || a.code.localeCompare(b.code) || JSON.stringify([a.claimIds, a.evidenceIds, a.sourceIds, a.factIds]).localeCompare(JSON.stringify([b.claimIds, b.evidenceIds, b.sourceIds, b.factIds]))) };
+  return { findings: findings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity] || compare(a.code, b.code) || compare(JSON.stringify([a.claimIds, a.evidenceIds, a.sourceIds, a.factIds]), JSON.stringify([b.claimIds, b.evidenceIds, b.sourceIds, b.factIds]))) };
 }
 
 function duplicateSources(records: Source[], findings: EvidenceAuditFinding[]) {

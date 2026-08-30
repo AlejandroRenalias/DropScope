@@ -21,4 +21,37 @@ describe("evidence audit", () => {
     expect(codes).toContain("AUDIT_SOURCE_DUPLICATE");
     expect(codes).toContain("AUDIT_FACT_DUPLICATE");
   });
+  it("reports approved uncertainty and claim-duplicate codes in deterministic order", () => {
+    const makeClaim = (claimId: string, topic: string, evidenceIds: string[], tentative: boolean): ResearchDataset["claims"][number] => ({ claimId, candidateId: "candidate", claimTopic: topic, text: claimId, decisive: true, tentative, confidenceClass: "HIGH", evidenceIds, status: "PROPOSED" });
+    const makeEvidence = (id: string, claimId: string, group: string, reliabilityClass: "HIGH" | "UNKNOWN" = "HIGH", annotation: Record<string, unknown> | null = null) => ({ ...evidence(id, claimId, group, "SUPPORTS", annotation), reliabilityClass });
+    const deterministic: ResearchDataset = {
+      candidates: base.candidates,
+      sources: [source("evidence-Z-source"), source("evidence-é-source"), source("evidence-a-source"), source("evidence-dup-B-source"), source("evidence-dup-A-source")],
+      claims: [
+        makeClaim("claim-single", "single", ["evidence-Z"], false),
+        makeClaim("claim-unknown", "unknown", ["evidence-a", "evidence-é"], true),
+        makeClaim("claim-dup-B", "duplicate", ["evidence-dup-B"], true),
+        makeClaim("claim-dup-A", "duplicate", ["evidence-dup-A"], true),
+      ],
+      evidence: [
+        makeEvidence("evidence-Z", "claim-single", "group-Z"),
+        makeEvidence("evidence-é", "claim-unknown", "group-é", "UNKNOWN"),
+        makeEvidence("evidence-a", "claim-unknown", "group-a"),
+        makeEvidence("evidence-dup-B", "claim-dup-B", "group-B", "HIGH", { canonicalEvidenceIds: ["shared-é", "shared-A"] }),
+        makeEvidence("evidence-dup-A", "claim-dup-A", "group-A", "HIGH", { canonicalEvidenceIds: ["shared-A"] }),
+      ],
+    };
+    const result = auditEvidence(deterministic);
+    expect(result.findings.map(({ code, severity }) => ({ code, severity }))).toEqual([
+      { code: "AUDIT_DECISIVE_SINGLE_GROUP_NOT_TENTATIVE", severity: "HIGH" },
+      { code: "AUDIT_UNCERTAIN_DECISIVE_LABEL", severity: "HIGH" },
+      { code: "AUDIT_UNCERTAIN_DECISIVE_LABEL", severity: "HIGH" },
+      { code: "AUDIT_CLAIM_DUPLICATE", severity: "MEDIUM" },
+    ]);
+    expect(result.findings[0]).toMatchObject({ claimIds: ["claim-single"], evidenceIds: ["evidence-Z"] });
+    expect(result.findings[1]).toMatchObject({ claimIds: ["claim-single"], evidenceIds: ["evidence-Z"] });
+    expect(result.findings[2]).toMatchObject({ claimIds: ["claim-unknown"], evidenceIds: ["evidence-a", "evidence-é"] });
+    expect(result.findings[3]).toMatchObject({ claimIds: ["claim-dup-A", "claim-dup-B"], evidenceIds: ["shared-A"] });
+    expect(auditEvidence({ ...deterministic, claims: [...deterministic.claims].reverse(), evidence: [...deterministic.evidence].reverse() })).toEqual(result);
+  });
 });

@@ -97,7 +97,7 @@ function duplicateClaims(claims: Claim[], evidence: Evidence[], findings: Eviden
   for (const group of groups.values()) for (let i = 0; i < group.length; i++) for (let j = i + 1; j < group.length; j++) {
     const left = new Set(group[i].evidenceIds.flatMap((id) => { const item = evidence.find((candidate) => candidate.evidenceId === id); return item ? [item.evidenceId, ...stringArrayAnnotation(item, ["canonicalEvidenceIds", "canonical_evidence_ids"])] : []; }));
     const right = new Set(group[j].evidenceIds.flatMap((id) => { const item = evidence.find((candidate) => candidate.evidenceId === id); return item ? [item.evidenceId, ...stringArrayAnnotation(item, ["canonicalEvidenceIds", "canonical_evidence_ids"])] : []; }));
-    const overlap = [...left].filter((id) => right.has(id));
+    const overlap = [...left].filter((id) => right.has(id)).sort(compare);
     if (overlap.length) findings.push(finding("AUDIT_CLAIM_DUPLICATE", "MEDIUM", { claimIds: [group[i].claimId, group[j].claimId], evidenceIds: overlap }, `Claims share explicitly overlapping canonical evidence IDs: ${overlap.join(", ")}.`));
   }
 }

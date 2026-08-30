@@ -140,10 +140,11 @@ export function collectBlockingDefects(input: BlindReviewInput): string[] {
 
 export function calculateBlindReview(input: BlindReviewInput): BlindReviewCalculation {
   const dimensionScores = calculateBlindReviewDimensions(input);
+  const hasDecisiveClaims = input.claims.some((claim) => claim.decisive);
   return {
     anonymizedCandidateId: input.anonymizedCandidateId,
     dimensionScores,
-    reviewerScore: calculateReviewerScore(dimensionScores),
+    reviewerScore: hasDecisiveClaims ? calculateReviewerScore(dimensionScores) : 0,
     blockingDefects: collectBlockingDefects(input),
     missingResearchKeys: collectMissingResearchKeys(input),
     reviewerEligible: null,

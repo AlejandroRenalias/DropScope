@@ -23,8 +23,10 @@ describe("blind reviewer calculations", () => {
   });
 
   it("handles rubric empty cases", () => {
-    const scores = calculateBlindReviewDimensions({ anonymizedCandidateId: "x", claims: [], evidence: [], requiredResearchKeys: [] });
+    const input = { anonymizedCandidateId: "x", claims: [], evidence: [], requiredResearchKeys: [] };
+    const scores = calculateBlindReviewDimensions(input);
     expect(scores).toEqual({ sourceIndependence: 0, decisionCriticalCoverage: 0, contradictionHandling: 100, claimEvidenceAlignment: 0, uncertaintyCalibration: 100 });
+    expect(calculateBlindReview(input).reviewerScore).toBe(0);
   });
 
   it("collects blocking defects and missing keys", () => {

@@ -31,7 +31,7 @@ describe("blind reviewer calculations", () => {
 
   it("collects blocking defects and missing keys", () => {
     const result = calculateBlindReview({ ...base, claims: [{ claimId: "c1", candidateId: "b", decisive: true }], evidence: [] });
-    expect(result.blockingDefects).toEqual(["decisive_claim_has_no_valid_evidence", "unresolved_decision_critical_contradiction", "missing_decision_critical_research_key"]);
+    expect(result.blockingDefects).toEqual(["decisive_claim_has_no_valid_evidence", "unresolved_decision_critical_contradiction"]);
     expect(result.missingResearchKeys).toEqual(["demand"]);
     expect(result.reviewerEligible).toBe(false);
     expect(result.confidenceClass).toBe("LOW");
@@ -42,6 +42,12 @@ describe("blind reviewer calculations", () => {
   it("applies defects, gaps, and score precedence", () => {
     expect(mapReviewerDecision({ reviewerScore: 95, blockingDefects: ["defect"], missingResearchKeys: ["gap"] })).toEqual({ reviewerEligible: false, confidenceClass: "LOW", verdict: "REJECT", reasonCodes: ["REVIEW_BLOCKING_DEFECTS_PRESENT"] });
     expect(mapReviewerDecision({ reviewerScore: 95, blockingDefects: [], missingResearchKeys: ["gap"] })).toEqual({ reviewerEligible: false, confidenceClass: "LOW", verdict: "REASSIGN", reasonCodes: ["REVIEW_MISSING_RESEARCH_KEYS"] });
+    expect(calculateBlindReview({
+      ...base,
+      claims: [base.claims[0]],
+      evidence: base.evidence.slice(0, 2),
+      unresolvedMaterialContradictionCount: 0,
+    }).verdict).toBe("REASSIGN");
   });
 
   it.each([

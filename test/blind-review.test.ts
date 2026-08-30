@@ -38,6 +38,11 @@ describe("blind reviewer calculations", () => {
     expect(result.verdict).toBeNull();
   });
 
+  it("flags evidence that cannot be traced to a supplied claim and candidate", () => {
+    const result = calculateBlindReview({ ...base, evidence: [...base.evidence, { evidenceId: "orphan", claimId: "unknown", candidateId: "b", independenceGroupId: "g9", direction: "SUPPORTS" }] });
+    expect(result.blockingDefects).toContain("malformed_or_untraceable_evidence");
+  });
+
   it("ranks by reviewer score, independence, then code-unit ID", () => {
     const make = (id: string, score: number, independence: number): ReturnType<typeof calculateBlindReview> => ({ ...calculateBlindReview({ anonymizedCandidateId: id, claims: [], evidence: [] }), reviewerScore: score, dimensionScores: { sourceIndependence: independence, decisionCriticalCoverage: 0, contradictionHandling: 0, claimEvidenceAlignment: 0, uncertaintyCalibration: 0 } });
     expect(rankBlindReviews([make("z", 80, 90), make("a", 80, 90), make("low", 70, 100)]).map(({ anonymizedCandidateId }) => anonymizedCandidateId)).toEqual(["a", "z", "low"]);

@@ -133,7 +133,8 @@ export function collectBlockingDefects(input: BlindReviewInput): string[] {
     return groups.size === 1 && claim.tentative !== true;
   })) defects.add("decisive_single_group_claim_is_not_tentative");
   if ((input.unresolvedMaterialContradictionCount ?? 0) > 0) defects.add("unresolved_decision_critical_contradiction");
-  if (input.evidence.some((item) => !isValidEvidence(item))) defects.add("malformed_or_untraceable_evidence");
+  const traceableClaims = new Set(input.claims.map((claim) => `${claim.claimId}\u0000${claim.candidateId}`));
+  if (input.evidence.some((item) => !isValidEvidence(item) || !traceableClaims.has(`${item.claimId}\u0000${item.candidateId}`))) defects.add("malformed_or_untraceable_evidence");
   if (collectMissingResearchKeys(input).length > 0) defects.add("missing_decision_critical_research_key");
   return [...defects];
 }

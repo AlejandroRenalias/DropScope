@@ -50,10 +50,24 @@ export interface BlindReviewCalculation {
   reviewerScore: number;
   blockingDefects: string[];
   missingResearchKeys: string[];
-  /** Deliberately unresolved: these are tribunal/reconciliation decisions. */
-  reviewerEligible: null;
-  confidenceClass: null;
-  verdict: null;
+  reviewerEligible: boolean;
+  confidenceClass: "LOW" | "MEDIUM" | "HIGH";
+  verdict: "ACCEPT" | "REVISE" | "REASSIGN" | "REJECT";
+  reasonCodes: ReviewerReasonCode[];
+}
+
+export type ReviewerReasonCode =
+  | "REVIEW_BLOCKING_DEFECTS_PRESENT"
+  | "REVIEW_MISSING_RESEARCH_KEYS"
+  | "REVIEW_SCORE_BELOW_MINIMUM"
+  | "REVIEW_SCORE_ACCEPTABLE"
+  | "REVIEW_SCORE_HIGH";
+
+export interface ReviewerDecision {
+  reviewerEligible: boolean;
+  confidenceClass: "LOW" | "MEDIUM" | "HIGH";
+  verdict: "ACCEPT" | "REVISE" | "REASSIGN" | "REJECT";
+  reasonCodes: ReviewerReasonCode[];
 }
 
 const weights: Record<ReviewerDimension, number> = {
@@ -139,18 +153,37 @@ export function collectBlockingDefects(input: BlindReviewInput): string[] {
   return [...defects];
 }
 
+/** Maps only the calculated reviewer result; it makes no product, legal, or tribunal determination. */
+export function mapReviewerDecision(input: Pick<BlindReviewCalculation, "reviewerScore" | "blockingDefects" | "missingResearchKeys">): ReviewerDecision {
+  if (input.blockingDefects.length > 0) {
+    return { reviewerEligible: false, confidenceClass: "LOW", verdict: "REJECT", reasonCodes: ["REVIEW_BLOCKING_DEFECTS_PRESENT"] };
+  }
+  if (input.missingResearchKeys.length > 0) {
+    return { reviewerEligible: false, confidenceClass: "LOW", verdict: "REASSIGN", reasonCodes: ["REVIEW_MISSING_RESEARCH_KEYS"] };
+  }
+  if (input.reviewerScore < 75) {
+    return { reviewerEligible: false, confidenceClass: "MEDIUM", verdict: "REVISE", reasonCodes: ["REVIEW_SCORE_BELOW_MINIMUM"] };
+  }
+  if (input.reviewerScore < 90) {
+    return { reviewerEligible: true, confidenceClass: "MEDIUM", verdict: "ACCEPT", reasonCodes: ["REVIEW_SCORE_ACCEPTABLE"] };
+  }
+  return { reviewerEligible: true, confidenceClass: "HIGH", verdict: "ACCEPT", reasonCodes: ["REVIEW_SCORE_HIGH"] };
+}
+
 export function calculateBlindReview(input: BlindReviewInput): BlindReviewCalculation {
   const dimensionScores = calculateBlindReviewDimensions(input);
   const hasDecisiveClaims = input.claims.some((claim) => claim.decisive);
+  const reviewerScore = hasDecisiveClaims ? calculateReviewerScore(dimensionScores) : 0;
+  const blockingDefects = collectBlockingDefects(input);
+  const missingResearchKeys = collectMissingResearchKeys(input);
+  const decision = mapReviewerDecision({ reviewerScore, blockingDefects, missingResearchKeys });
   return {
     anonymizedCandidateId: input.anonymizedCandidateId,
     dimensionScores,
-    reviewerScore: hasDecisiveClaims ? calculateReviewerScore(dimensionScores) : 0,
-    blockingDefects: collectBlockingDefects(input),
-    missingResearchKeys: collectMissingResearchKeys(input),
-    reviewerEligible: null,
-    confidenceClass: null,
-    verdict: null,
+    reviewerScore,
+    blockingDefects,
+    missingResearchKeys,
+    ...decision,
   };
 }
 

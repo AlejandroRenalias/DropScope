@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateBlindReview, calculateBlindReviewDimensions, calculateReviewerScore, rankBlindReviews, type BlindReviewInput } from "../src/blind-review.js";
+import { calculateBlindReview, calculateBlindReviewDimensions, calculateReviewerScore, mapReviewerDecision, rankBlindReviews, type BlindReviewInput } from "../src/blind-review.js";
 
 const base: BlindReviewInput = {
   anonymizedCandidateId: "b",
@@ -33,9 +33,24 @@ describe("blind reviewer calculations", () => {
     const result = calculateBlindReview({ ...base, claims: [{ claimId: "c1", candidateId: "b", decisive: true }], evidence: [] });
     expect(result.blockingDefects).toEqual(["decisive_claim_has_no_valid_evidence", "unresolved_decision_critical_contradiction", "missing_decision_critical_research_key"]);
     expect(result.missingResearchKeys).toEqual(["demand"]);
-    expect(result.reviewerEligible).toBeNull();
-    expect(result.confidenceClass).toBeNull();
-    expect(result.verdict).toBeNull();
+    expect(result.reviewerEligible).toBe(false);
+    expect(result.confidenceClass).toBe("LOW");
+    expect(result.verdict).toBe("REJECT");
+    expect(result.reasonCodes).toEqual(["REVIEW_BLOCKING_DEFECTS_PRESENT"]);
+  });
+
+  it("applies defects, gaps, and score precedence", () => {
+    expect(mapReviewerDecision({ reviewerScore: 95, blockingDefects: ["defect"], missingResearchKeys: ["gap"] })).toEqual({ reviewerEligible: false, confidenceClass: "LOW", verdict: "REJECT", reasonCodes: ["REVIEW_BLOCKING_DEFECTS_PRESENT"] });
+    expect(mapReviewerDecision({ reviewerScore: 95, blockingDefects: [], missingResearchKeys: ["gap"] })).toEqual({ reviewerEligible: false, confidenceClass: "LOW", verdict: "REASSIGN", reasonCodes: ["REVIEW_MISSING_RESEARCH_KEYS"] });
+  });
+
+  it.each([
+    [74, false, "MEDIUM", "REVISE", "REVIEW_SCORE_BELOW_MINIMUM"],
+    [75, true, "MEDIUM", "ACCEPT", "REVIEW_SCORE_ACCEPTABLE"],
+    [89, true, "MEDIUM", "ACCEPT", "REVIEW_SCORE_ACCEPTABLE"],
+    [90, true, "HIGH", "ACCEPT", "REVIEW_SCORE_HIGH"],
+  ] as const)("maps score boundary %s", (score, eligible, confidenceClass, verdict, code) => {
+    expect(mapReviewerDecision({ reviewerScore: score, blockingDefects: [], missingResearchKeys: [] })).toEqual({ reviewerEligible: eligible, confidenceClass, verdict, reasonCodes: [code] });
   });
 
   it("flags evidence that cannot be traced to a supplied claim and candidate", () => {

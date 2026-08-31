@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tribunalResultSchema } from "./tribunal-policy.js";
 
 const eventBase = z.object({
   schemaVersion: z.literal(1),
@@ -17,8 +18,13 @@ export const gapDecisionTypeSchema = z.enum(["ELIGIBILITY", "RANKING", "CONFIDEN
 export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({
     type: z.literal("MissionCreated"),
-    payload: z.object({ totalBudget: z.number().int().positive(), missionSeed: z.number().int() }),
+    payload: z.object({
+      totalBudget: z.number().int().positive(),
+      missionSeed: z.number().int(),
+      policyVersions: z.object({ tribunal: z.string().min(1) }).strict(),
+    }).strict(),
   }),
+  eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
   eventBase.extend({
     type: z.literal("TaskAuthorized"),
     payload: z.object({

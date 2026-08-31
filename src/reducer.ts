@@ -1,4 +1,5 @@
 import type { AuthorizationReason, MissionEvent, WorkClass } from "./contracts.js";
+import type { TribunalResult } from "./tribunal-policy.js";
 
 export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
 export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT";
@@ -41,6 +42,8 @@ export interface MissionState {
   attempts: Record<string, AttemptRecord>;
   authorizations: Record<string, AuthorizationRecord>;
   gaps: Record<string, GapRecord>;
+  policyVersions: { tribunal: string } | null;
+  tribunalResults: Record<string, TribunalResult>;
   rejections: { attemptedEventType: string; reason: string }[];
   staleCompletionAttemptIds: string[];
 }
@@ -54,6 +57,8 @@ export const initialMissionState = (): MissionState => ({
   attempts: {},
   authorizations: {},
   gaps: {},
+  policyVersions: null,
+  tribunalResults: {},
   rejections: [],
   staleCompletionAttemptIds: [],
 });
@@ -85,8 +90,14 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         ...state,
         missionId: event.missionId,
         status: "RUNNING",
+        policyVersions: event.payload.policyVersions,
         budget: { total: event.payload.totalBudget, reserved: 0, committed: 0, spent: 0, available: event.payload.totalBudget },
       };
+    case "TribunalCompleted":
+      if (state.status !== "RUNNING" || state.policyVersions === null) throw new Error("A running mission is required to record tribunal output.");
+      if (event.payload.decidedByPolicyVersion !== state.policyVersions.tribunal) throw new Error("Tribunal result policy version does not match the mission.");
+      if (state.tribunalResults[event.payload.tribunalId]) throw new Error("Tribunal result is already recorded.");
+      return { ...state, tribunalResults: { ...state.tribunalResults, [event.payload.tribunalId]: event.payload } };
     case "TaskAuthorized": {
       const proposal = event.payload;
       if (state.status !== "RUNNING") throw new Error("Cannot authorize work for a non-running mission.");

@@ -17,4 +17,4 @@ ordering: [relevant_groups_desc, absolute_weighted_strength_sum_desc, claim_id_c
 materialConflict:
   display: may_appear_in_both_venture_and_ruin
   recommendation: CAUTION
-integration: excluded
+integration: recorded_result_only

@@ -38,7 +38,7 @@ export async function beginWalkingSkeletonMission(options: Required<MissionOptio
   const existingEvents = await store.readAll();
   if (existingEvents.length > 0) throw new Error("A new mission cannot be appended to existing history.");
 
-  await appendEvent(store, existingEvents, options.missionId, "MissionCreated", { totalBudget: options.totalBudget, missionSeed: 0 });
+  await appendEvent(store, existingEvents, options.missionId, "MissionCreated", { totalBudget: options.totalBudget, missionSeed: 0, policyVersions: { tribunal: "1" } });
   await appendEvent(store, existingEvents, options.missionId, "TaskAuthorized", {
     taskId: "system-check",
     objective: "Verify the DropScope engine can complete one task.",

@@ -4,7 +4,7 @@ import type { MissionEvent } from "../src/contracts.js";
 import { replay } from "../src/reducer.js";
 
 const event = (sequenceNumber: number, type: MissionEvent["type"], payload: MissionEvent["payload"]): MissionEvent => ({ schemaVersion: 1, sequenceNumber, missionId: "gap-demo", eventId: `gap-demo-${sequenceNumber}`, timestamp: `2026-08-28T00:02:${String(sequenceNumber).padStart(2, "0")}.000Z`, type, payload } as MissionEvent);
-const mission = event(1, "MissionCreated", { totalBudget: 120, missionSeed: 0 });
+const mission = event(1, "MissionCreated", { totalBudget: 120, missionSeed: 0, policyVersions: { tribunal: "1" } });
 const openGap = event(2, "GapOpened", { gapId: "gap-1", researchKey: "pricing-risk", affectedDecisionType: "SAFETY_OR_RISK", reason: "Need evidence." });
 const optionalAuthorization = (sequenceNumber: number, gapId?: string) => event(sequenceNumber, "TaskAuthorized", { taskId: "pricing-check", objective: "Check pricing risk.", cost: 10, workClass: "OPTIONAL", researchKey: "pricing-risk", gapId, authorizationReason: "GAP_RESOLUTION", dependencies: [] });
 

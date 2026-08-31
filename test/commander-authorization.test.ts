@@ -13,7 +13,7 @@ const proposal = (taskId: string, workClass: WorkClass, dependencies: string[] =
   authorizationReason: workClass === "MANDATORY" ? "MANDATORY_BASELINE" as const : "GAP_RESOLUTION" as const,
   dependencies,
 });
-const mission = event(1, "MissionCreated", { totalBudget: 120, missionSeed: 0 });
+const mission = event(1, "MissionCreated", { totalBudget: 120, missionSeed: 0, policyVersions: { tribunal: "1" } });
 
 describe("deterministic Commander authorization", () => {
   it("requires a recorded authorization before scheduling without mutating mission work or budget", () => {

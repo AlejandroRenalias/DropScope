@@ -47,6 +47,7 @@ MissionCreatedPayload
     evidence: string
     reviewer: string
     riskGate: string
+    tribunal: string
 ```
 
 ## 4. SourceRecord
@@ -247,7 +248,28 @@ BlindReviewResult
 
 The blind result is persisted before commander output is supplied for reconciliation.
 
-## 14. DivergenceRecord
+## 14. TribunalCompleted payload
+
+```text
+TribunalCompletedPayload
+  tribunalId: string
+  candidateId: string
+  recommendation: CONTINUE_RESEARCH | CAUTION | STOP
+  ventureClaimIds: string[]
+  ruinClaimIds: string[]
+  reasons:
+    - code: string
+      explanation: string
+      claimIds: string[]
+      evidenceIds: string[]
+      riskDecisionId: string | null
+      riskReasonCodes: string[]
+  decidedByPolicyVersion: string
+```
+
+The payload is a recorded deterministic tribunal result only. Its policy version must equal `MissionCreated.policyVersions.tribunal`; it creates no authorization, state transition, eligibility, ranking, gap, revision, or report action. Legacy schema-version-1 `MissionCreated` histories without `policyVersions` remain replayable but cannot record tribunal output.
+
+## 15. DivergenceRecord
 
 ```text
 DivergenceRecord
@@ -263,7 +285,7 @@ DivergenceRecord
   resolutionNote: string | null
 ```
 
-## 15. FixtureManifest
+## 16. FixtureManifest
 
 ```text
 FixtureManifest
@@ -282,7 +304,7 @@ FixtureManifest
 
 Fixtures do not contain expected orchestration commands. Test expectations live in test code and may assert terminal states, candidate sets, reason codes, or divergence types. No fixture ID or expected result enters engine logic.
 
-## 16. Required event types for 1A
+## 17. Required event types for 1A
 
 ```text
 MissionCreated
@@ -320,7 +342,6 @@ RecoveryStarted
 MissionTerminated
 ```
 
-## 17. Runtime-validation rule
+## 18. Runtime-validation rule
 
 Every command, event, fixture, worker result, finding, evidence record, and review result is validated by Zod at the boundary. Invalid worker output produces a structured validation failure. It does not become an authoritative finding.
-

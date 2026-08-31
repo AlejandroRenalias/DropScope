@@ -26,7 +26,7 @@ const proposal = (taskId: string, workClass: WorkClass, cost: number) => ({
 });
 const authorize = (sequenceNumber: number, taskId: string, workClass: WorkClass, cost: number) => event(sequenceNumber, "TaskAuthorized", proposal(taskId, workClass, cost));
 const schedule = (sequenceNumber: number, taskId: string, workClass: WorkClass, cost: number) => event(sequenceNumber, "TaskScheduled", { ...proposal(taskId, workClass, cost), attemptId: `${taskId}:a1` });
-const missionCreated = event(1, "MissionCreated", { totalBudget: 30, missionSeed: 0 });
+const missionCreated = event(1, "MissionCreated", { totalBudget: 30, missionSeed: 0, policyVersions: { tribunal: "1" } });
 
 describe("computed mandatory budget protection", () => {
   it("computes protection from mandatory unreserved and reserved work", () => {

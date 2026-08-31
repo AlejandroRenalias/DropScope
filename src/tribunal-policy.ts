@@ -42,8 +42,25 @@ export const tribunalProjectionSchema = z.object({
 export type TribunalProjection = z.infer<typeof tribunalProjectionSchema>;
 
 export type TribunalRecommendation = "CONTINUE_RESEARCH" | "CAUTION" | "STOP";
-export interface TribunalReason { code: string; explanation: string; claimIds: string[]; evidenceIds: string[]; riskDecisionId: string | null; riskReasonCodes: string[]; }
-export interface TribunalResult { tribunalId: string; candidateId: string; recommendation: TribunalRecommendation; ventureClaimIds: string[]; ruinClaimIds: string[]; reasons: TribunalReason[]; decidedByPolicyVersion: string; }
+export const tribunalReasonSchema = z.object({
+  code: id,
+  explanation: z.string().min(1),
+  claimIds: z.array(id),
+  evidenceIds: z.array(id),
+  riskDecisionId: id.nullable(),
+  riskReasonCodes: z.array(id),
+}).strict();
+export const tribunalResultSchema = z.object({
+  tribunalId: id,
+  candidateId: id,
+  recommendation: z.enum(["CONTINUE_RESEARCH", "CAUTION", "STOP"]),
+  ventureClaimIds: z.array(id),
+  ruinClaimIds: z.array(id),
+  reasons: z.array(tribunalReasonSchema),
+  decidedByPolicyVersion: id,
+}).strict();
+export type TribunalReason = z.infer<typeof tribunalReasonSchema>;
+export type TribunalResult = z.infer<typeof tribunalResultSchema>;
 
 const weights = { HIGH: 1, MEDIUM: 0.7, LOW: 0.4, UNKNOWN: 0 } as const;
 const cmp = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
@@ -103,7 +120,7 @@ export function evaluateTribunal(input: TribunalProjection): TribunalResult {
   if (venture.length) add("TRIBUNAL_SUPPORTED_DECISIVE_CASE", venture.map(f => f.claim.claimId), venture.flatMap(f => f.supports.map(e => e.evidenceId)));
   reasons.sort((a, b) => rank[a.code] - rank[b.code] || cmp(a.code, b.code));
   const recommendation: TribunalRecommendation = p.riskDecision.outcome === "REJECTED" ? "STOP" : reasons.some(r => r.code !== "TRIBUNAL_SUPPORTED_DECISIVE_CASE") ? "CAUTION" : "CONTINUE_RESEARCH";
-  return { tribunalId: p.tribunalId, candidateId: p.candidateId, recommendation, ventureClaimIds: orderClaims(venture, "venture").slice(0, 3).map(f => f.claim.claimId), ruinClaimIds: orderClaims(ruin, "ruin").slice(0, 3).map(f => f.claim.claimId), reasons, decidedByPolicyVersion: p.policyVersion };
+  return tribunalResultSchema.parse({ tribunalId: p.tribunalId, candidateId: p.candidateId, recommendation, ventureClaimIds: orderClaims(venture, "venture").slice(0, 3).map(f => f.claim.claimId), ruinClaimIds: orderClaims(ruin, "ruin").slice(0, 3).map(f => f.claim.claimId), reasons, decidedByPolicyVersion: p.policyVersion });
 }
 
 export const evaluateTribunalPolicy = evaluateTribunal;

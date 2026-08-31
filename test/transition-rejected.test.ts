@@ -10,7 +10,7 @@ const missionCreated: MissionEvent = {
   eventId: "rejection-demo-1",
   timestamp: "2026-08-28T00:00:00.000Z",
   type: "MissionCreated",
-  payload: { totalBudget: 120, missionSeed: 0 },
+  payload: { totalBudget: 120, missionSeed: 0, policyVersions: { tribunal: "1" } },
 };
 
 describe("illegal transition handling", () => {

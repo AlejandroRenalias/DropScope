@@ -75,7 +75,7 @@ export async function runSimulatedSchedule(options: {
     state = reduce(state, event);
     if (store) await store.append(event);
   };
-  await append("MissionCreated", { totalBudget: options.totalBudget, missionSeed: options.missionSeed });
+  await append("MissionCreated", { totalBudget: options.totalBudget, missionSeed: options.missionSeed, policyVersions: { tribunal: "1" } });
 
   const pending = new Map(options.tasks.map((task) => [task.taskId, task]));
   const completed = new Set<string>();

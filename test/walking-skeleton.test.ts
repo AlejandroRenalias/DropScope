@@ -76,6 +76,14 @@ describe("Milestone 1A.0 walking skeleton", () => {
     expect(() => replay(corruptedHistory)).toThrow("Expected sequence number 3, received 5.");
   });
 
+  it("enforces the single mission recovery restart cap", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
+    const started = await beginWalkingSkeletonMission({ missionId: "recovery-cap-demo", totalBudget: 120, historyPath });
+    const once = [...started.events, { ...started.events[0], sequenceNumber: 6, eventId: "recovery-cap-demo-6", type: "RecoveryStarted" as const, payload: { interruptedAttemptIds: ["system-check:a1"] } }];
+    expect(() => replay([...once, { ...once[5], sequenceNumber: 7, eventId: "recovery-cap-demo-7" }])).toThrow("recovery restart cap reached");
+    expect(() => replay([...started.events, { ...once[5], sequenceNumber: 6, eventId: "recovery-cap-demo-invalid", payload: { interruptedAttemptIds: ["missing"] } } as never])).toThrow("must name each current running attempt");
+  });
+
   it("replays every valid event-history prefix", async () => {
     const result = await runWalkingSkeletonMission({
       missionId: "prefix-replay-demo",

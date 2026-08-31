@@ -51,6 +51,7 @@ export interface MissionState {
   divergenceRecords: Record<string, DivergenceRecord>;
   rejections: { attemptedEventType: string; reason: string }[];
   staleCompletionAttemptIds: string[];
+  recoveryRestartCount: number;
 }
 
 export const initialMissionState = (): MissionState => ({
@@ -67,6 +68,7 @@ export const initialMissionState = (): MissionState => ({
   auditResults: {}, blindReviewResults: {}, divergenceRecords: {},
   rejections: [],
   staleCompletionAttemptIds: [],
+  recoveryRestartCount: 0,
 });
 
 export function remainingMandatoryUnreservedCost(state: MissionState): number {
@@ -236,7 +238,12 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     }
     case "RecoveryStarted":
       if (state.status !== "RUNNING") throw new Error("Only a running mission can be recovered.");
-      return state;
+      if (state.recoveryRestartCount >= 1) throw new Error("Mission recovery restart cap reached.");
+      const runningAttemptIds = Object.entries(state.attempts).filter(([, attempt]) => attempt.status === "RUNNING").map(([attemptId]) => attemptId);
+      if (new Set(event.payload.interruptedAttemptIds).size !== event.payload.interruptedAttemptIds.length
+        || event.payload.interruptedAttemptIds.length !== runningAttemptIds.length
+        || event.payload.interruptedAttemptIds.some((attemptId) => !runningAttemptIds.includes(attemptId))) throw new Error("Recovery must name each current running attempt exactly once.");
+      return { ...state, recoveryRestartCount: state.recoveryRestartCount + 1 };
     case "TaskInterrupted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;

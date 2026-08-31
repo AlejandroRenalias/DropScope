@@ -239,8 +239,10 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "RecoveryStarted":
       if (state.status !== "RUNNING") throw new Error("Only a running mission can be recovered.");
       if (state.recoveryRestartCount >= 1) throw new Error("Mission recovery restart cap reached.");
+      const runningAttemptIds = Object.entries(state.attempts).filter(([, attempt]) => attempt.status === "RUNNING").map(([attemptId]) => attemptId);
       if (new Set(event.payload.interruptedAttemptIds).size !== event.payload.interruptedAttemptIds.length
-        || event.payload.interruptedAttemptIds.some((attemptId) => state.attempts[attemptId]?.status !== "RUNNING")) throw new Error("Recovery must name each current running attempt exactly once.");
+        || event.payload.interruptedAttemptIds.length !== runningAttemptIds.length
+        || event.payload.interruptedAttemptIds.some((attemptId) => !runningAttemptIds.includes(attemptId))) throw new Error("Recovery must name each current running attempt exactly once.");
       return { ...state, recoveryRestartCount: state.recoveryRestartCount + 1 };
     case "TaskInterrupted": {
       const attempt = state.attempts[event.payload.attemptId];

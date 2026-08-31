@@ -1,0 +1,20 @@
+policyName: dropscope-tribunal-policy
+version: 1
+status: frozen
+
+scope: deterministic evidence-linked research recommendation only
+recommendations:
+  - CONTINUE_RESEARCH
+  - CAUTION
+  - STOP
+precedence: [STOP, CAUTION, CONTINUE_RESEARCH]
+stopOnlyWhenRiskGateOutcome: REJECTED
+representativePerIndependenceGroup: strongest_absolute_weighted_strength
+equalMagnitudeTieBreak: [opposing_evidence, lexical_evidence_id]
+reliabilityWeights: { HIGH: 1.0, MEDIUM: 0.7, LOW: 0.4, UNKNOWN: 0.0 }
+displayClaimCapPerSide: 3
+ordering: [relevant_groups_desc, absolute_weighted_strength_sum_desc, claim_id_code_unit_asc]
+materialConflict:
+  display: may_appear_in_both_venture_and_ruin
+  recommendation: CAUTION
+integration: excluded

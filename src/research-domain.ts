@@ -143,6 +143,10 @@ export const blindReviewResultSchema = strictObject({
   candidateAssessments: z.array(blindReviewAssessmentSchema),
   ranking: z.array(idSchema),
   verdict: z.enum(["ACCEPT", "REVISE", "REASSIGN", "REJECT"]),
+}).superRefine((result, context) => {
+  const assessmentIds = result.candidateAssessments.map((item) => item.anonymizedCandidateId);
+  if (new Set(assessmentIds).size !== assessmentIds.length) context.addIssue({ code: "custom", message: "Blind-review assessments must have unique candidate IDs." });
+  if (new Set(result.ranking).size !== result.ranking.length) context.addIssue({ code: "custom", message: "Blind-review ranking IDs must be unique." });
 });
 export type BlindReviewResult = z.infer<typeof blindReviewResultSchema>;
 

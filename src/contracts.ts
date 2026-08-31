@@ -35,8 +35,8 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
   eventBase.extend({ type: z.literal("AuditCompleted"), payload: evidenceAuditResultSchema }),
   eventBase.extend({ type: z.literal("BlindReviewCompleted"), payload: blindReviewResultSchema }),
-  eventBase.extend({ type: z.literal("RankingDivergenceDetected"), payload: z.object({ records: z.array(divergenceRecordSchema) }).strict() }),
-  eventBase.extend({ type: z.literal("MissingEvidenceDivergenceDetected"), payload: z.object({ records: z.array(divergenceRecordSchema) }).strict() }),
+  eventBase.extend({ type: z.literal("RankingDivergenceDetected"), payload: z.object({ records: z.array(divergenceRecordSchema.refine((r) => r.type !== "MISSING_EVIDENCE_DIVERGENCE")) }).strict() }),
+  eventBase.extend({ type: z.literal("MissingEvidenceDivergenceDetected"), payload: z.object({ records: z.array(divergenceRecordSchema.refine((r) => r.type === "MISSING_EVIDENCE_DIVERGENCE")) }).strict() }),
   eventBase.extend({
     type: z.literal("TaskAuthorized"),
     payload: z.object({

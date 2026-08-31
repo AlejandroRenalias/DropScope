@@ -77,6 +77,8 @@ describe("frozen quality-pipeline contracts", () => {
       candidateAssessments: [{ ...review.candidateAssessments[0], reviewerScore: 101 }],
     })).toThrow();
     expect(() => blindReviewResultSchema.parse({ ...review, unexpected: true })).toThrow();
+    expect(() => blindReviewResultSchema.parse({ ...review, ranking: ["candidate", "candidate"] })).toThrow();
+    expect(() => blindReviewResultSchema.parse({ ...review, candidateAssessments: [review.candidateAssessments[0], review.candidateAssessments[0]] })).toThrow();
     expect(() => blindReviewResultSchema.parse({
       ...review,
       candidateAssessments: [{ ...review.candidateAssessments[0], unexpected: true }],

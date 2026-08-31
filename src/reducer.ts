@@ -112,7 +112,8 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       return { ...state, blindReviewResults: { ...state.blindReviewResults, [event.payload.reviewId]: event.payload } };
     case "RankingDivergenceDetected":
     case "MissingEvidenceDivergenceDetected": {
-      if (state.status !== "RUNNING" || event.payload.records.some((record) => Object.hasOwn(state.divergenceRecords, record.divergenceId))) throw new Error("Divergence result cannot be recorded.");
+      const ids = event.payload.records.map((record) => record.divergenceId);
+      if (state.status !== "RUNNING" || new Set(ids).size !== ids.length || ids.some((id) => Object.hasOwn(state.divergenceRecords, id))) throw new Error("Divergence result cannot be recorded.");
       return { ...state, divergenceRecords: { ...state.divergenceRecords, ...Object.fromEntries(event.payload.records.map((record) => [record.divergenceId, record])) } };
     }
     case "TaskAuthorized": {

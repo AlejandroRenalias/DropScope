@@ -267,7 +267,7 @@ TribunalCompletedPayload
   decidedByPolicyVersion: string
 ```
 
-The payload is a recorded deterministic tribunal result only. Its policy version must equal `MissionCreated.policyVersions.tribunal`; it creates no authorization, state transition, eligibility, ranking, gap, revision, or report action.
+The payload is a recorded deterministic tribunal result only. Its policy version must equal `MissionCreated.policyVersions.tribunal`; it creates no authorization, state transition, eligibility, ranking, gap, revision, or report action. Legacy schema-version-1 `MissionCreated` histories without `policyVersions` remain replayable but cannot record tribunal output.
 
 ## 15. DivergenceRecord
 

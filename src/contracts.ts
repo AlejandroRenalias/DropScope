@@ -14,15 +14,21 @@ export type WorkClass = z.infer<typeof workClassSchema>;
 export const authorizationReasonSchema = z.enum(["MANDATORY_BASELINE", "GAP_RESOLUTION"]);
 export type AuthorizationReason = z.infer<typeof authorizationReasonSchema>;
 export const gapDecisionTypeSchema = z.enum(["ELIGIBILITY", "RANKING", "CONFIDENCE", "SAFETY_OR_RISK", "BLOCKING_REVIEW", "CONTRADICTION"]);
+const missionCreatedPayloadSchema = z.union([
+  z.object({
+    totalBudget: z.number().int().positive(),
+    missionSeed: z.number().int(),
+    policyVersions: z.object({ tribunal: z.string().min(1) }).strict(),
+  }).strict(),
+  // Legacy schema-version 1 histories predate tribunal events. They remain
+  // replayable, but cannot accept TribunalCompleted without a frozen version.
+  z.object({ totalBudget: z.number().int().positive(), missionSeed: z.number().int() }).strict(),
+]);
 
 export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({
     type: z.literal("MissionCreated"),
-    payload: z.object({
-      totalBudget: z.number().int().positive(),
-      missionSeed: z.number().int(),
-      policyVersions: z.object({ tribunal: z.string().min(1) }).strict(),
-    }).strict(),
+    payload: missionCreatedPayloadSchema,
   }),
   eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
   eventBase.extend({

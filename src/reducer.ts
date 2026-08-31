@@ -90,13 +90,13 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         ...state,
         missionId: event.missionId,
         status: "RUNNING",
-        policyVersions: event.payload.policyVersions,
+        policyVersions: "policyVersions" in event.payload ? event.payload.policyVersions : null,
         budget: { total: event.payload.totalBudget, reserved: 0, committed: 0, spent: 0, available: event.payload.totalBudget },
       };
     case "TribunalCompleted":
       if (state.status !== "RUNNING" || state.policyVersions === null) throw new Error("A running mission is required to record tribunal output.");
       if (event.payload.decidedByPolicyVersion !== state.policyVersions.tribunal) throw new Error("Tribunal result policy version does not match the mission.");
-      if (state.tribunalResults[event.payload.tribunalId]) throw new Error("Tribunal result is already recorded.");
+      if (Object.hasOwn(state.tribunalResults, event.payload.tribunalId)) throw new Error("Tribunal result is already recorded.");
       return { ...state, tribunalResults: { ...state.tribunalResults, [event.payload.tribunalId]: event.payload } };
     case "TaskAuthorized": {
       const proposal = event.payload;

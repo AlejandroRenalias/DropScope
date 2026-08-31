@@ -38,4 +38,16 @@ describe("tribunal event integration", () => {
     expect(() => replay([mission, tribunal("2")])).toThrow("policy version does not match");
     expect(() => replay([mission, tribunal(), { ...tribunal(), sequenceNumber: 3, eventId: "event-3" }])).toThrow("already recorded");
   });
+
+  it("replays legacy v1 histories but requires a frozen version before recording tribunal output", () => {
+    const legacyMission = event(1, "MissionCreated", { totalBudget: 100, missionSeed: 5 });
+    expect(missionEventSchema.parse(legacyMission)).toEqual(legacyMission);
+    expect(replay([legacyMission]).policyVersions).toBeNull();
+    expect(() => replay([legacyMission, tribunal()])).toThrow("running mission is required");
+  });
+
+  it("accepts a first tribunal ID that matches an inherited object property", () => {
+    const inheritedName = { ...tribunal(), payload: { ...tribunal().payload, tribunalId: "constructor" } } as MissionEvent;
+    expect(replay([mission, inheritedName]).tribunalResults.constructor).toEqual(inheritedName.payload);
+  });
 });

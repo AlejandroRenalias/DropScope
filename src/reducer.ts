@@ -51,6 +51,7 @@ export interface MissionState {
   divergenceRecords: Record<string, DivergenceRecord>;
   rejections: { attemptedEventType: string; reason: string }[];
   staleCompletionAttemptIds: string[];
+  recoveryRestartCount: number;
 }
 
 export const initialMissionState = (): MissionState => ({
@@ -67,6 +68,7 @@ export const initialMissionState = (): MissionState => ({
   auditResults: {}, blindReviewResults: {}, divergenceRecords: {},
   rejections: [],
   staleCompletionAttemptIds: [],
+  recoveryRestartCount: 0,
 });
 
 export function remainingMandatoryUnreservedCost(state: MissionState): number {
@@ -236,7 +238,8 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     }
     case "RecoveryStarted":
       if (state.status !== "RUNNING") throw new Error("Only a running mission can be recovered.");
-      return state;
+      if (state.recoveryRestartCount >= 1) throw new Error("Mission recovery restart cap reached.");
+      return { ...state, recoveryRestartCount: state.recoveryRestartCount + 1 };
     case "TaskInterrupted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;

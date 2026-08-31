@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { tribunalResultSchema } from "./tribunal-policy.js";
+import { evidenceAuditResultSchema } from "./evidence-audit.js";
+import { blindReviewResultSchema, divergenceRecordSchema } from "./research-domain.js";
 
 const eventBase = z.object({
   schemaVersion: z.literal(1),
@@ -31,6 +33,10 @@ export const missionEventSchema = z.discriminatedUnion("type", [
     payload: missionCreatedPayloadSchema,
   }),
   eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
+  eventBase.extend({ type: z.literal("AuditCompleted"), payload: evidenceAuditResultSchema }),
+  eventBase.extend({ type: z.literal("BlindReviewCompleted"), payload: blindReviewResultSchema }),
+  eventBase.extend({ type: z.literal("RankingDivergenceDetected"), payload: z.object({ records: z.array(divergenceRecordSchema) }).strict() }),
+  eventBase.extend({ type: z.literal("MissingEvidenceDivergenceDetected"), payload: z.object({ records: z.array(divergenceRecordSchema) }).strict() }),
   eventBase.extend({
     type: z.literal("TaskAuthorized"),
     payload: z.object({

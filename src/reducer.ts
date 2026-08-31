@@ -1,5 +1,7 @@
 import type { AuthorizationReason, MissionEvent, WorkClass } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
+import type { EvidenceAuditFinding } from "./evidence-audit.js";
+import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
 
 export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
 export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT";
@@ -44,6 +46,9 @@ export interface MissionState {
   gaps: Record<string, GapRecord>;
   policyVersions: { tribunal: string } | null;
   tribunalResults: Record<string, TribunalResult>;
+  auditResults: Record<string, { auditId: string; findings: EvidenceAuditFinding[] }>;
+  blindReviewResults: Record<string, BlindReviewResult>;
+  divergenceRecords: Record<string, DivergenceRecord>;
   rejections: { attemptedEventType: string; reason: string }[];
   staleCompletionAttemptIds: string[];
 }
@@ -59,6 +64,7 @@ export const initialMissionState = (): MissionState => ({
   gaps: {},
   policyVersions: null,
   tribunalResults: {},
+  auditResults: {}, blindReviewResults: {}, divergenceRecords: {},
   rejections: [],
   staleCompletionAttemptIds: [],
 });
@@ -98,6 +104,17 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (event.payload.decidedByPolicyVersion !== state.policyVersions.tribunal) throw new Error("Tribunal result policy version does not match the mission.");
       if (Object.hasOwn(state.tribunalResults, event.payload.tribunalId)) throw new Error("Tribunal result is already recorded.");
       return { ...state, tribunalResults: { ...state.tribunalResults, [event.payload.tribunalId]: event.payload } };
+    case "AuditCompleted":
+      if (state.status !== "RUNNING" || Object.hasOwn(state.auditResults, event.payload.auditId)) throw new Error("Audit result cannot be recorded.");
+      return { ...state, auditResults: { ...state.auditResults, [event.payload.auditId]: event.payload } };
+    case "BlindReviewCompleted":
+      if (state.status !== "RUNNING" || Object.hasOwn(state.blindReviewResults, event.payload.reviewId)) throw new Error("Blind review result cannot be recorded.");
+      return { ...state, blindReviewResults: { ...state.blindReviewResults, [event.payload.reviewId]: event.payload } };
+    case "RankingDivergenceDetected":
+    case "MissingEvidenceDivergenceDetected": {
+      if (state.status !== "RUNNING" || event.payload.records.some((record) => Object.hasOwn(state.divergenceRecords, record.divergenceId))) throw new Error("Divergence result cannot be recorded.");
+      return { ...state, divergenceRecords: { ...state.divergenceRecords, ...Object.fromEntries(event.payload.records.map((record) => [record.divergenceId, record])) } };
+    }
     case "TaskAuthorized": {
       const proposal = event.payload;
       if (state.status !== "RUNNING") throw new Error("Cannot authorize work for a non-running mission.");

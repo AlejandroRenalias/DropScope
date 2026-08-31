@@ -1,6 +1,14 @@
 import type { Claim, Evidence, ResearchDataset, Source } from "./research-domain.js";
+import { z } from "zod";
 
 export type AuditSeverity = "BLOCKING" | "HIGH" | "MEDIUM" | "LOW";
+const id = z.string().min(1);
+export const evidenceAuditFindingSchema = z.object({
+  code: z.enum(["AUDIT_DECISIVE_CLAIM_NO_VALID_EVIDENCE", "AUDIT_DECISIVE_SINGLE_GROUP_NOT_TENTATIVE", "AUDIT_EVIDENCE_UNTRACEABLE", "AUDIT_SOURCE_DUPLICATE", "AUDIT_FACT_DUPLICATE", "AUDIT_CLAIM_DUPLICATE", "AUDIT_MATERIAL_CONTRADICTION", "AUDIT_UNCERTAIN_DECISIVE_LABEL"]),
+  severity: z.enum(["BLOCKING", "HIGH", "MEDIUM", "LOW"]),
+  claimIds: z.array(id), evidenceIds: z.array(id), sourceIds: z.array(id), factIds: z.array(id), explanation: z.string().min(1),
+}).strict();
+export const evidenceAuditResultSchema = z.object({ auditId: id, findings: z.array(evidenceAuditFindingSchema) }).strict();
 export type AuditCode =
   | "AUDIT_DECISIVE_CLAIM_NO_VALID_EVIDENCE"
   | "AUDIT_DECISIVE_SINGLE_GROUP_NOT_TENTATIVE"

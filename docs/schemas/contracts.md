@@ -285,6 +285,8 @@ DivergenceRecord
   resolutionNote: string | null
 ```
 
+`AuditCompleted` records `{ auditId, findings }`; `BlindReviewCompleted` records the strict `BlindReviewResult`; and the two divergence events record strict `DivergenceRecord[]`. These results are replayed as evidence of completed quality stages only and create no authorization, ranking, eligibility, gap, revision, or report action.
+
 ## 16. FixtureManifest
 
 ```text

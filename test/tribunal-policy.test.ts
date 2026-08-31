@@ -1,0 +1,14 @@
+import { describe, expect, it } from "vitest";
+import { evaluateTribunal } from "../src/tribunal-policy.js";
+
+const base = { tribunalId: "t", candidateId: "c", policyVersion: "tribunal-v1", riskDecision: { decisionId: "r", candidateId: "c", outcome: "ALLOWED" as const, reasons: [] }, claims: [{ claimId: "claim", candidateId: "c", decisive: true, tentative: true }], evidence: [] };
+const ev = (id: string, group: string, direction: "SUPPORTS" | "OPPOSES", strength: number, reliabilityClass: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" = "HIGH") => ({ evidenceId: id, candidateId: "c", claimId: "claim", independenceGroupId: group, direction, strength, reliabilityClass });
+
+describe("tribunal policy v1", () => {
+  it("continues for two unopposed supporting groups", () => expect(evaluateTribunal({ ...base, evidence: [ev("b", "g2", "SUPPORTS", 2), ev("a", "g1", "SUPPORTS", 3)] }).recommendation).toBe("CONTINUE_RESEARCH"));
+  it("uses strict validation and rejects forbidden/cross-candidate input", () => expect(() => evaluateTribunal({ ...base, claims: [{ ...base.claims[0], extra: true } as never] })).toThrow());
+  it("uses unknown reliability as no support", () => { const out = evaluateTribunal({ ...base, evidence: [ev("a", "g1", "SUPPORTS", 5, "UNKNOWN"), ev("b", "g2", "SUPPORTS", 5, "UNKNOWN")] }); expect(out.recommendation).toBe("CAUTION"); expect(out.reasons.map(r => r.code)).toEqual(["TRIBUNAL_NO_SUPPORTED_DECISIVE_CASE"]); });
+  it("shows cross-group conflicts on both sides while preserving both reasons", () => { const out = evaluateTribunal({ ...base, evidence: [ev("a", "g1", "SUPPORTS", 2), ev("b", "g2", "SUPPORTS", 2), ev("z", "g3", "OPPOSES", -1)] }); expect(out.recommendation).toBe("CAUTION"); expect(out.ventureClaimIds).toEqual(["claim"]); expect(out.ruinClaimIds).toEqual(["claim"]); expect(out.reasons.map(r => r.code)).toEqual(["TRIBUNAL_MATERIAL_CONFLICT", "TRIBUNAL_SUPPORTED_DECISIVE_CASE"]); });
+  it("always stops rejected gates and retains lower matching reasons", () => { const out = evaluateTribunal({ ...base, riskDecision: { ...base.riskDecision, outcome: "REJECTED" }, evidence: [ev("a", "g1", "SUPPORTS", 2)] }); expect(out.recommendation).toBe("STOP"); expect(out.reasons.map(r => r.code)).toContain("TRIBUNAL_RISK_GATE_REJECTED"); });
+  it("caps display claims at three while provenance is uncapped", () => { const claims = Array.from({ length: 4 }, (_, i) => ({ claimId: `claim-${i}`, candidateId: "c", decisive: true, tentative: true })); const evidence = claims.flatMap((c, i) => [ev(`${i}-a`, `${i}-a`, "SUPPORTS", 2), ev(`${i}-b`, `${i}-b`, "SUPPORTS", 2)]).map((e, i) => ({ ...e, claimId: claims[Math.floor(i / 2)].claimId })); const out = evaluateTribunal({ ...base, claims, evidence }); expect(out.ventureClaimIds).toHaveLength(3); expect(out.reasons.find(r => r.code === "TRIBUNAL_SUPPORTED_DECISIVE_CASE")?.claimIds).toHaveLength(4); });
+});

@@ -25,7 +25,7 @@ const proposal = (taskId: string, workClass: WorkClass, cost: number) => ({
   dependencies: [],
 });
 const authorize = (sequenceNumber: number, taskId: string, workClass: WorkClass, cost: number) => event(sequenceNumber, "TaskAuthorized", proposal(taskId, workClass, cost));
-const schedule = (sequenceNumber: number, taskId: string, workClass: WorkClass, cost: number) => event(sequenceNumber, "TaskScheduled", { ...proposal(taskId, workClass, cost), attemptId: `${taskId}:a1` });
+const schedule = (sequenceNumber: number, taskId: string, workClass: WorkClass, cost: number) => event(sequenceNumber, "TaskScheduled", { ...proposal(taskId, workClass, cost), attemptId: `${taskId}:a1`, workerRole: "BUDGET_TEST_WORKER" });
 const missionCreated = event(1, "MissionCreated", { totalBudget: 30, missionSeed: 0, policyVersions: { tribunal: "1" } });
 
 describe("computed mandatory budget protection", () => {

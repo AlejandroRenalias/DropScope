@@ -59,6 +59,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
       cost: z.number().int().positive(),
       workClass: workClassSchema,
       researchKey: z.string().min(1),
+      workerRole: z.string().min(1).optional(),
       dependencies: z.array(z.string().min(1)),
     }),
   }),
@@ -83,6 +84,10 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   }),
   eventBase.extend({
     type: z.literal("TaskFailedTransient"),
+    payload: z.object({ attemptId: z.string().min(1), reason: z.string().min(1) }),
+  }),
+  eventBase.extend({
+    type: z.literal("TaskFailedPermanent"),
     payload: z.object({ attemptId: z.string().min(1), reason: z.string().min(1) }),
   }),
   eventBase.extend({

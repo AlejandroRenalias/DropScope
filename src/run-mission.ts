@@ -55,6 +55,7 @@ export async function beginWalkingSkeletonMission(options: Required<MissionOptio
     cost: 10,
     workClass: "MANDATORY",
     researchKey: "engine-system-check",
+    workerRole: "SYSTEM_WORKER",
     dependencies: [],
   });
   await appendEvent(store, existingEvents, options.missionId, "BudgetReserved", { attemptId: "system-check:a1", cost: 10 });
@@ -83,6 +84,7 @@ export async function recoverWalkingSkeletonMission(options: Omit<MissionOptions
     cost: 10,
     workClass: "MANDATORY",
     researchKey: "engine-system-check",
+    workerRole: "SYSTEM_WORKER_RECOVERY",
     dependencies: [],
   });
   await appendEvent(store, events, options.missionId, "BudgetReserved", { attemptId: "system-check:a2", cost: 10 });

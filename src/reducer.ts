@@ -113,7 +113,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (state.status !== "RUNNING" || Object.hasOwn(state.auditResults, event.payload.auditId)) throw new Error("Audit result cannot be recorded.");
       return { ...state, auditResults: { ...state.auditResults, [event.payload.auditId]: event.payload } };
     case "BlindReviewCompleted":
-      if (state.status !== "RUNNING" || Object.hasOwn(state.blindReviewResults, event.payload.reviewId)) throw new Error("Blind review result cannot be recorded.");
+      if (state.status !== "RUNNING" || Object.hasOwn(state.blindReviewResults, event.payload.reviewId) || state.revision?.rereview?.reviewId === event.payload.reviewId) throw new Error("Blind review result cannot be recorded.");
       return { ...state, blindReviewResults: { ...state.blindReviewResults, [event.payload.reviewId]: event.payload } };
     case "RankingDivergenceDetected":
     case "MissingEvidenceDivergenceDetected": {

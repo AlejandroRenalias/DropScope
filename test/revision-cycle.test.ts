@@ -30,6 +30,7 @@ describe("focused revision cycle", () => {
     const rejectedRereview = e(5, "FocusedRereviewCompleted", { revisionId: "r", result: { ...rereview.payload.result, verdict: "REJECT" } });
     expect(() => replay([mission, review, request, audit, rejectedRereview, e(6, "MissionCompleted", {})])).toThrow("unfinished or unaccepted revision");
     const completed = replay([mission, review, request, audit, rereview, e(6, "MissionCompleted", {})]);
+    expect(() => replay([mission, review, request, audit, rereview, e(6, "BlindReviewCompleted", { reviewId: "review-2", candidateAssessments: [], ranking: [], verdict: "REJECT" })])).toThrow("Blind review result cannot be recorded");
     expect(() => replay([mission, review, request, audit, rereview, e(6, "MissionCompleted", {}), { ...audit, sequenceNumber: 7, eventId: "e-7" }])).toThrow("active revision");
     expect(completed.status).toBe("COMPLETED");
   });

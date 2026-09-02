@@ -1,9 +1,9 @@
-import type { AuthorizationReason, MissionEvent, WorkClass } from "./contracts.js";
+import type { AuthorizationReason, MissionEvent, TerminalMissionStatus, WorkClass } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
 
-export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
+export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED" | TerminalMissionStatus;
 export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT" | "FAILED_PERMANENT";
 export type AttemptStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT" | "FAILED_PERMANENT";
 
@@ -314,11 +314,20 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       };
     }
     case "MissionCompleted":
+      if (state.status !== "RUNNING") throw new Error("Only a running mission can finish.");
       if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT")) throw new Error("Cannot complete a mission with an unfinished or unaccepted revision.");
       if (Object.values(state.tasks).some((task) => task.status === "SCHEDULED" || task.status === "RUNNING" || task.status === "FAILED_PERMANENT")) {
         throw new Error("Cannot complete a mission with unfinished tasks.");
       }
       return { ...state, status: "COMPLETED" };
+    case "MissionTerminated":
+      if (state.status !== "RUNNING") throw new Error("Only a running mission can terminate.");
+      if (Object.values(state.tasks).some((task) => task.status !== "COMPLETED")) throw new Error("Cannot terminate a mission with unfinished tasks.");
+      if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT")) throw new Error("Cannot terminate a mission with an unfinished or unaccepted revision.");
+      if (event.payload.status === "COMPLETED_INSUFFICIENT_EVIDENCE" && Object.values(state.gaps).some((gap) => gap.status === "OPEN" || gap.status === "REOPENED")) {
+        throw new Error("Insufficient-evidence termination requires all actionable gaps to be resolved.");
+      }
+      return { ...state, status: event.payload.status };
   }
 }
 

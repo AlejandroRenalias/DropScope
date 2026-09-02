@@ -16,6 +16,8 @@ export type WorkClass = z.infer<typeof workClassSchema>;
 export const authorizationReasonSchema = z.enum(["MANDATORY_BASELINE", "GAP_RESOLUTION"]);
 export type AuthorizationReason = z.infer<typeof authorizationReasonSchema>;
 export const gapDecisionTypeSchema = z.enum(["ELIGIBILITY", "RANKING", "CONFIDENCE", "SAFETY_OR_RISK", "BLOCKING_REVIEW", "CONTRADICTION"]);
+export const terminalMissionStatusSchema = z.enum(["COMPLETED_INSUFFICIENT_EVIDENCE", "BLOCKED_POLICY", "BLOCKED_BUDGET", "FAILED_UNRECOVERABLE"]);
+export type TerminalMissionStatus = z.infer<typeof terminalMissionStatusSchema>;
 const missionCreatedPayloadSchema = z.union([
   z.object({
     totalBudget: z.number().int().positive(),
@@ -108,6 +110,10 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({
     type: z.literal("MissionCompleted"),
     payload: z.object({}),
+  }),
+  eventBase.extend({
+    type: z.literal("MissionTerminated"),
+    payload: z.object({ status: terminalMissionStatusSchema, reason: z.string().min(1) }).strict(),
   }),
 ]);
 

@@ -19,4 +19,11 @@ describe("authoritative gap register", () => {
     expect(allowed.authorizations["pricing-check"].gapId).toBe("gap-1");
     expect(rejected.state.rejections[0]?.reason).toBe("Gap-resolution work requires a matching actionable gap.");
   });
+  it.each(["EXHAUSTED", "DECLINED"] as const)("closes an actionable gap as %s without allowing new optional work", (status) => {
+    const closed = replay([mission, openGap, event(3, "GapStatusChanged", { gapId: "gap-1", status, reason: "No further permitted research is available." })]);
+    const result = handleProposedEvent([mission, openGap, event(3, "GapStatusChanged", { gapId: "gap-1", status, reason: "No further permitted research is available." })], optionalAuthorization(4, "gap-1"));
+
+    expect(closed.gaps["gap-1"]?.status).toBe(status);
+    expect(result.events.at(-1)?.type).toBe("TransitionRejected");
+  });
 });

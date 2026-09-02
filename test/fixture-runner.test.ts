@@ -12,9 +12,9 @@ describe("fixture-driven simulated missions", () => {
       historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl"),
     });
 
-    expect(result.state.status).toBe(fixtureId === "evidence-drought" ? "COMPLETED_INSUFFICIENT_EVIDENCE" : "COMPLETED");
+    expect(result.state.status).toBe(fixtureId === "mixed-opportunity-market" ? "COMPLETED" : "COMPLETED_INSUFFICIENT_EVIDENCE");
     expect(result.events[0]?.type).toBe("MissionCreated");
-    expect(result.events.at(-1)?.type).toBe(fixtureId === "evidence-drought" ? "MissionTerminated" : "MissionCompleted");
+    expect(result.events.at(-1)?.type).toBe(fixtureId === "mixed-opportunity-market" ? "MissionCompleted" : "MissionTerminated");
     expect(new Set(Object.values(result.schedule.taskOutcomes))).toEqual(new Set(["COMPLETED"]));
   });
 
@@ -22,6 +22,16 @@ describe("fixture-driven simulated missions", () => {
     const result = await runFixtureMission({ fixtureId: "evidence-drought", missionId: "drought-outcome", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
 
     expect(result.candidateEligibility).toEqual([expect.objectContaining({ candidateId: "drought-candidate", eligible: false, blockers: expect.arrayContaining(["CUSTOMER_PROBLEM_EVIDENCE_BELOW_THRESHOLD", "EVIDENCE_QUALITY_BELOW_THRESHOLD"]) })]);
+    expect(result.state.status).toBe("COMPLETED_INSUFFICIENT_EVIDENCE");
+  });
+
+  it("derives safety fixture policy outcomes and reason codes through the shared evaluator", async () => {
+    const result = await runFixtureMission({ fixtureId: "safety-ambiguity", missionId: "safety-outcome", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+    expect(result.riskDecisions.map((decision) => [decision.outcome, decision.reasons[0]?.code])).toEqual([
+      ["REJECTED", "SAFETY_INGESTION_OR_FOOD"],
+      ["REJECTED", "REGULATORY_MEDICAL_POSITIONING"],
+      ["MANUAL_REVIEW", "INSUFFICIENT_INFORMATION_MATERIAL_MISSING"],
+    ]);
     expect(result.state.status).toBe("COMPLETED_INSUFFICIENT_EVIDENCE");
   });
 

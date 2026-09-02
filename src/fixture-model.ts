@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { riskGateDecisionSchema } from "./research-domain.js";
+import { riskGateInputSchema } from "./risk-policy.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const taskIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Task IDs must be lowercase kebab-case.");
@@ -17,13 +17,13 @@ export const fixtureTaskSchema = z.object({
 
 export const fixtureCandidateEvaluationSchema = z.object({
   candidateId: z.string().min(1),
-  riskDecision: riskGateDecisionSchema,
+  riskInput: riskGateInputSchema,
   customerProblemEvidenceScore: z.number().int().min(0).max(100),
   evidenceQualityScore: z.number().int().min(0).max(100),
   hasUnresolvedBlockingContradiction: z.boolean(),
   hasBlockingDecisionCriticalMissingEvidence: z.boolean(),
 }).strict().superRefine((candidate, context) => {
-  if (candidate.riskDecision.candidateId !== candidate.candidateId) context.addIssue({ code: "custom", path: ["riskDecision", "candidateId"], message: "Risk decision must belong to the fixture candidate." });
+  if (candidate.riskInput.candidateId !== candidate.candidateId) context.addIssue({ code: "custom", path: ["riskInput", "candidateId"], message: "Risk input must belong to the fixture candidate." });
 });
 
 const fixtureShape = z.object({
@@ -80,6 +80,13 @@ export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
 export type FixtureTask = z.infer<typeof fixtureTaskSchema>;
 export type Fixture = z.infer<typeof fixtureSchema>;
 
+const defaultRiskAttributes: z.infer<typeof riskGateInputSchema>["attributes"] = { intendedUser: "GENERAL", foodOrIngestion: "NO", bodyContact: "NONE", healthPositioning: "NONE", electricalPower: "NONE", thermalOrFireHazard: "NONE", physicalHazard: "NONE", protectiveFunction: "NONE", chemicalExposure: "NONE_DECLARED", regulatedCategorySignal: "NONE", brandOrCreativeSimilaritySignal: "NONE_OBSERVED", evidenceCompleteness: "SUFFICIENT" };
+const riskInput = (candidateId: string, attributes: Partial<z.infer<typeof riskGateInputSchema>["attributes"]> = {}): z.infer<typeof riskGateInputSchema> => ({
+  decisionId: `${candidateId}-risk`, candidateId, decidedByPolicyVersion: "risk-v1",
+  attributes: { ...defaultRiskAttributes, ...attributes },
+  attributeEvidenceIds: { intendedUser: [], foodOrIngestion: [], bodyContact: [], healthPositioning: [], electricalPower: [], thermalOrFireHazard: [], physicalHazard: [], protectiveFunction: [], chemicalExposure: [], regulatedCategorySignal: [], brandOrCreativeSimilaritySignal: [], evidenceCompleteness: [] },
+});
+
 const definitions: readonly Fixture[] = [
   {
     fixtureId: "mixed-opportunity-market",
@@ -97,7 +104,7 @@ const definitions: readonly Fixture[] = [
     seed: 1,
     budget: 70,
     candidateEvaluations: [
-      { candidateId: "drought-candidate", riskDecision: { decisionId: "drought-risk", candidateId: "drought-candidate", outcome: "ALLOWED", reasons: [], decidedByPolicyVersion: "risk-v1" }, customerProblemEvidenceScore: 40, evidenceQualityScore: 45, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "drought-candidate", riskInput: riskInput("drought-candidate"), customerProblemEvidenceScore: 40, evidenceQualityScore: 45, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
     ],
     tasks: [
       { id: "source-scan", objective: "Locate available sources.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "source-coverage", dependencies: [], workerRole: "SOURCE_RESEARCHER" },
@@ -108,7 +115,11 @@ const definitions: readonly Fixture[] = [
     fixtureId: "safety-ambiguity",
     seed: 1,
     budget: 80,
-    candidateEvaluations: [],
+    candidateEvaluations: [
+      { candidateId: "food-risk", riskInput: riskInput("food-risk", { foodOrIngestion: "FOOD_OR_SUPPLEMENT" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "medical-risk", riskInput: riskInput("medical-risk", { healthPositioning: "MEDICAL_CLAIM_OR_DEVICE" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "ambiguous-risk", riskInput: riskInput("ambiguous-risk", { evidenceCompleteness: "MATERIAL_ATTRIBUTE_MISSING" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
     tasks: [
       { id: "safety-scan", objective: "Identify safety considerations.", cost: 25, durationMs: 20, workClass: "MANDATORY", researchKey: "safety", dependencies: [], workerRole: "SAFETY_RESEARCHER" },
       { id: "ambiguity-check", objective: "Resolve ambiguous signals.", cost: 30, durationMs: 15, workClass: "MANDATORY", researchKey: "ambiguity", dependencies: ["safety-scan"], workerRole: "EVIDENCE_RESEARCHER" },

@@ -4,6 +4,8 @@ import { replay, type MissionState } from "./reducer.js";
 import { runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
 import type { MissionEvent } from "./contracts.js";
 import { determineCandidateEligibility, type CandidateEligibility } from "./candidate-eligibility.js";
+import { evaluateRiskGate } from "./risk-policy.js";
+import type { RiskGateDecision } from "./research-domain.js";
 
 export interface FixtureRunResult {
   fixtureId: string;
@@ -11,6 +13,7 @@ export interface FixtureRunResult {
   state: MissionState;
   schedule: ScheduleResult;
   candidateEligibility: CandidateEligibility[];
+  riskDecisions: RiskGateDecision[];
 }
 
 export async function runFixtureMission(options: {
@@ -38,7 +41,8 @@ export async function runFixtureMission(options: {
       workerRole: task.workerRole,
     })),
   });
-  const candidateEligibility = fixture.candidateEvaluations.map(determineCandidateEligibility);
+  const riskDecisions = fixture.candidateEvaluations.map((candidate) => evaluateRiskGate(candidate.riskInput));
+  const candidateEligibility = fixture.candidateEvaluations.map((candidate, index) => determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }));
   const store = new JsonlEventStore(options.historyPath);
   const events = await store.readAll();
   const terminalEvent: MissionEvent = {
@@ -54,5 +58,5 @@ export async function runFixtureMission(options: {
   } as MissionEvent;
   await store.append(terminalEvent);
   const completedEvents = await store.readAll();
-  return { fixtureId: fixture.fixtureId, events: completedEvents, state: replay(completedEvents), schedule, candidateEligibility };
+  return { fixtureId: fixture.fixtureId, events: completedEvents, state: replay(completedEvents), schedule, candidateEligibility, riskDecisions };
 }

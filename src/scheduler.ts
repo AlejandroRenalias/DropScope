@@ -4,6 +4,7 @@ export interface SimulatedTask {
   cost: number;
   workClass?: WorkClass;
   researchKey?: string;
+  workerRole?: string;
   durationMs: number;
   dependencies?: string[];
 }
@@ -107,7 +108,7 @@ export async function runSimulatedSchedule(options: {
     }
     for (const task of eligible) {
       const attemptId = `${task.taskId}:a1`;
-      await append("TaskScheduled", { taskId: task.taskId, attemptId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", researchKey: task.researchKey ?? task.taskId, dependencies: task.dependencies ?? [] });
+      await append("TaskScheduled", { taskId: task.taskId, attemptId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", researchKey: task.researchKey ?? task.taskId, workerRole: task.workerRole ?? "SIMULATED_WORKER", dependencies: task.dependencies ?? [] });
     }
     for (const task of eligible) {
       const attemptId = `${task.taskId}:a1`;

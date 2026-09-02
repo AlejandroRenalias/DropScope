@@ -4,8 +4,8 @@ import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
 
 export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
-export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT";
-export type AttemptStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT";
+export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT" | "FAILED_PERMANENT";
+export type AttemptStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT" | "FAILED_PERMANENT";
 
 interface TaskRecord {
   objective: string;
@@ -18,6 +18,7 @@ interface TaskRecord {
 
 interface AttemptRecord {
   taskId: string;
+  workerRole: string;
   status: AttemptStatus;
   reserved: boolean;
   finding?: string;
@@ -180,9 +181,13 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         throw new Error("All task dependencies must be completed before scheduling.");
       }
       const existingTask = state.tasks[event.payload.taskId];
-      if (existingTask && existingTask.status !== "INTERRUPTED") throw new Error("Task cannot receive another attempt.");
+      if (existingTask && !["INTERRUPTED", "FAILED_PERMANENT"].includes(existingTask.status)) throw new Error("Task cannot receive another attempt.");
       if (existingTask && existingTask.workClass !== event.payload.workClass) throw new Error("A retry cannot change a task's work class.");
       if (state.attempts[event.payload.attemptId]) throw new Error("Attempt is already scheduled.");
+      const workerRole = event.payload.workerRole;
+      if (existingTask?.status === "FAILED_PERMANENT" && existingTask.attemptIds.some((attemptId) => state.attempts[attemptId]?.workerRole === workerRole)) {
+        throw new Error("A permanent failure cannot be retried with the same worker.");
+      }
       const task: TaskRecord = existingTask
         ? { ...existingTask, status: "SCHEDULED", attemptIds: [...existingTask.attemptIds, event.payload.attemptId] }
         : {
@@ -196,7 +201,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       return {
         ...state,
         tasks: { ...state.tasks, [event.payload.taskId]: task },
-        attempts: { ...state.attempts, [event.payload.attemptId]: { taskId: event.payload.taskId, status: "SCHEDULED", reserved: false } },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { taskId: event.payload.taskId, workerRole, status: "SCHEDULED", reserved: false } },
       };
     }
     case "TaskStarted": {
@@ -266,6 +271,17 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
         tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "FAILED_TRANSIENT" } },
         attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "FAILED_TRANSIENT" } },
+      };
+    }
+    case "TaskFailedPermanent": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
+      return {
+        ...state,
+        budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
+        tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "FAILED_PERMANENT" } },
+        attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "FAILED_PERMANENT" } },
       };
     }
     case "TransitionRejected":

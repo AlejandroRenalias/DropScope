@@ -17,7 +17,7 @@ const mission = event(1, "MissionCreated", { totalBudget: 120, missionSeed: 0, p
 
 describe("deterministic Commander authorization", () => {
   it("requires a recorded authorization before scheduling without mutating mission work or budget", () => {
-    const unsanctionedSchedule = event(2, "TaskScheduled", { ...proposal("unsanctioned", "MANDATORY"), attemptId: "unsanctioned:a1" });
+    const unsanctionedSchedule = event(2, "TaskScheduled", { ...proposal("unsanctioned", "MANDATORY"), attemptId: "unsanctioned:a1", workerRole: "COMMANDER_TEST_WORKER" });
     const result = handleProposedEvent([mission], unsanctionedSchedule);
 
     expect(result.events.at(-1)?.type).toBe("TransitionRejected");
@@ -28,7 +28,7 @@ describe("deterministic Commander authorization", () => {
 
   it("records an allowed mandatory authorization that replay permits to schedule", () => {
     const authorized = event(2, "TaskAuthorized", proposal("baseline-check", "MANDATORY"));
-    const scheduled = event(3, "TaskScheduled", { ...proposal("baseline-check", "MANDATORY"), attemptId: "baseline-check:a1" });
+    const scheduled = event(3, "TaskScheduled", { ...proposal("baseline-check", "MANDATORY"), attemptId: "baseline-check:a1", workerRole: "COMMANDER_TEST_WORKER" });
     const state = replay([mission, authorized, scheduled]);
 
     expect(state.authorizations["baseline-check"]).toMatchObject({ authorizationReason: "MANDATORY_BASELINE", researchKey: "baseline-check" });
@@ -46,7 +46,7 @@ describe("deterministic Commander authorization", () => {
 
   it("rejects a task that duplicates an active research key", () => {
     const firstAuthorization = event(2, "TaskAuthorized", proposal("first-check", "MANDATORY"));
-    const firstSchedule = event(3, "TaskScheduled", { ...proposal("first-check", "MANDATORY"), attemptId: "first-check:a1" });
+    const firstSchedule = event(3, "TaskScheduled", { ...proposal("first-check", "MANDATORY"), attemptId: "first-check:a1", workerRole: "COMMANDER_TEST_WORKER" });
     const duplicate = event(4, "TaskAuthorized", { ...proposal("duplicate-check", "MANDATORY"), researchKey: "first-check" });
     const result = handleProposedEvent([mission, firstAuthorization, firstSchedule], duplicate);
 

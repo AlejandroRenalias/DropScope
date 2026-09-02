@@ -53,6 +53,7 @@ export interface MissionState {
   rejections: { attemptedEventType: string; reason: string }[];
   staleCompletionAttemptIds: string[];
   recoveryRestartCount: number;
+  revision: { revisionId: string; reviewId: string; affectedClaimIds: string[]; blockingDefectCodes: string[]; reaudit?: unknown; rereview?: BlindReviewResult } | null;
 }
 
 export const initialMissionState = (): MissionState => ({
@@ -70,6 +71,7 @@ export const initialMissionState = (): MissionState => ({
   rejections: [],
   staleCompletionAttemptIds: [],
   recoveryRestartCount: 0,
+  revision: null,
 });
 
 export function remainingMandatoryUnreservedCost(state: MissionState): number {
@@ -119,6 +121,15 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (state.status !== "RUNNING" || new Set(ids).size !== ids.length || ids.some((id) => Object.hasOwn(state.divergenceRecords, id))) throw new Error("Divergence result cannot be recorded.");
       return { ...state, divergenceRecords: { ...state.divergenceRecords, ...Object.fromEntries(event.payload.records.map((record) => [record.divergenceId, record])) } };
     }
+    case "RevisionRequested":
+      if (state.status !== "RUNNING" || state.revision !== null) throw new Error("Only one revision cycle may be recorded.");
+      return { ...state, revision: { ...event.payload } };
+    case "FocusedReauditCompleted":
+      if (!state.revision || state.revision.revisionId !== event.payload.revisionId || state.revision.reaudit) throw new Error("Focused re-audit requires the active revision.");
+      return { ...state, revision: { ...state.revision, reaudit: event.payload } };
+    case "FocusedRereviewCompleted":
+      if (!state.revision || state.revision.revisionId !== event.payload.revisionId || !state.revision.reaudit || state.revision.rereview) throw new Error("Focused re-review requires the completed focused re-audit.");
+      return { ...state, revision: { ...state.revision, rereview: event.payload.result } };
     case "TaskAuthorized": {
       const proposal = event.payload;
       if (state.status !== "RUNNING") throw new Error("Cannot authorize work for a non-running mission.");

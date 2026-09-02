@@ -16,6 +16,7 @@ describe("focused revision cycle", () => {
 
   it("requires the recorded triggering review and keeps re-audit inside the requested scope", () => {
     expect(() => replay([mission, review, e(3, "RevisionRequested", { ...request.payload, reviewId: "missing" })])).toThrow("recorded review");
+    expect(() => replay([mission, review, e(3, "RevisionRequested", { ...request.payload, reviewId: "toString" })])).toThrow("recorded review");
     expect(() => replay([mission, review, request, { ...audit, payload: { ...audit.payload, changedClaimIds: ["outside"] } }])).toThrow("active revision");
     expect(() => replay([mission, review, request, { ...audit, payload: { ...audit.payload, changedClaimIds: ["claim", "claim"] } }])).toThrow("active revision");
   });
@@ -24,6 +25,8 @@ describe("focused revision cycle", () => {
     const completion = e(4, "MissionCompleted", {});
     expect(() => replay([mission, review, request, completion])).toThrow("unfinished or unaccepted revision");
     expect(() => replay([mission, review, request, audit, e(5, "FocusedRereviewCompleted", { revisionId: "r", result: { ...rereview.payload.result, reviewId: "review" } })])).toThrow("completed focused re-audit");
+    const secondReview = e(3, "BlindReviewCompleted", { reviewId: "other-review", candidateAssessments: [], ranking: [], verdict: "REJECT" });
+    expect(() => replay([mission, review, secondReview, e(4, "RevisionRequested", request.payload), e(5, "FocusedReauditCompleted", audit.payload), e(6, "FocusedRereviewCompleted", { revisionId: "r", result: { ...rereview.payload.result, reviewId: "other-review" } })])).toThrow("completed focused re-audit");
     const rejectedRereview = e(5, "FocusedRereviewCompleted", { revisionId: "r", result: { ...rereview.payload.result, verdict: "REJECT" } });
     expect(() => replay([mission, review, request, audit, rejectedRereview, e(6, "MissionCompleted", {})])).toThrow("unfinished or unaccepted revision");
     const completed = replay([mission, review, request, audit, rereview, e(6, "MissionCompleted", {})]);

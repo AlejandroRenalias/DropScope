@@ -221,7 +221,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskStarted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "SCHEDULED" || task.status !== "SCHEDULED") {
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "SCHEDULED" || task.status !== "SCHEDULED") {
         throw new Error("Only a scheduled attempt can start.");
       }
       if (!attempt.reserved || task.cost > state.budget.reserved) throw new Error("Attempt has no sufficient reserved budget.");
@@ -239,7 +239,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "BudgetReserved": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "SCHEDULED" || attempt.reserved || event.payload.cost !== task.cost) {
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "SCHEDULED" || attempt.reserved || event.payload.cost !== task.cost) {
         throw new Error("Only a scheduled attempt can reserve its exact cost.");
       }
       if (task.cost > state.budget.available) throw new Error("Insufficient available budget.");
@@ -266,7 +266,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskInterrupted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
         throw new Error("Only a running attempt can be interrupted.");
       }
       return {
@@ -279,7 +279,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskFailedTransient": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
       return {
         ...state,
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
@@ -290,7 +290,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskFailedPermanent": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
       return {
         ...state,
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
@@ -305,7 +305,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "FindingSubmitted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
         throw new Error("Only a running attempt can submit a finding.");
       }
       return {
@@ -325,8 +325,8 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "MissionTerminated":
       if (state.status !== "RUNNING") throw new Error("Only a running mission can terminate.");
       if (event.payload.status === "COMPLETED_INSUFFICIENT_EVIDENCE") {
-        const authorizations = Object.values(state.authorizations);
-        if (!authorizations.some((authorization) => authorization.workClass === "MANDATORY") || Object.values(state.tasks).some((task) => task.status !== "COMPLETED")) {
+        const mandatoryAuthorizations = Object.entries(state.authorizations).filter(([, authorization]) => authorization.workClass === "MANDATORY");
+        if (mandatoryAuthorizations.length === 0 || mandatoryAuthorizations.some(([taskId]) => state.tasks[taskId]?.status !== "COMPLETED") || Object.values(state.tasks).some((task) => task.status !== "COMPLETED")) {
           throw new Error("Insufficient-evidence termination requires completed baseline research.");
         }
         if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT")) throw new Error("Cannot terminate a mission with an unfinished or unaccepted revision.");

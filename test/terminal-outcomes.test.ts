@@ -30,6 +30,7 @@ describe("terminal mission outcomes", () => {
     const gap = event(2, "GapOpened", { gapId: "gap", researchKey: "missing-evidence", affectedDecisionType: "ELIGIBILITY", reason: "Evidence is missing." });
 
     expect(() => replay([mission, event(2, "MissionTerminated", termination.payload)])).toThrow("completed baseline research");
+    expect(() => replay([mission, authorized, event(3, "MissionTerminated", termination.payload)])).toThrow("completed baseline research");
     expect(() => replay([mission, authorized, scheduled, termination])).toThrow("completed baseline research");
     const reserved = event(4, "BudgetReserved", { attemptId: "research:a1", cost: 10 });
     const started = event(5, "TaskStarted", { attemptId: "research:a1", simulatedDelayMs: 0 });
@@ -49,5 +50,17 @@ describe("terminal mission outcomes", () => {
     expect(gapResult.events.at(-1)?.type).toBe("TransitionRejected");
     expect(gapResult.state.gaps.gap?.status).toBe("OPEN");
     expect(() => replay([...history, event(4, "MissionCompleted", {})])).toThrow("Only a running mission can finish");
+  });
+
+  it("rejects work and budget mutations after a blocked terminal event", () => {
+    const authorized = event(2, "TaskAuthorized", { taskId: "research", objective: "Research the question.", cost: 10, workClass: "MANDATORY", researchKey: "research", authorizationReason: "MANDATORY_BASELINE", dependencies: [] });
+    const scheduled = event(3, "TaskScheduled", { ...authorized.payload, attemptId: "research:a1", workerRole: "TEST_WORKER" });
+    const blocked = event(4, "MissionTerminated", { status: "BLOCKED_POLICY", reason: "A mission-wide policy blocks a report." });
+    expect(() => replay([mission, authorized, scheduled, blocked, event(5, "BudgetReserved", { attemptId: "research:a1", cost: 10 })])).toThrow("scheduled attempt can reserve");
+
+    const reserved = event(4, "BudgetReserved", { attemptId: "research:a1", cost: 10 });
+    const started = event(5, "TaskStarted", { attemptId: "research:a1", simulatedDelayMs: 0 });
+    const terminated = event(6, "MissionTerminated", blocked.payload);
+    expect(() => replay([mission, authorized, scheduled, reserved, started, terminated, event(7, "FindingSubmitted", { attemptId: "research:a1", finding: "Late result." })])).toThrow("running attempt can submit");
   });
 });

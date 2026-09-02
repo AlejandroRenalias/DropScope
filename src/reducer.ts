@@ -122,13 +122,14 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       return { ...state, divergenceRecords: { ...state.divergenceRecords, ...Object.fromEntries(event.payload.records.map((record) => [record.divergenceId, record])) } };
     }
     case "RevisionRequested":
-      if (state.status !== "RUNNING" || state.revision !== null) throw new Error("Only one revision cycle may be recorded.");
+      if (state.status !== "RUNNING" || !state.blindReviewResults[event.payload.reviewId]) throw new Error("Revision requires one recorded review.");
+      if (state.revision !== null) throw new Error("Only one revision cycle may be recorded.");
       return { ...state, revision: { ...event.payload } };
     case "FocusedReauditCompleted":
-      if (!state.revision || state.revision.revisionId !== event.payload.revisionId || state.revision.reaudit) throw new Error("Focused re-audit requires the active revision.");
+      if (state.status !== "RUNNING" || !state.revision || state.revision.revisionId !== event.payload.revisionId || state.revision.reaudit || new Set(event.payload.changedClaimIds).size !== event.payload.changedClaimIds.length || event.payload.changedClaimIds.some((id) => !state.revision!.affectedClaimIds.includes(id))) throw new Error("Focused re-audit requires the active revision.");
       return { ...state, revision: { ...state.revision, reaudit: event.payload } };
     case "FocusedRereviewCompleted":
-      if (!state.revision || state.revision.revisionId !== event.payload.revisionId || !state.revision.reaudit || state.revision.rereview) throw new Error("Focused re-review requires the completed focused re-audit.");
+      if (state.status !== "RUNNING" || !state.revision || state.revision.revisionId !== event.payload.revisionId || !state.revision.reaudit || state.revision.rereview || event.payload.result.reviewId === state.revision.reviewId) throw new Error("Focused re-review requires the completed focused re-audit.");
       return { ...state, revision: { ...state.revision, rereview: event.payload.result } };
     case "TaskAuthorized": {
       const proposal = event.payload;
@@ -313,6 +314,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       };
     }
     case "MissionCompleted":
+      if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT")) throw new Error("Cannot complete a mission with an unfinished or unaccepted revision.");
       if (Object.values(state.tasks).some((task) => task.status === "SCHEDULED" || task.status === "RUNNING" || task.status === "FAILED_PERMANENT")) {
         throw new Error("Cannot complete a mission with unfinished tasks.");
       }

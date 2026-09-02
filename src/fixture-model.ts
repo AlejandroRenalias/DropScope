@@ -119,6 +119,8 @@ const definitions: readonly Fixture[] = [
       { candidateId: "food-risk", riskInput: riskInput("food-risk", { foodOrIngestion: "FOOD_OR_SUPPLEMENT" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
       { candidateId: "medical-risk", riskInput: riskInput("medical-risk", { healthPositioning: "MEDICAL_CLAIM_OR_DEVICE" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
       { candidateId: "ambiguous-risk", riskInput: riskInput("ambiguous-risk", { evidenceCompleteness: "MATERIAL_ATTRIBUTE_MISSING" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "safe-alpha", riskInput: riskInput("safe-alpha"), customerProblemEvidenceScore: 85, evidenceQualityScore: 85, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "safe-beta", riskInput: riskInput("safe-beta"), customerProblemEvidenceScore: 80, evidenceQualityScore: 80, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
     ],
     tasks: [
       { id: "safety-scan", objective: "Identify safety considerations.", cost: 25, durationMs: 20, workClass: "MANDATORY", researchKey: "safety", dependencies: [], workerRole: "SAFETY_RESEARCHER" },

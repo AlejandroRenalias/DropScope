@@ -12,9 +12,9 @@ describe("fixture-driven simulated missions", () => {
       historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl"),
     });
 
-    expect(result.state.status).toBe(fixtureId === "mixed-opportunity-market" ? "COMPLETED" : "COMPLETED_INSUFFICIENT_EVIDENCE");
+    expect(result.state.status).toBe(fixtureId === "evidence-drought" ? "COMPLETED_INSUFFICIENT_EVIDENCE" : "COMPLETED");
     expect(result.events[0]?.type).toBe("MissionCreated");
-    expect(result.events.at(-1)?.type).toBe(fixtureId === "mixed-opportunity-market" ? "MissionCompleted" : "MissionTerminated");
+    expect(result.events.at(-1)?.type).toBe(fixtureId === "evidence-drought" ? "MissionTerminated" : "MissionCompleted");
     expect(new Set(Object.values(result.schedule.taskOutcomes))).toEqual(new Set(["COMPLETED"]));
   });
 
@@ -31,8 +31,10 @@ describe("fixture-driven simulated missions", () => {
       ["REJECTED", "SAFETY_INGESTION_OR_FOOD"],
       ["REJECTED", "REGULATORY_MEDICAL_POSITIONING"],
       ["MANUAL_REVIEW", "INSUFFICIENT_INFORMATION_MATERIAL_MISSING"],
+      ["ALLOWED", undefined],
+      ["ALLOWED", undefined],
     ]);
-    expect(result.state.status).toBe("COMPLETED_INSUFFICIENT_EVIDENCE");
+    expect(result.state.status).toBe("COMPLETED");
   });
 
   it("changes mission data without changing the runner", async () => {

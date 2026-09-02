@@ -16,6 +16,8 @@ export type WorkClass = z.infer<typeof workClassSchema>;
 export const authorizationReasonSchema = z.enum(["MANDATORY_BASELINE", "GAP_RESOLUTION"]);
 export type AuthorizationReason = z.infer<typeof authorizationReasonSchema>;
 export const gapDecisionTypeSchema = z.enum(["ELIGIBILITY", "RANKING", "CONFIDENCE", "SAFETY_OR_RISK", "BLOCKING_REVIEW", "CONTRADICTION"]);
+export const terminalGapStatusSchema = z.enum(["RESOLVED", "EXHAUSTED", "DECLINED"]);
+export type TerminalGapStatus = z.infer<typeof terminalGapStatusSchema>;
 export const terminalMissionStatusSchema = z.enum(["COMPLETED_INSUFFICIENT_EVIDENCE", "BLOCKED_POLICY", "BLOCKED_BUDGET", "FAILED_UNRECOVERABLE"]);
 export type TerminalMissionStatus = z.infer<typeof terminalMissionStatusSchema>;
 const missionCreatedPayloadSchema = z.union([
@@ -71,6 +73,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({ type: z.literal("GapOpened"), payload: z.object({ gapId: z.string().min(1), researchKey: z.string().min(1), affectedDecisionType: gapDecisionTypeSchema, reason: z.string().min(1) }) }),
   eventBase.extend({ type: z.literal("GapResolved"), payload: z.object({ gapId: z.string().min(1), reason: z.string().min(1) }) }),
   eventBase.extend({ type: z.literal("GapReopened"), payload: z.object({ gapId: z.string().min(1), reason: z.string().min(1) }) }),
+  eventBase.extend({ type: z.literal("GapStatusChanged"), payload: z.object({ gapId: z.string().min(1), status: terminalGapStatusSchema, reason: z.string().min(1) }).strict() }),
   eventBase.extend({
     type: z.literal("BudgetReserved"),
     payload: z.object({ attemptId: z.string().min(1), cost: z.number().int().positive() }),

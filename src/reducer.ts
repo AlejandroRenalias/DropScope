@@ -1,4 +1,4 @@
-import type { AuthorizationReason, MissionEvent, TerminalMissionStatus, WorkClass } from "./contracts.js";
+import type { AuthorizationReason, MissionEvent, TerminalMissionStatus, TerminalGapStatus, WorkClass } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -33,7 +33,7 @@ interface AuthorizationRecord {
   authorizationReason: AuthorizationReason;
   dependencies: string[];
 }
-type GapStatus = "OPEN" | "RESOLVED" | "REOPENED";
+type GapStatus = "OPEN" | "RESOLVED" | "REOPENED" | TerminalGapStatus;
 interface GapRecord { researchKey: string; affectedDecisionType: string; status: GapStatus; reason: string; }
 
 export interface MissionState {
@@ -179,6 +179,12 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       const gap = state.gaps[event.payload.gapId];
       if (!gap || gap.status !== "RESOLVED") throw new Error("Only a resolved gap can be reopened.");
       return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { ...gap, status: "REOPENED", reason: event.payload.reason } } };
+    }
+    case "GapStatusChanged": {
+      if (state.status !== "RUNNING") throw new Error("Cannot change a gap for a non-running mission.");
+      const gap = state.gaps[event.payload.gapId];
+      if (!gap || !["OPEN", "REOPENED"].includes(gap.status)) throw new Error("Only an actionable gap can change status.");
+      return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { ...gap, status: event.payload.status, reason: event.payload.reason } } };
     }
     case "TaskScheduled": {
       if (state.status !== "RUNNING") throw new Error("Cannot schedule work for a non-running mission.");

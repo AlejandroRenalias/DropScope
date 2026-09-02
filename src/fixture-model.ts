@@ -7,6 +7,7 @@ export const fixtureTaskSchema = z.object({
   id: taskIdSchema,
   objective: z.string().min(1),
   cost: z.number().int().positive(),
+  durationMs: z.number().int().positive(),
   workClass: z.enum(["MANDATORY", "OPTIONAL"]),
   researchKey: z.string().min(1),
   dependencies: z.array(taskIdSchema),
@@ -63,30 +64,30 @@ export type Fixture = z.infer<typeof fixtureSchema>;
 const definitions: readonly Fixture[] = [
   {
     fixtureId: "mixed-opportunity-market",
-    seed: 1101,
+    seed: 3,
     budget: 90,
     tasks: [
-      { id: "market-scan", objective: "Map the opportunity space.", cost: 20, workClass: "MANDATORY", researchKey: "market-scope", dependencies: [], workerRole: "MARKET_RESEARCHER" },
-      { id: "demand-check", objective: "Test demand signals.", cost: 25, workClass: "MANDATORY", researchKey: "demand", dependencies: ["market-scan"], workerRole: "EVIDENCE_RESEARCHER" },
-      { id: "risk-check", objective: "Check material risks.", cost: 15, workClass: "OPTIONAL", researchKey: "risk", dependencies: ["market-scan"], workerRole: "RISK_RESEARCHER" },
+      { id: "market-scan", objective: "Map the opportunity space.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "market-scope", dependencies: [], workerRole: "MARKET_RESEARCHER" },
+      { id: "demand-check", objective: "Test demand signals.", cost: 25, durationMs: 15, workClass: "MANDATORY", researchKey: "demand", dependencies: ["market-scan"], workerRole: "EVIDENCE_RESEARCHER" },
+      { id: "risk-check", objective: "Check material risks.", cost: 15, durationMs: 10, workClass: "MANDATORY", researchKey: "risk", dependencies: ["market-scan"], workerRole: "RISK_RESEARCHER" },
     ],
   },
   {
     fixtureId: "evidence-drought",
-    seed: 2202,
+    seed: 1,
     budget: 70,
     tasks: [
-      { id: "source-scan", objective: "Locate available sources.", cost: 20, workClass: "MANDATORY", researchKey: "source-coverage", dependencies: [], workerRole: "SOURCE_RESEARCHER" },
-      { id: "coverage-check", objective: "Measure evidence coverage.", cost: 25, workClass: "MANDATORY", researchKey: "coverage", dependencies: ["source-scan"], workerRole: "EVIDENCE_RESEARCHER" },
+      { id: "source-scan", objective: "Locate available sources.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "source-coverage", dependencies: [], workerRole: "SOURCE_RESEARCHER" },
+      { id: "coverage-check", objective: "Measure evidence coverage.", cost: 25, durationMs: 15, workClass: "MANDATORY", researchKey: "coverage", dependencies: ["source-scan"], workerRole: "EVIDENCE_RESEARCHER" },
     ],
   },
   {
     fixtureId: "safety-ambiguity",
-    seed: 3303,
+    seed: 1,
     budget: 80,
     tasks: [
-      { id: "safety-scan", objective: "Identify safety considerations.", cost: 25, workClass: "MANDATORY", researchKey: "safety", dependencies: [], workerRole: "SAFETY_RESEARCHER" },
-      { id: "ambiguity-check", objective: "Resolve ambiguous signals.", cost: 30, workClass: "MANDATORY", researchKey: "ambiguity", dependencies: ["safety-scan"], workerRole: "EVIDENCE_RESEARCHER" },
+      { id: "safety-scan", objective: "Identify safety considerations.", cost: 25, durationMs: 20, workClass: "MANDATORY", researchKey: "safety", dependencies: [], workerRole: "SAFETY_RESEARCHER" },
+      { id: "ambiguity-check", objective: "Resolve ambiguous signals.", cost: 30, durationMs: 15, workClass: "MANDATORY", researchKey: "ambiguity", dependencies: ["safety-scan"], workerRole: "EVIDENCE_RESEARCHER" },
     ],
   },
 ];

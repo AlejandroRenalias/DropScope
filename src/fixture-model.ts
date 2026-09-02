@@ -50,6 +50,12 @@ export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
     }
   }));
 
+  const candidateIds = new Set<string>();
+  fixture.candidateEvaluations.forEach((candidate, index) => {
+    if (candidateIds.has(candidate.candidateId)) context.addIssue({ code: "custom", path: ["candidateEvaluations", index, "candidateId"], message: `Duplicate fixture candidate ID: ${candidate.candidateId}` });
+    candidateIds.add(candidate.candidateId);
+  });
+
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const byId = new Map(fixture.tasks.map((task) => [task.id, task]));

@@ -12,10 +12,17 @@ describe("fixture-driven simulated missions", () => {
       historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl"),
     });
 
-    expect(result.state.status).toBe("COMPLETED");
+    expect(result.state.status).toBe(fixtureId === "evidence-drought" ? "COMPLETED_INSUFFICIENT_EVIDENCE" : "COMPLETED");
     expect(result.events[0]?.type).toBe("MissionCreated");
-    expect(result.events.at(-1)?.type).toBe("MissionCompleted");
+    expect(result.events.at(-1)?.type).toBe(fixtureId === "evidence-drought" ? "MissionTerminated" : "MissionCompleted");
     expect(new Set(Object.values(result.schedule.taskOutcomes))).toEqual(new Set(["COMPLETED"]));
+  });
+
+  it("derives insufficient evidence from candidate gate inputs rather than a fixture name", async () => {
+    const result = await runFixtureMission({ fixtureId: "evidence-drought", missionId: "drought-outcome", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+
+    expect(result.candidateEligibility).toEqual([expect.objectContaining({ candidateId: "drought-candidate", eligible: false, blockers: expect.arrayContaining(["CUSTOMER_PROBLEM_EVIDENCE_BELOW_THRESHOLD", "EVIDENCE_QUALITY_BELOW_THRESHOLD"]) })]);
+    expect(result.state.status).toBe("COMPLETED_INSUFFICIENT_EVIDENCE");
   });
 
   it("changes mission data without changing the runner", async () => {

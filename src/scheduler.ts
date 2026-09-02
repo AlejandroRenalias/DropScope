@@ -59,6 +59,7 @@ export async function runSimulatedSchedule(options: {
   totalBudget: number;
   tasks: SimulatedTask[];
   maxConcurrency?: number;
+  completeMission?: boolean;
 }): Promise<ScheduleResult> {
   const maxConcurrency = options.maxConcurrency ?? 3;
   if (maxConcurrency < 1 || maxConcurrency > 3) throw new Error("Concurrency must be between 1 and 3.");
@@ -137,7 +138,7 @@ export async function runSimulatedSchedule(options: {
     else await append("FindingSubmitted", { attemptId, finding: `${finished.taskId} completed.` });
     if (finished.outcome === "COMPLETED") completed.add(finished.taskId);
   }
-  await append("MissionCompleted", {});
+  if (options.completeMission ?? true) await append("MissionCompleted", {});
   return { executionIntervals: intervals, maxConcurrentAttempts, taskOutcomes, completionOrder };
 }
 import { JsonlEventStore } from "./event-store.js";

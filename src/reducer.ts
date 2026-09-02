@@ -1,9 +1,9 @@
-import type { AuthorizationReason, MissionEvent, WorkClass } from "./contracts.js";
+import type { AuthorizationReason, MissionEvent, TerminalMissionStatus, WorkClass } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
 
-export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED";
+export type MissionStatus = "NOT_STARTED" | "RUNNING" | "COMPLETED" | TerminalMissionStatus;
 export type TaskStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT" | "FAILED_PERMANENT";
 export type AttemptStatus = "SCHEDULED" | "RUNNING" | "COMPLETED" | "INTERRUPTED" | "FAILED_TRANSIENT" | "FAILED_PERMANENT";
 
@@ -169,11 +169,13 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (state.gaps[event.payload.gapId]) throw new Error("Gap already exists.");
       return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { researchKey: event.payload.researchKey, affectedDecisionType: event.payload.affectedDecisionType, status: "OPEN", reason: event.payload.reason } } };
     case "GapResolved": {
+      if (state.status !== "RUNNING") throw new Error("Cannot resolve a gap for a non-running mission.");
       const gap = state.gaps[event.payload.gapId];
       if (!gap || !["OPEN", "REOPENED"].includes(gap.status)) throw new Error("Only an actionable gap can be resolved.");
       return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { ...gap, status: "RESOLVED", reason: event.payload.reason } } };
     }
     case "GapReopened": {
+      if (state.status !== "RUNNING") throw new Error("Cannot reopen a gap for a non-running mission.");
       const gap = state.gaps[event.payload.gapId];
       if (!gap || gap.status !== "RESOLVED") throw new Error("Only a resolved gap can be reopened.");
       return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { ...gap, status: "REOPENED", reason: event.payload.reason } } };
@@ -219,7 +221,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskStarted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "SCHEDULED" || task.status !== "SCHEDULED") {
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "SCHEDULED" || task.status !== "SCHEDULED") {
         throw new Error("Only a scheduled attempt can start.");
       }
       if (!attempt.reserved || task.cost > state.budget.reserved) throw new Error("Attempt has no sufficient reserved budget.");
@@ -237,7 +239,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "BudgetReserved": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "SCHEDULED" || attempt.reserved || event.payload.cost !== task.cost) {
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "SCHEDULED" || attempt.reserved || event.payload.cost !== task.cost) {
         throw new Error("Only a scheduled attempt can reserve its exact cost.");
       }
       if (task.cost > state.budget.available) throw new Error("Insufficient available budget.");
@@ -264,7 +266,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskInterrupted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
         throw new Error("Only a running attempt can be interrupted.");
       }
       return {
@@ -277,7 +279,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskFailedTransient": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
       return {
         ...state,
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
@@ -288,7 +290,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskFailedPermanent": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
       return {
         ...state,
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
@@ -303,7 +305,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "FindingSubmitted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (!attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
         throw new Error("Only a running attempt can submit a finding.");
       }
       return {
@@ -314,11 +316,25 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       };
     }
     case "MissionCompleted":
+      if (state.status !== "RUNNING") throw new Error("Only a running mission can finish.");
       if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT")) throw new Error("Cannot complete a mission with an unfinished or unaccepted revision.");
       if (Object.values(state.tasks).some((task) => task.status === "SCHEDULED" || task.status === "RUNNING" || task.status === "FAILED_PERMANENT")) {
         throw new Error("Cannot complete a mission with unfinished tasks.");
       }
       return { ...state, status: "COMPLETED" };
+    case "MissionTerminated":
+      if (state.status !== "RUNNING") throw new Error("Only a running mission can terminate.");
+      if (event.payload.status === "COMPLETED_INSUFFICIENT_EVIDENCE") {
+        const mandatoryAuthorizations = Object.entries(state.authorizations).filter(([, authorization]) => authorization.workClass === "MANDATORY");
+        if (mandatoryAuthorizations.length === 0 || mandatoryAuthorizations.some(([taskId]) => state.tasks[taskId]?.status !== "COMPLETED") || Object.values(state.tasks).some((task) => task.status !== "COMPLETED")) {
+          throw new Error("Insufficient-evidence termination requires completed baseline research.");
+        }
+        if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT")) throw new Error("Cannot terminate a mission with an unfinished or unaccepted revision.");
+        if (Object.values(state.gaps).some((gap) => gap.status === "OPEN" || gap.status === "REOPENED")) {
+          throw new Error("Insufficient-evidence termination requires all actionable gaps to be resolved.");
+        }
+      }
+      return { ...state, status: event.payload.status };
   }
 }
 

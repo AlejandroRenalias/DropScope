@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { riskGateDecisionSchema } from "./research-domain.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const taskIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Task IDs must be lowercase kebab-case.");
@@ -14,11 +15,23 @@ export const fixtureTaskSchema = z.object({
   workerRole: z.string().min(1),
 }).strict();
 
+export const fixtureCandidateEvaluationSchema = z.object({
+  candidateId: z.string().min(1),
+  riskDecision: riskGateDecisionSchema,
+  customerProblemEvidenceScore: z.number().int().min(0).max(100),
+  evidenceQualityScore: z.number().int().min(0).max(100),
+  hasUnresolvedBlockingContradiction: z.boolean(),
+  hasBlockingDecisionCriticalMissingEvidence: z.boolean(),
+}).strict().superRefine((candidate, context) => {
+  if (candidate.riskDecision.candidateId !== candidate.candidateId) context.addIssue({ code: "custom", path: ["riskDecision", "candidateId"], message: "Risk decision must belong to the fixture candidate." });
+});
+
 const fixtureShape = z.object({
   fixtureId: fixtureIdSchema,
   seed: z.number().int(),
   budget: z.number().int().positive(),
   tasks: z.array(fixtureTaskSchema).min(1),
+  candidateEvaluations: z.array(fixtureCandidateEvaluationSchema),
 }).strict();
 
 export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
@@ -36,6 +49,12 @@ export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
       context.addIssue({ code: "custom", path: ["tasks", index, "dependencies", dependencyIndex], message: `Unknown task dependency: ${dependency}` });
     }
   }));
+
+  const candidateIds = new Set<string>();
+  fixture.candidateEvaluations.forEach((candidate, index) => {
+    if (candidateIds.has(candidate.candidateId)) context.addIssue({ code: "custom", path: ["candidateEvaluations", index, "candidateId"], message: `Duplicate fixture candidate ID: ${candidate.candidateId}` });
+    candidateIds.add(candidate.candidateId);
+  });
 
   const visiting = new Set<string>();
   const visited = new Set<string>();
@@ -66,6 +85,7 @@ const definitions: readonly Fixture[] = [
     fixtureId: "mixed-opportunity-market",
     seed: 3,
     budget: 90,
+    candidateEvaluations: [],
     tasks: [
       { id: "market-scan", objective: "Map the opportunity space.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "market-scope", dependencies: [], workerRole: "MARKET_RESEARCHER" },
       { id: "demand-check", objective: "Test demand signals.", cost: 25, durationMs: 15, workClass: "MANDATORY", researchKey: "demand", dependencies: ["market-scan"], workerRole: "EVIDENCE_RESEARCHER" },
@@ -76,6 +96,9 @@ const definitions: readonly Fixture[] = [
     fixtureId: "evidence-drought",
     seed: 1,
     budget: 70,
+    candidateEvaluations: [
+      { candidateId: "drought-candidate", riskDecision: { decisionId: "drought-risk", candidateId: "drought-candidate", outcome: "ALLOWED", reasons: [], decidedByPolicyVersion: "risk-v1" }, customerProblemEvidenceScore: 40, evidenceQualityScore: 45, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
     tasks: [
       { id: "source-scan", objective: "Locate available sources.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "source-coverage", dependencies: [], workerRole: "SOURCE_RESEARCHER" },
       { id: "coverage-check", objective: "Measure evidence coverage.", cost: 25, durationMs: 15, workClass: "MANDATORY", researchKey: "coverage", dependencies: ["source-scan"], workerRole: "EVIDENCE_RESEARCHER" },
@@ -85,6 +108,7 @@ const definitions: readonly Fixture[] = [
     fixtureId: "safety-ambiguity",
     seed: 1,
     budget: 80,
+    candidateEvaluations: [],
     tasks: [
       { id: "safety-scan", objective: "Identify safety considerations.", cost: 25, durationMs: 20, workClass: "MANDATORY", researchKey: "safety", dependencies: [], workerRole: "SAFETY_RESEARCHER" },
       { id: "ambiguity-check", objective: "Resolve ambiguous signals.", cost: 30, durationMs: 15, workClass: "MANDATORY", researchKey: "ambiguity", dependencies: ["safety-scan"], workerRole: "EVIDENCE_RESEARCHER" },

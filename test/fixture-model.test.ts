@@ -20,6 +20,7 @@ describe("synthetic fixture model", () => {
       { ...base.tasks[0], id: "first", dependencies: ["second"] },
       { ...base.tasks[1], id: "second", dependencies: ["first"] },
     ] })).toThrow(/acyclic/);
+    expect(() => fixtureSchema.parse({ ...base, candidateEvaluations: [base.candidateEvaluations[0], base.candidateEvaluations[0]] })).toThrow(/Duplicate fixture candidate ID/);
   });
 
   it("rejects unknown fixture IDs", () => {

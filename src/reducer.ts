@@ -184,7 +184,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (existingTask && !["INTERRUPTED", "FAILED_PERMANENT"].includes(existingTask.status)) throw new Error("Task cannot receive another attempt.");
       if (existingTask && existingTask.workClass !== event.payload.workClass) throw new Error("A retry cannot change a task's work class.");
       if (state.attempts[event.payload.attemptId]) throw new Error("Attempt is already scheduled.");
-      const workerRole = event.payload.workerRole;
+      const workerRole = event.payload.workerRole ?? "legacy-unknown";
       if (existingTask?.status === "FAILED_PERMANENT" && existingTask.attemptIds.some((attemptId) => state.attempts[attemptId]?.workerRole === workerRole)) {
         throw new Error("A permanent failure cannot be retried with the same worker.");
       }
@@ -302,7 +302,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       };
     }
     case "MissionCompleted":
-      if (Object.values(state.tasks).some((task) => task.status === "SCHEDULED" || task.status === "RUNNING")) {
+      if (Object.values(state.tasks).some((task) => task.status === "SCHEDULED" || task.status === "RUNNING" || task.status === "FAILED_PERMANENT")) {
         throw new Error("Cannot complete a mission with unfinished tasks.");
       }
       return { ...state, status: "COMPLETED" };

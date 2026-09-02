@@ -40,5 +40,6 @@ describe("permanent worker failure", () => {
       event(6, "TaskFailedPermanent", { attemptId: "worker-task:a1", reason: "Worker is unavailable." }),
     ];
     expect(() => replay([...events, schedule(7, "worker-task:a2", "RESEARCHER")])).toThrow("same worker");
+    expect(() => replay([...events, event(7, "MissionCompleted", {})])).toThrow("unfinished tasks");
   });
 });

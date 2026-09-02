@@ -59,7 +59,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
       cost: z.number().int().positive(),
       workClass: workClassSchema,
       researchKey: z.string().min(1),
-      workerRole: z.string().min(1),
+      workerRole: z.string().min(1).optional(),
       dependencies: z.array(z.string().min(1)),
     }),
   }),

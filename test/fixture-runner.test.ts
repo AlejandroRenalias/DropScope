@@ -25,6 +25,18 @@ describe("fixture-driven simulated missions", () => {
     expect(result.state.status).toBe("COMPLETED_INSUFFICIENT_EVIDENCE");
   });
 
+  it("derives safety fixture policy outcomes and reason codes through the shared evaluator", async () => {
+    const result = await runFixtureMission({ fixtureId: "safety-ambiguity", missionId: "safety-outcome", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+    expect(result.riskDecisions.map((decision) => [decision.outcome, decision.reasons[0]?.code])).toEqual([
+      ["REJECTED", "SAFETY_INGESTION_OR_FOOD"],
+      ["REJECTED", "REGULATORY_MEDICAL_POSITIONING"],
+      ["MANUAL_REVIEW", "INSUFFICIENT_INFORMATION_MATERIAL_MISSING"],
+      ["ALLOWED", undefined],
+      ["ALLOWED", undefined],
+    ]);
+    expect(result.state.status).toBe("COMPLETED");
+  });
+
   it("changes mission data without changing the runner", async () => {
     const root = await mkdtemp(join(tmpdir(), "dropscope-"));
     const first = await runFixtureMission({ fixtureId: "evidence-drought", missionId: "fixture-one", historyPath: join(root, "one.jsonl") });

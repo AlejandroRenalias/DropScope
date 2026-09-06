@@ -63,4 +63,14 @@ describe("terminal mission outcomes", () => {
     const terminated = event(6, "MissionTerminated", blocked.payload);
     expect(() => replay([mission, authorized, scheduled, reserved, started, terminated, event(7, "FindingSubmitted", { attemptId: "research:a1", finding: "Late result." })])).toThrow("running attempt can submit");
   });
+
+  it.each(["BLOCKED_POLICY", "BLOCKED_BUDGET", "FAILED_UNRECOVERABLE"] as const)("keeps %s terminal", (status) => {
+    const terminated = event(2, "MissionTerminated", { status, reason: "Terminal micro-scenario." });
+    const lateAuthorization = event(3, "TaskAuthorized", { taskId: "late", objective: "Late work.", cost: 10, workClass: "MANDATORY", researchKey: "late", authorizationReason: "MANDATORY_BASELINE", dependencies: [] });
+    const result = handleProposedEvent([mission, terminated], lateAuthorization);
+
+    expect(result.events.at(-1)?.type).toBe("TransitionRejected");
+    expect(result.state.status).toBe(status);
+    expect(() => replay([mission, terminated, event(3, "MissionTerminated", { status, reason: "Second terminal event." })])).toThrow("Only a running mission can terminate");
+  });
 });

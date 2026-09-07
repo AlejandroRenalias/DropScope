@@ -1,0 +1,17 @@
+import { StrictMode, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { Theme } from "@radix-ui/themes";
+import { BellSimple } from "@phosphor-icons/react/dist/csr/BellSimple";
+import { CaretRight } from "@phosphor-icons/react/dist/csr/CaretRight";
+import { CurrencyCircleDollar } from "@phosphor-icons/react/dist/csr/CurrencyCircleDollar";
+import { Play } from "@phosphor-icons/react/dist/csr/Play";
+import { ShieldWarning } from "@phosphor-icons/react/dist/csr/ShieldWarning";
+import "@radix-ui/themes/styles.css";
+import "./styles.css";
+import robotRoles from "./assets/robot-roles.png";
+import { officeScenarios, type AgentState, type OfficeScenario } from "./office-projection.js";
+
+const positions: Record<string, string> = { commander: "0%", evidence: "33.333%", operations: "66.666%", risk: "100%" };
+function Robot({ id, state }: { id: string; state: AgentState }) { return <div className={`robot ${state.toLowerCase()}`}><div className="sprite" style={{ backgroundImage: `url(${robotRoles})`, backgroundPosition: positions[id] }} /><small>{state}</small></div>; }
+function Office() { const [scenario, setScenario] = useState<OfficeScenario>("RUNNING"); const [reduced, setReduced] = useState(false); const p = officeScenarios[scenario]; return <div className={reduced ? "app reduced" : "app"}><header><div className="brand"><b>D</b>DropScope</div><div className="mission"><span>{p.mission.phase}</span><strong>{p.mission.name}</strong></div><BellSimple size={20} /></header><div className="layout"><nav><button className="active"><Play size={18} />Research Office</button><button>Mission Replay</button><button><ShieldWarning size={18} />Review Office</button><button>Reports</button></nav><main><section className="intro"><div><p>Mission control</p><h1>{p.mission.name}</h1><small>{p.sourceLabel}</small></div><div className="controls">{(Object.keys(officeScenarios) as OfficeScenario[]).map(s => <button className={s === scenario ? "selected" : ""} onClick={() => setScenario(s)} key={s}>{s}</button>)}</div></section><section className="office"><article className="commander"><label>Commander station</label><Robot id="commander" state={p.agents[0]!.state} /><h2>Commander</h2><p>{p.agents[0]!.task}</p></article><article className="specialists"><label>Specialist desks</label><div>{p.agents.slice(1).map(a => <section className={a.state.toLowerCase()} key={a.id}><Robot id={a.id} state={a.state} /><strong>{a.role}</strong><p>{a.task}</p><small>{a.detail}</small></section>)}</div></article></section><section className="details"><article><label>Work graph</label><h2>Dependencies and concurrent work</h2>{p.tasks.map(t => <div className={`task ${t.state.toLowerCase()}`} key={t.label}><i /><span><strong>{t.label}</strong><small>{t.dependencies}</small></span><CaretRight size={18} /></div>)}</article><article><label>Mission ledger</label><h2>{p.ledger.available} units available</h2><dl>{Object.entries(p.ledger).map(([k,v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></article><article><label>Event trail</label><button className="motion" onClick={() => setReduced(!reduced)}>{reduced ? "Enable motion" : "Reduce motion"}</button>{p.events.map(e => <div className="event" key={e.sequence}><b>{e.sequence}</b><span><strong>{e.type}</strong><small>{e.detail}</small></span></div>)}</article></section></main></div></div>; }
+createRoot(document.getElementById("root")!).render(<StrictMode><Theme appearance="dark" accentColor="cyan" grayColor="slate" radius="medium"><Office /></Theme></StrictMode>);

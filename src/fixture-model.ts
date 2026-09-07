@@ -135,6 +135,26 @@ const definitions: readonly Fixture[] = [
       { id: "ambiguity-check", objective: "Resolve ambiguous signals.", cost: 30, durationMs: 15, workClass: "MANDATORY", researchKey: "ambiguity", dependencies: ["safety-scan"], workerRole: "EVIDENCE_RESEARCHER" },
     ],
   },
+  {
+    fixtureId: "crosscurrent-workspace-market",
+    seed: 47,
+    budget: 140,
+    candidateEvaluations: [
+      { candidateId: "food-power-crosscurrent", riskInput: riskInput("food-power-crosscurrent", { foodOrIngestion: "FOOD_OR_SUPPLEMENT", electricalPower: "MAINS_OR_HIGH_POWER", brandOrCreativeSimilaritySignal: "OBVIOUS_BRAND_OR_CHARACTER_REFERENCE" }), customerProblemEvidenceScore: 94, evidenceQualityScore: 91, trendDurabilityScore: 88, advertisingSaturationScore: 30, operationalRiskScore: 20, failureRiskScore: 18, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "medical-workspace", riskInput: riskInput("medical-workspace", { healthPositioning: "MEDICAL_CLAIM_OR_DEVICE" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 87, trendDurabilityScore: 82, advertisingSaturationScore: 35, operationalRiskScore: 28, failureRiskScore: 24, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "child-workspace", riskInput: riskInput("child-workspace", { intendedUser: "CHILD_UNDER_14", regulatedCategorySignal: "TOY_OR_CHILDCARE" }), customerProblemEvidenceScore: 86, evidenceQualityScore: 84, trendDurabilityScore: 80, advertisingSaturationScore: 32, operationalRiskScore: 26, failureRiskScore: 22, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "uncertain-workspace", riskInput: riskInput("uncertain-workspace", { evidenceCompleteness: "CONFLICTING_MATERIAL_ATTRIBUTE" }), customerProblemEvidenceScore: 88, evidenceQualityScore: 72, trendDurabilityScore: 79, advertisingSaturationScore: 40, operationalRiskScore: 30, failureRiskScore: 26, hasUnresolvedBlockingContradiction: true, hasBlockingDecisionCriticalMissingEvidence: true },
+      { candidateId: "deskflow-alpha", riskInput: riskInput("deskflow-alpha"), customerProblemEvidenceScore: 91, evidenceQualityScore: 89, trendDurabilityScore: 86, advertisingSaturationScore: 24, operationalRiskScore: 18, failureRiskScore: 16, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "deskflow-beta", riskInput: riskInput("deskflow-beta"), customerProblemEvidenceScore: 84, evidenceQualityScore: 82, trendDurabilityScore: 78, advertisingSaturationScore: 29, operationalRiskScore: 23, failureRiskScore: 21, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "deskflow-gamma", riskInput: riskInput("deskflow-gamma"), customerProblemEvidenceScore: 79, evidenceQualityScore: 80, trendDurabilityScore: 74, advertisingSaturationScore: 34, operationalRiskScore: 27, failureRiskScore: 25, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [
+      { id: "workspace-scan", objective: "Map cross-current workspace demand.", cost: 25, durationMs: 20, workClass: "MANDATORY", researchKey: "workspace-market", dependencies: [], workerRole: "MARKET_RESEARCHER" },
+      { id: "workflow-interviews", objective: "Compare recurring workflow problems.", cost: 30, durationMs: 15, workClass: "MANDATORY", researchKey: "workflow-evidence", dependencies: ["workspace-scan"], workerRole: "EVIDENCE_RESEARCHER" },
+      { id: "supplier-check", objective: "Check operational feasibility.", cost: 20, durationMs: 12, workClass: "MANDATORY", researchKey: "supplier-feasibility", dependencies: ["workspace-scan"], workerRole: "OPERATIONS_RESEARCHER" },
+      { id: "crosscurrent-risk-review", objective: "Review conflicting risk signals.", cost: 25, durationMs: 10, workClass: "MANDATORY", researchKey: "crosscurrent-risk", dependencies: ["workflow-interviews", "supplier-check"], workerRole: "RISK_RESEARCHER" },
+    ],
+  },
 ];
 
 const fixtureRegistry = new Map(definitions.map((fixture) => [fixture.fixtureId, fixture]));

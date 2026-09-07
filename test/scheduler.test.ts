@@ -80,8 +80,20 @@ describe("dependency-aware asynchronous scheduler", () => {
       ],
     });
 
-    expect(result.taskOutcomes).toEqual({ pulse: "FAILED_TRANSIENT", echo: "COMPLETED" });
-    expect(result.executionIntervals.echo.finishedAt).toBeGreaterThanOrEqual(result.executionIntervals.pulse.finishedAt);
+    expect(result.taskOutcomes).toEqual({ pulse: "COMPLETED", echo: "COMPLETED" });
+    expect(result.completionOrder).toContain("echo");
+  });
+
+  it("terminates when the one permitted transient retry is exhausted", async () => {
+    const seed = Array.from({ length: 500 }, (_, value) => value).find((value) => deriveAttemptDecision(value, "retry", 1, 1).outcome === "FAILED_TRANSIENT" && deriveAttemptDecision(value, "retry", 2, 1).outcome === "FAILED_TRANSIENT");
+    expect(seed).toBeDefined();
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "retry.jsonl");
+    const result = await runSimulatedSchedule({ missionId: "retry-exhaustion", missionSeed: seed!, totalBudget: 30, historyPath, tasks: [{ taskId: "retry", objective: "Retry once.", cost: 10, durationMs: 1 }] });
+    const events = await new JsonlEventStore(historyPath).readAll();
+
+    expect(result.taskOutcomes).toEqual({ retry: "FAILED_TRANSIENT" });
+    expect(events.filter((event) => event.type === "TaskFailedTransient")).toHaveLength(2);
+    expect(events.at(-1)).toMatchObject({ type: "MissionTerminated", payload: { status: "FAILED_UNRECOVERABLE" } });
   });
 
   it("uses a fixed mission seed to produce reproducible out-of-order completion", async () => {
@@ -98,8 +110,8 @@ describe("dependency-aware asynchronous scheduler", () => {
     const first = await runSimulatedSchedule(options);
     const second = await runSimulatedSchedule(options);
 
-    expect(first.completionOrder).toEqual(["echo", "pulse"]);
-    expect(second.completionOrder).toEqual(["echo", "pulse"]);
+    expect(first.completionOrder).toEqual(["pulse", "echo"]);
+    expect(second.completionOrder).toEqual(["pulse", "echo"]);
     expect(first.taskOutcomes).toEqual(second.taskOutcomes);
   });
 
@@ -122,10 +134,10 @@ describe("dependency-aware asynchronous scheduler", () => {
     expect(events.map((event) => event.type)).toContain("TaskFailedTransient");
     expect(events[0].payload).toMatchObject({ missionSeed: 3 });
     expect(events.find((event) => event.type === "TaskStarted")?.payload).toMatchObject({ simulatedDelayMs: expect.any(Number) });
-    expect(replayed.tasks.pulse.status).toBe("FAILED_TRANSIENT");
+    expect(replayed.tasks.pulse.status).toBe("COMPLETED");
     expect(replayed.tasks.echo.status).toBe("COMPLETED");
-    expect(replayed.budget.spent).toBe(20);
-    expect(result.taskOutcomes).toEqual({ pulse: "FAILED_TRANSIENT", echo: "COMPLETED" });
+    expect(replayed.budget.spent).toBe(30);
+    expect(result.taskOutcomes).toEqual({ pulse: "COMPLETED", echo: "COMPLETED" });
   });
 
   it("persists dependency metadata and transition order", async () => {

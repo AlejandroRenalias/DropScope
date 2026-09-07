@@ -26,10 +26,12 @@ const seededDelay = (seed: number, taskId: string, attemptNumber: number, baseDu
   const taskHash = [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0);
   return baseDurationMs + 9 - ((seed + taskHash + attemptNumber) % 10);
 };
-const seededOutcome = (seed: number, taskId: string, attemptNumber: number) =>
-  ((seed * 17 + [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0) + attemptNumber) % 5 === 0
+const seededOutcome = (seed: number, taskId: string, attemptNumber: number) => {
+  const base = seed * 17 + [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0);
+  return ((attemptNumber === 1 && (base + 1) % 5 === 0) || (attemptNumber === 2 && base % 7 === 0)
     ? "FAILED_TRANSIENT"
     : "COMPLETED") as "COMPLETED" | "FAILED_TRANSIENT";
+};
 export const deriveAttemptDecision = (seed: number, taskId: string, attemptNumber: number, baseDurationMs: number) => ({
   simulatedDelayMs: seededDelay(seed, taskId, attemptNumber, baseDurationMs),
   outcome: seededOutcome(seed, taskId, attemptNumber),
@@ -82,10 +84,11 @@ export async function runSimulatedSchedule(options: {
   const pending = new Map(options.tasks.map((task) => [task.taskId, task]));
   const completed = new Set<string>();
   const intervals: Record<string, ExecutionInterval> = {};
-  const running = new Map<string, Promise<{ taskId: string; outcome: "COMPLETED" | "FAILED_TRANSIENT" }>>();
+  const running = new Map<string, Promise<{ taskId: string; attemptNumber: number; outcome: "COMPLETED" | "FAILED_TRANSIENT" }>>();
   const taskOutcomes: Record<string, "COMPLETED" | "FAILED_TRANSIENT"> = {};
   const completionOrder: string[] = [];
   let maxConcurrentAttempts = 0;
+  let terminated = false;
 
   const canStart = (task: SimulatedTask) => (task.dependencies ?? []).every((dependency) => completed.has(dependency));
   const startEligibleTasks = async () => {
@@ -120,25 +123,49 @@ export async function runSimulatedSchedule(options: {
       await append("TaskStarted", { attemptId, simulatedDelayMs: durationMs });
       running.set(task.taskId, wait(durationMs).then(() => {
         intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
-        return { taskId: task.taskId, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
+        return { taskId: task.taskId, attemptNumber, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
       }));
       maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
     }
   };
 
-  while (pending.size > 0 || running.size > 0) {
+  while (!terminated && (pending.size > 0 || running.size > 0)) {
     await startEligibleTasks();
     if (running.size === 0) throw new Error("No eligible task remains; dependencies are missing or cyclic.");
     const finished = await Promise.race(running.values());
     running.delete(finished.taskId);
-    taskOutcomes[finished.taskId] = finished.outcome;
-    completionOrder.push(finished.taskId);
-    const attemptId = `${finished.taskId}:a1`;
-    if (finished.outcome === "FAILED_TRANSIENT") await append("TaskFailedTransient", { attemptId, reason: "Simulated transient failure." });
-    else await append("FindingSubmitted", { attemptId, finding: `${finished.taskId} completed.` });
-    if (finished.outcome === "COMPLETED") completed.add(finished.taskId);
+    const attemptId = `${finished.taskId}:a${finished.attemptNumber}`;
+    if (finished.outcome === "FAILED_TRANSIENT") {
+      await append("TaskFailedTransient", { attemptId, reason: "Simulated transient failure." });
+      if (finished.attemptNumber < 2) {
+        const task = options.tasks.find((candidate) => candidate.taskId === finished.taskId)!;
+        const retryId = `${task.taskId}:a2`;
+        if (task.cost > state.budget.available) {
+          await append("MissionTerminated", { status: "BLOCKED_BUDGET", reason: "Transient retry cannot be funded." });
+          terminated = true;
+          continue;
+        }
+        await append("TaskScheduled", { taskId: task.taskId, attemptId: retryId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", researchKey: task.researchKey ?? task.taskId, workerRole: task.workerRole ?? "SIMULATED_WORKER", dependencies: task.dependencies ?? [] });
+        await append("BudgetReserved", { attemptId: retryId, cost: task.cost });
+        const startedAt = Date.now();
+        const durationMs = seededDelay(options.missionSeed, task.taskId, 2, task.durationMs);
+        await append("TaskStarted", { attemptId: retryId, simulatedDelayMs: durationMs });
+        running.set(task.taskId, wait(durationMs).then(() => { intervals[task.taskId] = { startedAt, finishedAt: Date.now() }; return { taskId: task.taskId, attemptNumber: 2, outcome: seededOutcome(options.missionSeed, task.taskId, 2) }; }));
+        maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
+      } else {
+        taskOutcomes[finished.taskId] = finished.outcome;
+        completionOrder.push(finished.taskId);
+        await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: "Transient retry allowance was exhausted." });
+        terminated = true;
+      }
+    } else {
+      taskOutcomes[finished.taskId] = finished.outcome;
+      completionOrder.push(finished.taskId);
+      await append("FindingSubmitted", { attemptId, finding: `${finished.taskId} completed.` });
+      completed.add(finished.taskId);
+    }
   }
-  if (options.completeMission ?? true) await append("MissionCompleted", {});
+  if (!terminated && (options.completeMission ?? true)) await append("MissionCompleted", {});
   return { executionIntervals: intervals, maxConcurrentAttempts, taskOutcomes, completionOrder };
 }
 import { JsonlEventStore } from "./event-store.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp } from "node:fs/promises";
+import { appendFile, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -62,6 +62,53 @@ describe("Milestone 1A.0 walking skeleton", () => {
     expect(result.state.tasks["system-check"].attemptIds).toEqual(["system-check:a1", "system-check:a2"]);
     expect(result.state.attempts["system-check:a1"].status).toBe("INTERRUPTED");
     expect(result.state.attempts["system-check:a2"].status).toBe("COMPLETED");
+    expect(result.events[5]).toMatchObject({ type: "RecoveryStarted", payload: { truncatedFinalLineDiscarded: false } });
+  });
+
+  it("discards and discloses only a truncated final JSONL line during recovery", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
+    await beginWalkingSkeletonMission({ missionId: "truncated-tail-demo", totalBudget: 120, historyPath });
+    await appendFile(historyPath, '{"schemaVersion":1,"sequenceNumber":6', "utf8");
+
+    const result = await recoverWalkingSkeletonMission({ missionId: "truncated-tail-demo", historyPath });
+
+    expect(result.events.map((event) => event.sequenceNumber)).toEqual(Array.from({ length: 12 }, (_, index) => index + 1));
+    expect(result.events[5]).toMatchObject({ type: "RecoveryStarted", payload: { truncatedFinalLineDiscarded: true } });
+    expect(await readFile(historyPath, "utf8")).not.toContain('"sequenceNumber":6{"schemaVersion"');
+  });
+
+  it("rejects malformed complete JSONL history during recovery", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
+    await beginWalkingSkeletonMission({ missionId: "malformed-history-demo", totalBudget: 120, historyPath });
+    await appendFile(historyPath, '{"schemaVersion":1}\n', "utf8");
+
+    await expect(recoverWalkingSkeletonMission({ missionId: "malformed-history-demo", historyPath })).rejects.toThrow();
+  });
+
+  it("preserves replay compatibility for older recovery events without a truncation disposition", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
+    const started = await beginWalkingSkeletonMission({ missionId: "legacy-recovery-demo", totalBudget: 120, historyPath });
+    const legacyRecovery = { ...started.events[0], sequenceNumber: 6, eventId: "legacy-recovery-demo-6", type: "RecoveryStarted" as const, payload: { interruptedAttemptIds: ["system-check:a1"] } };
+
+    const { missionEventSchema } = await import("../src/contracts.js");
+    expect(missionEventSchema.parse(legacyRecovery).payload).toMatchObject({ truncatedFinalLineDiscarded: false });
+  });
+
+  it("rejects malformed final fragments even when they lack a newline", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
+    await beginWalkingSkeletonMission({ missionId: "malformed-tail-demo", totalBudget: 120, historyPath });
+    await appendFile(historyPath, '{"schemaVersion":1,}', "utf8");
+
+    await expect(recoverWalkingSkeletonMission({ missionId: "malformed-tail-demo", historyPath })).rejects.toThrow("malformed rather than demonstrably truncated");
+  });
+
+  it("rejects a complete final record that is merely missing its newline", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
+    await beginWalkingSkeletonMission({ missionId: "missing-newline-demo", totalBudget: 120, historyPath });
+    const contents = await readFile(historyPath, "utf8");
+    await writeFile(historyPath, contents.trimEnd(), "utf8");
+
+    await expect(recoverWalkingSkeletonMission({ missionId: "missing-newline-demo", historyPath })).rejects.toThrow("malformed rather than demonstrably truncated");
   });
 
   it("rejects a history with a skipped sequence number", async () => {
@@ -79,7 +126,7 @@ describe("Milestone 1A.0 walking skeleton", () => {
   it("enforces the single mission recovery restart cap", async () => {
     const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
     const started = await beginWalkingSkeletonMission({ missionId: "recovery-cap-demo", totalBudget: 120, historyPath });
-    const once = [...started.events, { ...started.events[0], sequenceNumber: 6, eventId: "recovery-cap-demo-6", type: "RecoveryStarted" as const, payload: { interruptedAttemptIds: ["system-check:a1"] } }];
+    const once = [...started.events, { ...started.events[0], sequenceNumber: 6, eventId: "recovery-cap-demo-6", type: "RecoveryStarted" as const, payload: { interruptedAttemptIds: ["system-check:a1"], truncatedFinalLineDiscarded: false } }];
     expect(() => replay([...once, { ...once[5], sequenceNumber: 7, eventId: "recovery-cap-demo-7" }])).toThrow("recovery restart cap reached");
     expect(() => replay([...started.events, { ...once[5], sequenceNumber: 6, eventId: "recovery-cap-demo-invalid", payload: { interruptedAttemptIds: ["missing"] } } as never])).toThrow("must name each current running attempt");
   });

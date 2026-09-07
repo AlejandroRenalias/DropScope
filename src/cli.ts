@@ -1,6 +1,7 @@
 import { join } from "node:path";
 
 import { runWalkingSkeletonMission } from "./run-mission.js";
+import { formatMissionSummary } from "./mission-summary.js";
 
 const missionId = `walking-skeleton-demo-${Date.now()}`;
 const result = await runWalkingSkeletonMission({
@@ -9,6 +10,4 @@ const result = await runWalkingSkeletonMission({
   historyPath: join(".dropscope-data", `${missionId}.jsonl`),
 });
 
-console.log(`Mission: ${result.state.status}`);
-console.log(`Budget: ${result.state.budget.total} total, ${result.state.budget.spent} spent, ${result.state.budget.available} available`);
-console.log(`History: ${result.events.length} saved events`);
+console.log(formatMissionSummary(result.state, result.events));

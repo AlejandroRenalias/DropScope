@@ -65,7 +65,8 @@ export async function beginWalkingSkeletonMission(options: Required<MissionOptio
 
 export async function recoverWalkingSkeletonMission(options: Omit<MissionOptions, "totalBudget">): Promise<WalkingSkeletonResult> {
   const store = new JsonlEventStore(options.historyPath);
-  const events = await store.readAll();
+  const recoveryHistory = await store.readForRecovery();
+  const events = recoveryHistory.events;
   const state = replay(events);
   if (state.missionId !== options.missionId) throw new Error("Recovery history belongs to a different mission.");
   const interruptedAttemptIds = Object.entries(state.attempts)
@@ -73,7 +74,10 @@ export async function recoverWalkingSkeletonMission(options: Omit<MissionOptions
     .map(([attemptId]) => attemptId);
   if (interruptedAttemptIds.length === 0) throw new Error("There is no running attempt to recover.");
 
-  await appendEvent(store, events, options.missionId, "RecoveryStarted", { interruptedAttemptIds });
+  await appendEvent(store, events, options.missionId, "RecoveryStarted", {
+    interruptedAttemptIds,
+    truncatedFinalLineDiscarded: recoveryHistory.truncatedFinalLineDiscarded,
+  });
   for (const attemptId of interruptedAttemptIds) {
     await appendEvent(store, events, options.missionId, "TaskInterrupted", { attemptId, reason: "Process stopped before completion." });
   }

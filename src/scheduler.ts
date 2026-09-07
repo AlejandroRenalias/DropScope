@@ -140,6 +140,11 @@ export async function runSimulatedSchedule(options: {
       if (finished.attemptNumber < 2) {
         const task = options.tasks.find((candidate) => candidate.taskId === finished.taskId)!;
         const retryId = `${task.taskId}:a2`;
+        if (task.cost > state.budget.available) {
+          await append("MissionTerminated", { status: "BLOCKED_BUDGET", reason: "Transient retry cannot be funded." });
+          terminated = true;
+          continue;
+        }
         await append("TaskScheduled", { taskId: task.taskId, attemptId: retryId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", researchKey: task.researchKey ?? task.taskId, workerRole: task.workerRole ?? "SIMULATED_WORKER", dependencies: task.dependencies ?? [] });
         await append("BudgetReserved", { attemptId: retryId, cost: task.cost });
         const startedAt = Date.now();

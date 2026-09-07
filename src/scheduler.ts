@@ -26,10 +26,12 @@ const seededDelay = (seed: number, taskId: string, attemptNumber: number, baseDu
   const taskHash = [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0);
   return baseDurationMs + 9 - ((seed + taskHash + attemptNumber) % 10);
 };
-const seededOutcome = (seed: number, taskId: string, attemptNumber: number) =>
-  ((seed * 17 + [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0) + attemptNumber) % 5 === 0
+const seededOutcome = (seed: number, taskId: string, attemptNumber: number) => {
+  const base = seed * 17 + [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0);
+  return ((attemptNumber === 1 && (base + 1) % 5 === 0) || (attemptNumber === 2 && base % 7 === 0)
     ? "FAILED_TRANSIENT"
     : "COMPLETED") as "COMPLETED" | "FAILED_TRANSIENT";
+};
 export const deriveAttemptDecision = (seed: number, taskId: string, attemptNumber: number, baseDurationMs: number) => ({
   simulatedDelayMs: seededDelay(seed, taskId, attemptNumber, baseDurationMs),
   outcome: seededOutcome(seed, taskId, attemptNumber),
@@ -86,6 +88,7 @@ export async function runSimulatedSchedule(options: {
   const taskOutcomes: Record<string, "COMPLETED" | "FAILED_TRANSIENT"> = {};
   const completionOrder: string[] = [];
   let maxConcurrentAttempts = 0;
+  let terminated = false;
 
   const canStart = (task: SimulatedTask) => (task.dependencies ?? []).every((dependency) => completed.has(dependency));
   const startEligibleTasks = async () => {
@@ -126,7 +129,7 @@ export async function runSimulatedSchedule(options: {
     }
   };
 
-  while (pending.size > 0 || running.size > 0) {
+  while (!terminated && (pending.size > 0 || running.size > 0)) {
     await startEligibleTasks();
     if (running.size === 0) throw new Error("No eligible task remains; dependencies are missing or cyclic.");
     const finished = await Promise.race(running.values());
@@ -144,7 +147,12 @@ export async function runSimulatedSchedule(options: {
         await append("TaskStarted", { attemptId: retryId, simulatedDelayMs: durationMs });
         running.set(task.taskId, wait(durationMs).then(() => { intervals[task.taskId] = { startedAt, finishedAt: Date.now() }; return { taskId: task.taskId, attemptNumber: 2, outcome: seededOutcome(options.missionSeed, task.taskId, 2) }; }));
         maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
-      } else { taskOutcomes[finished.taskId] = finished.outcome; completionOrder.push(finished.taskId); }
+      } else {
+        taskOutcomes[finished.taskId] = finished.outcome;
+        completionOrder.push(finished.taskId);
+        await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: "Transient retry allowance was exhausted." });
+        terminated = true;
+      }
     } else {
       taskOutcomes[finished.taskId] = finished.outcome;
       completionOrder.push(finished.taskId);
@@ -152,7 +160,7 @@ export async function runSimulatedSchedule(options: {
       completed.add(finished.taskId);
     }
   }
-  if (options.completeMission ?? true) await append("MissionCompleted", {});
+  if (!terminated && (options.completeMission ?? true)) await append("MissionCompleted", {});
   return { executionIntervals: intervals, maxConcurrentAttempts, taskOutcomes, completionOrder };
 }
 import { JsonlEventStore } from "./event-store.js";

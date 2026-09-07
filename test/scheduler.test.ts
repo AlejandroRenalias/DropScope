@@ -84,6 +84,18 @@ describe("dependency-aware asynchronous scheduler", () => {
     expect(result.completionOrder).toContain("echo");
   });
 
+  it("terminates when the one permitted transient retry is exhausted", async () => {
+    const seed = Array.from({ length: 500 }, (_, value) => value).find((value) => deriveAttemptDecision(value, "retry", 1, 1).outcome === "FAILED_TRANSIENT" && deriveAttemptDecision(value, "retry", 2, 1).outcome === "FAILED_TRANSIENT");
+    expect(seed).toBeDefined();
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "retry.jsonl");
+    const result = await runSimulatedSchedule({ missionId: "retry-exhaustion", missionSeed: seed!, totalBudget: 30, historyPath, tasks: [{ taskId: "retry", objective: "Retry once.", cost: 10, durationMs: 1 }] });
+    const events = await new JsonlEventStore(historyPath).readAll();
+
+    expect(result.taskOutcomes).toEqual({ retry: "FAILED_TRANSIENT" });
+    expect(events.filter((event) => event.type === "TaskFailedTransient")).toHaveLength(2);
+    expect(events.at(-1)).toMatchObject({ type: "MissionTerminated", payload: { status: "FAILED_UNRECOVERABLE" } });
+  });
+
   it("uses a fixed mission seed to produce reproducible out-of-order completion", async () => {
     const options = {
       missionId: "scheduler-seed-demo",

@@ -20,6 +20,10 @@ export const fixtureCandidateEvaluationSchema = z.object({
   riskInput: riskGateInputSchema,
   customerProblemEvidenceScore: z.number().int().min(0).max(100),
   evidenceQualityScore: z.number().int().min(0).max(100),
+  trendDurabilityScore: z.number().int().min(0).max(100),
+  advertisingSaturationScore: z.number().int().min(0).max(100),
+  operationalRiskScore: z.number().int().min(0).max(100),
+  failureRiskScore: z.number().int().min(0).max(100),
   hasUnresolvedBlockingContradiction: z.boolean(),
   hasBlockingDecisionCriticalMissingEvidence: z.boolean(),
 }).strict().superRefine((candidate, context) => {
@@ -78,6 +82,7 @@ export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
 });
 
 export type FixtureTask = z.infer<typeof fixtureTaskSchema>;
+export type FixtureCandidateEvaluation = z.infer<typeof fixtureCandidateEvaluationSchema>;
 export type Fixture = z.infer<typeof fixtureSchema>;
 
 const defaultRiskAttributes: z.infer<typeof riskGateInputSchema>["attributes"] = { intendedUser: "GENERAL", foodOrIngestion: "NO", bodyContact: "NONE", healthPositioning: "NONE", electricalPower: "NONE", thermalOrFireHazard: "NONE", physicalHazard: "NONE", protectiveFunction: "NONE", chemicalExposure: "NONE_DECLARED", regulatedCategorySignal: "NONE", brandOrCreativeSimilaritySignal: "NONE_OBSERVED", evidenceCompleteness: "SUFFICIENT" };
@@ -92,7 +97,9 @@ const definitions: readonly Fixture[] = [
     fixtureId: "mixed-opportunity-market",
     seed: 3,
     budget: 90,
-    candidateEvaluations: [],
+    candidateEvaluations: [
+      { candidateId: "market-candidate", riskInput: riskInput("market-candidate"), customerProblemEvidenceScore: 82, evidenceQualityScore: 78, trendDurabilityScore: 75, advertisingSaturationScore: 35, operationalRiskScore: 25, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
     tasks: [
       { id: "market-scan", objective: "Map the opportunity space.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "market-scope", dependencies: [], workerRole: "MARKET_RESEARCHER" },
       { id: "demand-check", objective: "Test demand signals.", cost: 25, durationMs: 15, workClass: "MANDATORY", researchKey: "demand", dependencies: ["market-scan"], workerRole: "EVIDENCE_RESEARCHER" },
@@ -104,7 +111,7 @@ const definitions: readonly Fixture[] = [
     seed: 1,
     budget: 70,
     candidateEvaluations: [
-      { candidateId: "drought-candidate", riskInput: riskInput("drought-candidate"), customerProblemEvidenceScore: 40, evidenceQualityScore: 45, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "drought-candidate", riskInput: riskInput("drought-candidate"), customerProblemEvidenceScore: 40, evidenceQualityScore: 45, trendDurabilityScore: 50, advertisingSaturationScore: 50, operationalRiskScore: 50, failureRiskScore: 50, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
     ],
     tasks: [
       { id: "source-scan", objective: "Locate available sources.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "source-coverage", dependencies: [], workerRole: "SOURCE_RESEARCHER" },
@@ -116,11 +123,12 @@ const definitions: readonly Fixture[] = [
     seed: 1,
     budget: 80,
     candidateEvaluations: [
-      { candidateId: "food-risk", riskInput: riskInput("food-risk", { foodOrIngestion: "FOOD_OR_SUPPLEMENT" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
-      { candidateId: "medical-risk", riskInput: riskInput("medical-risk", { healthPositioning: "MEDICAL_CLAIM_OR_DEVICE" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
-      { candidateId: "ambiguous-risk", riskInput: riskInput("ambiguous-risk", { evidenceCompleteness: "MATERIAL_ATTRIBUTE_MISSING" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
-      { candidateId: "safe-alpha", riskInput: riskInput("safe-alpha"), customerProblemEvidenceScore: 85, evidenceQualityScore: 85, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
-      { candidateId: "safe-beta", riskInput: riskInput("safe-beta"), customerProblemEvidenceScore: 80, evidenceQualityScore: 80, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "food-risk", riskInput: riskInput("food-risk", { foodOrIngestion: "FOOD_OR_SUPPLEMENT" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, trendDurabilityScore: 80, advertisingSaturationScore: 20, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "medical-risk", riskInput: riskInput("medical-risk", { healthPositioning: "MEDICAL_CLAIM_OR_DEVICE" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, trendDurabilityScore: 80, advertisingSaturationScore: 20, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "ambiguous-risk", riskInput: riskInput("ambiguous-risk", { evidenceCompleteness: "MATERIAL_ATTRIBUTE_MISSING" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, trendDurabilityScore: 80, advertisingSaturationScore: 20, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "restricted-risk", riskInput: riskInput("restricted-risk", { electricalPower: "BATTERY" }), customerProblemEvidenceScore: 90, evidenceQualityScore: 90, trendDurabilityScore: 80, advertisingSaturationScore: 20, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "safe-alpha", riskInput: riskInput("safe-alpha"), customerProblemEvidenceScore: 85, evidenceQualityScore: 85, trendDurabilityScore: 80, advertisingSaturationScore: 20, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+      { candidateId: "safe-beta", riskInput: riskInput("safe-beta"), customerProblemEvidenceScore: 80, evidenceQualityScore: 80, trendDurabilityScore: 75, advertisingSaturationScore: 25, operationalRiskScore: 25, failureRiskScore: 25, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
     ],
     tasks: [
       { id: "safety-scan", objective: "Identify safety considerations.", cost: 25, durationMs: 20, workClass: "MANDATORY", researchKey: "safety", dependencies: [], workerRole: "SAFETY_RESEARCHER" },

@@ -6,6 +6,7 @@ import type { MissionEvent } from "./contracts.js";
 import { determineCandidateEligibility, type CandidateEligibility } from "./candidate-eligibility.js";
 import { evaluateRiskGate } from "./risk-policy.js";
 import type { RiskGateDecision } from "./research-domain.js";
+import { buildCandidateReport, type CandidateReport } from "./report.js";
 
 export interface FixtureRunResult {
   fixtureId: string;
@@ -14,6 +15,7 @@ export interface FixtureRunResult {
   schedule: ScheduleResult;
   candidateEligibility: CandidateEligibility[];
   riskDecisions: RiskGateDecision[];
+  report: CandidateReport;
 }
 
 export async function runFixtureMission(options: {
@@ -21,11 +23,12 @@ export async function runFixtureMission(options: {
   missionId: string;
   historyPath: string;
   maxConcurrency?: number;
+  missionSeed?: number;
 }): Promise<FixtureRunResult> {
   const fixture = loadFixture(options.fixtureId);
   const schedule = await runSimulatedSchedule({
     missionId: options.missionId,
-    missionSeed: fixture.seed,
+    missionSeed: options.missionSeed ?? fixture.seed,
     totalBudget: fixture.budget,
     historyPath: options.historyPath,
     maxConcurrency: options.maxConcurrency,
@@ -43,20 +46,25 @@ export async function runFixtureMission(options: {
   });
   const riskDecisions = fixture.candidateEvaluations.map((candidate) => evaluateRiskGate(candidate.riskInput));
   const candidateEligibility = fixture.candidateEvaluations.map((candidate, index) => determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }));
+  const report = buildCandidateReport(fixture.candidateEvaluations, riskDecisions, candidateEligibility);
   const store = new JsonlEventStore(options.historyPath);
   const events = await store.readAll();
+  const scheduledState = replay(events);
+  if (scheduledState.status !== "RUNNING") {
+    return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
+  }
   const terminalEvent: MissionEvent = {
     schemaVersion: 1,
     sequenceNumber: events.length + 1,
     missionId: options.missionId,
     eventId: `${options.missionId}-${events.length + 1}`,
     timestamp: new Date().toISOString(),
-    type: fixture.candidateEvaluations.length > 0 && candidateEligibility.every((candidate) => !candidate.eligible) ? "MissionTerminated" : "MissionCompleted",
-    payload: fixture.candidateEvaluations.length > 0 && candidateEligibility.every((candidate) => !candidate.eligible)
+    type: report.outcome === "INSUFFICIENT_EVIDENCE" ? "MissionTerminated" : "MissionCompleted",
+    payload: report.outcome === "INSUFFICIENT_EVIDENCE"
       ? { status: "COMPLETED_INSUFFICIENT_EVIDENCE", reason: "No fixture candidate cleared the evidence gates." }
       : {},
   } as MissionEvent;
   await store.append(terminalEvent);
   const completedEvents = await store.readAll();
-  return { fixtureId: fixture.fixtureId, events: completedEvents, state: replay(completedEvents), schedule, candidateEligibility, riskDecisions };
+  return { fixtureId: fixture.fixtureId, events: completedEvents, state: replay(completedEvents), schedule, candidateEligibility, riskDecisions, report };
 }

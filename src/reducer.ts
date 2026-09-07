@@ -201,7 +201,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         throw new Error("All task dependencies must be completed before scheduling.");
       }
       const existingTask = state.tasks[event.payload.taskId];
-      if (existingTask && !["INTERRUPTED", "FAILED_PERMANENT"].includes(existingTask.status)) throw new Error("Task cannot receive another attempt.");
+      if (existingTask && !["INTERRUPTED", "FAILED_TRANSIENT", "FAILED_PERMANENT"].includes(existingTask.status)) throw new Error("Task cannot receive another attempt.");
       if (existingTask && existingTask.workClass !== event.payload.workClass) throw new Error("A retry cannot change a task's work class.");
       if (state.attempts[event.payload.attemptId]) throw new Error("Attempt is already scheduled.");
       const workerRole = event.payload.workerRole ?? "legacy-unknown";

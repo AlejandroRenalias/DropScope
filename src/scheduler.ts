@@ -82,7 +82,7 @@ export async function runSimulatedSchedule(options: {
   const pending = new Map(options.tasks.map((task) => [task.taskId, task]));
   const completed = new Set<string>();
   const intervals: Record<string, ExecutionInterval> = {};
-  const running = new Map<string, Promise<{ taskId: string; outcome: "COMPLETED" | "FAILED_TRANSIENT" }>>();
+  const running = new Map<string, Promise<{ taskId: string; attemptNumber: number; outcome: "COMPLETED" | "FAILED_TRANSIENT" }>>();
   const taskOutcomes: Record<string, "COMPLETED" | "FAILED_TRANSIENT"> = {};
   const completionOrder: string[] = [];
   let maxConcurrentAttempts = 0;
@@ -120,7 +120,7 @@ export async function runSimulatedSchedule(options: {
       await append("TaskStarted", { attemptId, simulatedDelayMs: durationMs });
       running.set(task.taskId, wait(durationMs).then(() => {
         intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
-        return { taskId: task.taskId, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
+        return { taskId: task.taskId, attemptNumber, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
       }));
       maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
     }
@@ -131,12 +131,26 @@ export async function runSimulatedSchedule(options: {
     if (running.size === 0) throw new Error("No eligible task remains; dependencies are missing or cyclic.");
     const finished = await Promise.race(running.values());
     running.delete(finished.taskId);
-    taskOutcomes[finished.taskId] = finished.outcome;
-    completionOrder.push(finished.taskId);
-    const attemptId = `${finished.taskId}:a1`;
-    if (finished.outcome === "FAILED_TRANSIENT") await append("TaskFailedTransient", { attemptId, reason: "Simulated transient failure." });
-    else await append("FindingSubmitted", { attemptId, finding: `${finished.taskId} completed.` });
-    if (finished.outcome === "COMPLETED") completed.add(finished.taskId);
+    const attemptId = `${finished.taskId}:a${finished.attemptNumber}`;
+    if (finished.outcome === "FAILED_TRANSIENT") {
+      await append("TaskFailedTransient", { attemptId, reason: "Simulated transient failure." });
+      if (finished.attemptNumber < 2) {
+        const task = options.tasks.find((candidate) => candidate.taskId === finished.taskId)!;
+        const retryId = `${task.taskId}:a2`;
+        await append("TaskScheduled", { taskId: task.taskId, attemptId: retryId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", researchKey: task.researchKey ?? task.taskId, workerRole: task.workerRole ?? "SIMULATED_WORKER", dependencies: task.dependencies ?? [] });
+        await append("BudgetReserved", { attemptId: retryId, cost: task.cost });
+        const startedAt = Date.now();
+        const durationMs = seededDelay(options.missionSeed, task.taskId, 2, task.durationMs);
+        await append("TaskStarted", { attemptId: retryId, simulatedDelayMs: durationMs });
+        running.set(task.taskId, wait(durationMs).then(() => { intervals[task.taskId] = { startedAt, finishedAt: Date.now() }; return { taskId: task.taskId, attemptNumber: 2, outcome: seededOutcome(options.missionSeed, task.taskId, 2) }; }));
+        maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
+      } else { taskOutcomes[finished.taskId] = finished.outcome; completionOrder.push(finished.taskId); }
+    } else {
+      taskOutcomes[finished.taskId] = finished.outcome;
+      completionOrder.push(finished.taskId);
+      await append("FindingSubmitted", { attemptId, finding: `${finished.taskId} completed.` });
+      completed.add(finished.taskId);
+    }
   }
   if (options.completeMission ?? true) await append("MissionCompleted", {});
   return { executionIntervals: intervals, maxConcurrentAttempts, taskOutcomes, completionOrder };

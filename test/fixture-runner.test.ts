@@ -61,4 +61,34 @@ describe("fixture-driven simulated missions", () => {
     expect(result.events.filter((event) => event.type === "MissionTerminated")).toHaveLength(1);
     expect(result.events.at(-1)?.type).toBe("MissionTerminated");
   });
+
+  it("runs the unseen cross-current workspace holdout through generic fixture data", async () => {
+    const result = await runFixtureMission({ fixtureId: "crosscurrent-workspace-market", missionId: "fixture-d-holdout", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+
+    expect(result.fixtureId).toBe("crosscurrent-workspace-market");
+    expect(result.events[0]?.type).toBe("MissionCreated");
+    expect(result.state.status).toBe("COMPLETED");
+    expect(result.events.at(-1)?.type).toBe("MissionCompleted");
+    expect(Object.values(result.schedule.taskOutcomes)).toEqual(["COMPLETED", "COMPLETED", "COMPLETED", "COMPLETED"]);
+    expect(Object.keys(result.state.tasks)).toHaveLength(4);
+    expect(result.riskDecisions.map(({ outcome }) => outcome)).toEqual(["REJECTED", "REJECTED", "RESTRICTED", "MANUAL_REVIEW", "ALLOWED", "ALLOWED", "ALLOWED"]);
+    expect(result.riskDecisions.map(({ reasons }) => reasons.map(({ code }) => code))).toEqual([
+      ["SAFETY_INGESTION_OR_FOOD", "SAFETY_HIGH_POWER_ELECTRICAL", "INTELLECTUAL_PROPERTY_OBVIOUS_REFERENCE"],
+      ["REGULATORY_MEDICAL_POSITIONING"],
+      ["REGULATORY_CHILD_DIRECTED"],
+      ["INSUFFICIENT_INFORMATION_MATERIAL_CONFLICT"],
+      [], [], [],
+    ]);
+    expect(result.report.outcome).toBe("RANKED");
+    expect(result.report.ranking.map(({ candidateId }) => candidateId)).toEqual(["deskflow-alpha", "deskflow-beta", "deskflow-gamma"]);
+    expect(result.report.heldOut.map(({ candidateId, outcome }) => [candidateId, outcome])).toEqual([
+      ["food-power-crosscurrent", "REJECTED"], ["medical-workspace", "REJECTED"], ["child-workspace", "RESTRICTED"], ["uncertain-workspace", "MANUAL_REVIEW"],
+    ]);
+    expect(result.report.heldOut.map(({ reasonCodes }) => reasonCodes)).toEqual([
+      ["SAFETY_INGESTION_OR_FOOD", "SAFETY_HIGH_POWER_ELECTRICAL", "INTELLECTUAL_PROPERTY_OBVIOUS_REFERENCE", "RISK_GATE_NOT_ALLOWED"],
+      ["REGULATORY_MEDICAL_POSITIONING", "RISK_GATE_NOT_ALLOWED"],
+      ["REGULATORY_CHILD_DIRECTED", "RISK_GATE_NOT_ALLOWED"],
+      ["INSUFFICIENT_INFORMATION_MATERIAL_CONFLICT", "RISK_GATE_NOT_ALLOWED", "UNRESOLVED_BLOCKING_CONTRADICTION", "DECISION_CRITICAL_MISSING_EVIDENCE"],
+    ]);
+  });
 });

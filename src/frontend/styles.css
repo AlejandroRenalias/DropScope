@@ -2,3 +2,38 @@
 @media(max-width:1080px){.content{padding:26px 22px}.lower-grid{grid-template-columns:1fr 1fr}.event-panel{grid-column:1/-1}}
 @media(max-width:760px){.topbar{padding:0 16px}.brand em,.topbar-mission{display:none}.shell{display:block}.sidebar{padding:10px 12px;border-right:0;border-bottom:1px solid #253343}.sidebar-label,.sidebar-foot{display:none}.sidebar nav{display:flex;overflow-x:auto}.nav-item{width:auto;min-width:max-content}.content{padding:22px 14px 36px}.page-heading{display:grid;align-items:start}.title-line{align-items:flex-start;flex-direction:column;gap:8px}.scenario-switcher{margin-top:4px}.floor-section{padding:14px}.floor-meta{font-size:9px}.floor-grid,.lower-grid{grid-template-columns:1fr}.event-panel{grid-column:auto}.desk{min-height:185px}.desk-copy small{max-width:190px}}
 @media(prefers-reduced-motion:reduce){.robot.working .sprite{animation:none!important}}
+
+/* Spatial office: one room, four stations, and a restrained signal layer. */
+.floor-section{position:relative;padding:22px 24px 26px;border-radius:5px;background:linear-gradient(145deg,#142534 0%,#101a24 58%,#0d151e 100%);box-shadow:inset 0 1px #355064,0 18px 38px #03070d66;overflow:hidden}
+.floor-section::before{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent 49.8%,#244052 50%,transparent 50.2%),linear-gradient(0deg,transparent 49.8%,#1a3444 50%,transparent 50.2%);background-size:100% 100%,100% 100%;opacity:.22;content:""}
+.section-heading,.office-floor{position:relative;z-index:1}
+.office-floor{margin-top:18px;padding:16px 14px 12px;border-top:1px solid #31546a;background:linear-gradient(180deg,#10212d99,#0b151f88);box-shadow:inset 0 0 0 1px #172f3d}
+.office-floor-header{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:0 6px 14px;color:#7590a4;font-size:10px;letter-spacing:.06em}
+.floor-caption{color:#9cc9d2;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.floor-logic{color:#718a9e}.floor-logic b{color:#b6dbe0;font-weight:650}.logic-arrow{display:inline-block;margin:0 5px;color:#56bdcf}
+.floor-grid{position:relative;display:grid;grid-template-columns:1.28fr .92fr;grid-template-rows:minmax(166px,1fr) minmax(138px,.84fr);grid-template-areas:"commander evidence" "operations risk";gap:12px;padding:8px 6px 16px;border-bottom:1px solid #315064;background:linear-gradient(135deg,#122432,#0e1b25 62%,#0b151d)}
+.floor-grid::after{position:absolute;inset:12px;pointer-events:none;border:1px solid #1f3a4a;border-top-color:#36586a;content:"";opacity:.65}
+.desk{z-index:1;min-height:0;padding:15px 16px;border:0;border-radius:2px;background:linear-gradient(135deg,#162b39,#101d28 74%);box-shadow:inset 0 1px #3b5f70,inset 0 -1px #0a1118,0 7px 16px #02070c66;overflow:hidden}
+.desk::before{position:absolute;left:0;top:0;bottom:0;width:3px;background:#477286;content:""}.desk::after{right:13px;bottom:12px;width:106px;height:58px;border:0;border-top:1px solid #2a5060;border-radius:0;box-shadow:0 -7px #173543;opacity:.65}
+.desk.commander{grid-area:commander;min-height:218px;background:linear-gradient(135deg,#193746,#122632 70%);box-shadow:inset 0 2px #5a8a98,inset 0 -1px #091119,0 10px 21px #02070c88}.desk.commander::before{width:5px;background:#63d2dd}.desk.evidence{grid-area:evidence}.desk.operations{grid-area:operations}.desk.risk{grid-area:risk;background:linear-gradient(135deg,#18252f,#101a24)}
+.desk.evidence::before{background:#54bdc8}.desk.operations::before{background:#b18ae2}.desk.risk::before{background:#d39a50}
+.desk-top{position:relative;z-index:2}.role-icon{width:25px;height:25px;border:0;border-bottom:1px solid #477184;border-radius:0;background:transparent}.desk.commander .role-icon{color:#9ae6eb}.desk.operations .role-icon{color:#be9fea}.desk.risk .role-icon{color:#ecc17c}
+.desk-body{position:relative;z-index:2;min-height:calc(100% - 38px);gap:14px}.desk.commander .desk-body{min-height:155px;align-items:flex-end}.desk-copy h3{font-size:14px;letter-spacing:-.02em}.desk.commander .desk-copy h3{font-size:17px}.desk-copy p{color:#bed1db}.desk-copy small{max-width:285px}.robot{flex-basis:98px}.desk.commander .robot{flex-basis:122px}.desk.commander .sprite{width:112px;height:112px}.desk.evidence .sprite,.desk.operations .sprite,.desk.risk .sprite{width:80px;height:82px}.equipment{z-index:2;bottom:9px;left:16px;color:#7893a4}.equipment-dot{width:16px;height:4px;background:#4b8691;box-shadow:6px 0 #2e5a68,12px 0 #244653}
+.signal{position:absolute;z-index:2;pointer-events:none;border-color:#4b9eaa;border-style:dashed;opacity:.65}.signal-primary{left:47%;top:34%;width:10%;height:30%;border-width:0 1px 1px 0;border-radius:0 0 12px 0}.signal-secondary{left:47%;top:50%;width:10%;height:29%;border-width:0 1px 1px 0;border-radius:0 0 12px 0;transform:scaleY(-1);transform-origin:top}.signal-safety{left:76%;top:53%;width:9%;height:1px;border-width:1px 0 0;border-style:dotted;transform:rotate(90deg);transform-origin:left center}.reduced .signal{animation:none}
+.lower-grid{grid-template-columns:minmax(340px,1.35fr) minmax(220px,.78fr) minmax(280px,1fr);align-items:start}.graph-panel{border-top:2px solid #55bcca;background:linear-gradient(145deg,#142936,#101b25)}.graph-panel .panel-heading h2{font-size:19px}.ledger-panel,.event-panel{background:#101a24}
+@media(max-width:1080px){.floor-grid{grid-template-columns:1.1fr .9fr}.floor-logic{max-width:56%;line-height:1.5}.lower-grid{grid-template-columns:1fr 1fr}.graph-panel{grid-column:1/-1}.event-panel{grid-column:auto}}
+@media(max-width:760px){.floor-section{padding:16px 12px 18px}.office-floor{padding:13px 8px 9px}.office-floor-header{display:block;padding:0 5px 12px}.floor-logic{display:block;margin-top:7px;max-width:none;line-height:1.5}.floor-grid{display:flex;flex-direction:column;gap:10px;padding:6px 4px 12px}.floor-grid::after{inset:8px}.desk,.desk.commander{min-height:176px}.desk.commander .desk-body{min-height:125px}.desk.commander .desk-copy h3{font-size:15px}.desk.commander .sprite{width:96px;height:96px}.desk.evidence .sprite,.desk.operations .sprite,.desk.risk .sprite{width:78px;height:80px}.signal{display:none}.lower-grid{grid-template-columns:1fr}.graph-panel,.event-panel{grid-column:auto}}
+
+/* Final spatial hierarchy: overhead command deck with a three-station lower bay. */
+@media(min-width:1081px){
+  .floor-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:minmax(206px,1fr) minmax(142px,.72fr);grid-template-areas:"commander commander commander" "evidence operations risk";gap:13px}
+  .desk{background:linear-gradient(135deg,#162b39cc,#101d28aa 74%)}
+  .desk.commander{width:min(76%,760px);justify-self:center;min-height:218px;background:linear-gradient(135deg,#193f4d,#122632 70%)}
+  .desk.commander .equipment{left:20px;color:#9acbd1}
+  .signal-primary{left:34%;top:60%;width:15%;height:16%;border-width:0 1px 1px 0;border-radius:0 0 12px 0}
+  .signal-secondary{left:51%;top:60%;width:15%;height:16%;border-width:0 0 1px 1px;border-radius:0 0 0 12px;transform:none}
+  .signal-safety{left:50%;top:56%;width:1px;height:18%;border-width:0 1px 0 0;border-style:dotted;transform:none}
+}
+@media(min-width:761px) and (max-width:1080px){
+  .floor-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:minmax(196px,1fr) minmax(140px,.72fr);grid-template-areas:"commander commander commander" "evidence operations risk";gap:9px}
+  .desk.commander{width:min(88%,650px);justify-self:center}
+}

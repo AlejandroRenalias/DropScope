@@ -57,6 +57,25 @@ describe("LocalMissionRuntime", () => {
     await expect(runtime.reload("partial-mission")).rejects.toThrow("launch incomplete");
   });
 
+  it("does not present a valid event prefix as complete while its reservation remains", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
+    const missionsRoot = join(dataRoot, "missions");
+    await mkdir(missionsRoot, { recursive: true });
+    await writeFile(join(missionsRoot, "partial-mission.jsonl"), `${JSON.stringify({ schemaVersion: 1, sequenceNumber: 1, missionId: "partial-mission", eventId: "partial-mission-1", timestamp: "2026-01-01T00:00:00.000Z", type: "MissionCreated", payload: { totalBudget: 20, missionSeed: 1, policyVersions: { tribunal: "1" } } })}\n`, "utf8");
+    await writeFile(join(missionsRoot, "partial-mission.reserve"), JSON.stringify({ fixtureId: "mixed-opportunity-market" }), "utf8");
+    const runtime = new LocalMissionRuntime({ dataRoot });
+    await expect(runtime.reload("partial-mission")).rejects.toThrow("launch incomplete");
+  });
+
+  it("classifies malformed reservation metadata as incomplete", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
+    const missionsRoot = join(dataRoot, "missions");
+    await mkdir(missionsRoot, { recursive: true });
+    await writeFile(join(missionsRoot, "partial-mission.reserve"), "{", "utf8");
+    const runtime = new LocalMissionRuntime({ dataRoot });
+    await expect(runtime.reload("partial-mission")).rejects.toThrow("launch incomplete");
+  });
+
   it("does not follow a symlink at a mission history path", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
     const missionsRoot = join(dataRoot, "missions");

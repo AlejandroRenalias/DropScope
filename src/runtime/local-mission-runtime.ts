@@ -85,15 +85,11 @@ export class LocalMissionRuntime {
     await this.ensureMissionsRoot();
     const reservationPath = this.reservationPath(validMissionId);
     if (await exists(reservationPath)) {
-      const fixtureId = await this.readReservation(validMissionId, reservationPath);
-      try {
-        return await this.readDto(validMissionId, fixtureId);
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === `Mission history not found: ${validMissionId}`) {
-          throw new MissionLaunchIncompleteError(validMissionId);
-        }
-        throw error;
-      }
+      await this.readReservation(validMissionId, reservationPath);
+      // A durable reservation is authoritative until the runner has finished,
+      // metadata exists, and the marker is removed. Valid event prefixes stay
+      // on disk for recovery, but are never presented as a completed mission.
+      throw new MissionLaunchIncompleteError(validMissionId);
     }
     let metadata: unknown;
     try {
@@ -177,8 +173,8 @@ export class LocalMissionRuntime {
       loadFixture(reservation.fixtureId);
       return reservation.fixtureId;
     } catch (error: unknown) {
-      if (isNotFound(error)) throw new Error(`Mission launch incomplete: ${missionId}`);
-      if (error instanceof z.ZodError || error instanceof SyntaxError) throw new Error(`Mission launch incomplete: ${missionId}`);
+      if (isNotFound(error)) throw new MissionLaunchIncompleteError(missionId);
+      if (error instanceof z.ZodError || error instanceof SyntaxError) throw new MissionLaunchIncompleteError(missionId);
       throw error;
     }
   }

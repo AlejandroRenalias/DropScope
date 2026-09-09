@@ -15,7 +15,7 @@ import { Wrench } from "@phosphor-icons/react/dist/csr/Wrench";
 import "@radix-ui/themes/styles.css";
 import "./styles.css";
 import robotRoles from "./assets/robot-roles.svg";
-import { officeScenarios, type AgentState, type OfficeScenario, type OfficeProjection } from "./office-projection.js";
+import { officeHistories, projectOffice, type AgentState, type OfficeScenario, type OfficeProjection } from "./office-projection.js";
 
 type Icon = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill" }>;
 const roleIcons: Record<string, Icon> = { commander: Target, evidence: MagnifyingGlass, operations: Wrench, risk: ShieldCheck };
@@ -41,10 +41,9 @@ function AgentStation({ agent, onApproval }: { agent: OfficeProjection["agents"]
 
 function OfficeScene({ agents, onApproval }: { agents: OfficeProjection["agents"]; onApproval: () => void }) {
   return <section className="office-scene" aria-label="Research Office floor">
-    <div className="scene-caption"><span>Mission floor</span><span className="scene-rule">Commander dispatches two parallel investigations; Safety waits for evidence.</span></div>
+    <div className="scene-caption"><span>Mission floor</span><span className="scene-rule">Workstations reflect the selected event-history replay.</span></div>
     <div className="scene-stage">
-      <div className="station-wrap commander-wrap"><AgentStation agent={agents[0]} onApproval={onApproval} /></div>
-      <div className="station-wrap evidence-wrap"><AgentStation agent={agents[1]} onApproval={onApproval} /></div><div className="station-wrap operations-wrap"><AgentStation agent={agents[2]} onApproval={onApproval} /></div><div className="station-wrap risk-wrap"><AgentStation agent={agents[3]} onApproval={onApproval} /></div>
+      {agents.map((agent) => <div className={`station-wrap ${agent.id}-wrap`} key={agent.id}><AgentStation agent={agent} onApproval={onApproval} /></div>)}
     </div>
   </section>;
 }
@@ -65,9 +64,25 @@ function Office() {
   const [scenario, setScenario] = useState<OfficeScenario>("RUNNING");
   const [reduced, setReduced] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
-  const projection = officeScenarios[scenario];
-  const StatusIcon = scenario === "BLOCKED" ? Warning : scenario === "COMPLETED" ? CheckCircle : Play;
-  return <div className={`app ${reduced ? "reduced" : ""}`}><header className="topbar"><div className="brand"><b>D</b><span>DropScope</span><em>RESEARCH OS</em></div><div className="topbar-mission"><span>MISSION</span><strong>{projection.mission.name}</strong></div></header><div className="shell"><aside className="sidebar"><div className="sidebar-label">Workspace</div><nav aria-label="Primary navigation"><NavItem icon={Play} active>Research Office</NavItem><NavItem icon={Archive}>Mission Replay</NavItem><NavItem icon={ShieldCheck}>Review Office</NavItem><NavItem icon={ChartLineUp}>Reports</NavItem></nav><div className="sidebar-foot"><span className="online-dot" />Engine connected<small>Projection mode</small></div></aside><main className="content"><section className="page-heading"><div><div className="heading-kicker"><span>Mission</span><strong>{projection.mission.name}</strong><span className={`mission-status ${scenario.toLowerCase()}`}><StatusIcon size={14} />{projection.mission.phase}</span></div><p className="source-note" title="This checkpoint uses representative contract-shaped data, not live engine data.">Demo data · representative contract-shaped projection</p></div><div className="scenario-switcher" role="group" aria-label="Demo state"><span>Demo state</span>{(Object.keys(officeScenarios) as OfficeScenario[]).map((name) => <button className={scenario === name ? "selected" : ""} onClick={() => { setScenario(name); setApprovalOpen(false); }} key={name}>{name}</button>)}</div></section><div className="floor-status"><span className="eyebrow"><span className="live-dot" />{scenario === "BLOCKED" ? "Approval required" : scenario === "COMPLETED" ? "Mission complete" : "Live floor"}</span><span>4 agents · 2 concurrent tasks</span></div><OfficeScene agents={projection.agents} onApproval={() => setApprovalOpen((value) => !value)} />{approvalOpen && scenario === "BLOCKED" && <div className="approval-note" role="status"><Warning size={16} /><span><strong>Approval required</strong> Safety is waiting for the Evidence findings. This local disclosure does not change mission data or policy.</span></div>}<section className="lower-layout"><WorkGraph tasks={projection.tasks} /><div className="context-stack"><MissionLedger projection={projection} /><EventTrail projection={projection} reduced={reduced} setReduced={setReduced} /></div></section></main></div></div>;
+  const projection = projectOffice(officeHistories[scenario]);
+  const status = projection.mission.status;
+  const StatusIcon = status === "BLOCKED" ? Warning : status === "COMPLETED" ? CheckCircle : Play;
+  const workingAgents = projection.agents.filter((agent) => agent.state === "WORKING").length;
+  const floorStatus = status === "BLOCKED" ? "Policy block" : status === "COMPLETED" ? "Mission complete" : "Replay running";
+
+  return <div className={`app ${reduced ? "reduced" : ""}`}>
+    <header className="topbar"><div className="brand"><b>D</b><span>DropScope</span><em>RESEARCH OS</em></div><div className="topbar-mission"><span>MISSION</span><strong>{projection.mission.name}</strong></div></header>
+    <div className="shell">
+      <aside className="sidebar"><div className="sidebar-label">Workspace</div><nav aria-label="Primary navigation"><NavItem icon={Play} active>Research Office</NavItem><NavItem icon={Archive}>Mission Replay</NavItem><NavItem icon={ShieldCheck}>Review Office</NavItem><NavItem icon={ChartLineUp}>Reports</NavItem></nav><div className="sidebar-foot"><span className="online-dot" />Static event replay<small>Read-only projection</small></div></aside>
+      <main className="content">
+        <section className="page-heading"><div><div className="heading-kicker"><span>Mission</span><strong>{projection.mission.name}</strong><span className={`mission-status ${status.toLowerCase()}`}><StatusIcon size={14} />{projection.mission.phase}</span></div><p className="source-note" title={projection.sourceLabel}>{projection.sourceLabel}</p></div><div className="scenario-switcher" role="group" aria-label="Replay state"><span>Replay state</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button className={scenario === name ? "selected" : ""} onClick={() => { setScenario(name); setApprovalOpen(false); }} key={name}>{name}</button>)}</div></section>
+        <div className="floor-status"><span className="eyebrow"><span className="live-dot" />{floorStatus}</span><span>{projection.agents.length} assigned workers · {workingAgents} active</span></div>
+        <OfficeScene agents={projection.agents} onApproval={() => setApprovalOpen((value) => !value)} />
+        {approvalOpen && status === "BLOCKED" && <div className="approval-note" role="status"><Warning size={16} /><span><strong>Policy block</strong> This replay stopped with unresolved safety evidence. This local disclosure does not change mission data or policy.</span></div>}
+        <section className="lower-layout"><WorkGraph tasks={projection.tasks} /><div className="context-stack"><MissionLedger projection={projection} /><EventTrail projection={projection} reduced={reduced} setReduced={setReduced} /></div></section>
+      </main>
+    </div>
+  </div>;
 }
 
 createRoot(document.getElementById("root")!).render(<StrictMode><Theme appearance="dark" accentColor="cyan" grayColor="slate" radius="small"><Office /></Theme></StrictMode>);

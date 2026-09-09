@@ -9,7 +9,7 @@ import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
 const servers: Array<ReturnType<typeof listenLocalRuntimeServer> extends Promise<infer T> ? T : never> = [];
 
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))));
+  await Promise.all(servers.splice(0).map((server) => server.close()));
 });
 
 async function urlFor(server: (typeof servers)[number], path: string): Promise<string> {

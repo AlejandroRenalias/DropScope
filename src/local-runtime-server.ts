@@ -1,4 +1,5 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
 import { localMissionDtoSchema, LocalMissionRuntime } from "./runtime/local-mission-runtime.js";
 import { z } from "zod";
 
@@ -10,12 +11,13 @@ export interface LocalRuntimeServerOptions {
   port?: number;
 }
 
-export function createLocalRuntimeServer(runtime: LocalMissionRuntime): Server {
-  return createServer((request, response) => { void handleRequest(runtime, request, response); });
+export interface LocalRuntimeServerHandle {
+  address(): AddressInfo | string | null;
+  close(): Promise<void>;
 }
 
-export async function listenLocalRuntimeServer(runtime: LocalMissionRuntime, options: LocalRuntimeServerOptions = {}): Promise<Server> {
-  const server = createLocalRuntimeServer(runtime);
+export async function listenLocalRuntimeServer(runtime: LocalMissionRuntime, options: LocalRuntimeServerOptions = {}): Promise<LocalRuntimeServerHandle> {
+  const server = createServer((request, response) => { void handleRequest(runtime, request, response); });
   const host = options.host ?? "127.0.0.1";
   if (host !== "127.0.0.1" && host !== "localhost") throw new Error("Local runtime server accepts only loopback hosts.");
   await new Promise<void>((resolve, reject) => {
@@ -25,7 +27,10 @@ export async function listenLocalRuntimeServer(runtime: LocalMissionRuntime, opt
       resolve();
     });
   });
-  return server;
+  return {
+    address: () => server.address(),
+    close: () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())),
+  };
 }
 
 async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMessage, response: ServerResponse): Promise<void> {

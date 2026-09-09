@@ -175,6 +175,7 @@ export class LocalMissionRuntime {
     } catch (error: unknown) {
       if (isNotFound(error)) throw new MissionLaunchIncompleteError(missionId);
       if (error instanceof z.ZodError || error instanceof SyntaxError) throw new MissionLaunchIncompleteError(missionId);
+      if (error instanceof Error && error.message.startsWith("Unknown fixture ID:")) throw new MissionLaunchIncompleteError(missionId);
       throw error;
     }
   }

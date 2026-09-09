@@ -87,4 +87,17 @@ describe("local runtime HTTP bridge", () => {
     const response = await fetch(await urlFor(server, "/api/missions/partial-mission"));
     expect(response.status).toBe(409);
   });
+
+  it("reports corrupted reservation metadata as a deliberate conflict", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-server-"));
+    const runtime = new LocalMissionRuntime({ dataRoot });
+    const server = await listenLocalRuntimeServer(runtime);
+    servers.push(server);
+    const fs = await import("node:fs/promises");
+    await fs.mkdir(join(dataRoot, "missions"));
+    await fs.writeFile(join(dataRoot, "missions", "partial-mission.reserve"), JSON.stringify({ fixtureId: "unknown-fixture" }), "utf8");
+
+    const response = await fetch(await urlFor(server, "/api/missions/partial-mission"));
+    expect(response.status).toBe(409);
+  });
 });

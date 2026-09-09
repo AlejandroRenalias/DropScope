@@ -76,6 +76,15 @@ describe("LocalMissionRuntime", () => {
     await expect(runtime.reload("partial-mission")).rejects.toThrow("launch incomplete");
   });
 
+  it("classifies an unknown fixture in reservation metadata as incomplete", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
+    const missionsRoot = join(dataRoot, "missions");
+    await mkdir(missionsRoot, { recursive: true });
+    await writeFile(join(missionsRoot, "partial-mission.reserve"), JSON.stringify({ fixtureId: "unknown-fixture" }), "utf8");
+    const runtime = new LocalMissionRuntime({ dataRoot });
+    await expect(runtime.reload("partial-mission")).rejects.toThrow("launch incomplete");
+  });
+
   it("does not follow a symlink at a mission history path", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
     const missionsRoot = join(dataRoot, "missions");

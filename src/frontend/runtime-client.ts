@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { missionEventSchema, type MissionEvent } from "../contracts.js";
 
-export const LOCAL_RUNTIME_BASE_URL = "http://127.0.0.1:8787";
+const defaultRuntimeBaseUrl = "http://127.0.0.1:8787";
+const configuredRuntimeBaseUrl = import.meta.env.VITE_LOCAL_RUNTIME_BASE_URL;
+export const LOCAL_RUNTIME_BASE_URL = typeof configuredRuntimeBaseUrl === "string" && /^https?:\/\/127\.0\.0\.1(?::\d+)?$/.test(configuredRuntimeBaseUrl)
+  ? configuredRuntimeBaseUrl
+  : defaultRuntimeBaseUrl;
 const missionDtoSchema = z.object({
   missionId: z.string().min(1),
   fixtureId: z.string().min(1),

@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "demo": "tsx src/cli.ts",
-    "demo:recovery": "tsx src/recovery-demo.ts"
+    "demo:recovery": "tsx src/recovery-demo.ts",
+    "runtime:dev": "tsx src/local-runtime-cli.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

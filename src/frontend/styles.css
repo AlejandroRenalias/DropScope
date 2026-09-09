@@ -947,3 +947,21 @@ button:active { transform: translateY(1px); }
 @media (prefers-reduced-motion: reduce) {
   .robot.working .sprite-image { animation: none !important; }
 }
+
+.runtime-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line, #29434b);
+  background: rgba(10, 24, 29, .72);
+}
+.runtime-controls > div { display: grid; gap: 2px; margin-right: auto; }
+.runtime-controls label { color: var(--muted, #91a4a7); font-size: 12px; }
+.runtime-controls select, .runtime-controls button { min-height: 34px; border: 1px solid var(--line, #29434b); background: #10272d; color: inherit; padding: 6px 10px; font: inherit; }
+.runtime-controls button { cursor: pointer; }
+.runtime-controls button:disabled { cursor: wait; opacity: .55; }
+.runtime-message { flex-basis: 100%; color: #9fd8c0; font-size: 13px; }
+.runtime-message.error { color: #f0a6a0; }

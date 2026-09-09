@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { officeHistories, projectOffice } from "../src/frontend/office-projection.js";
+import { officeHistories, projectFinalReport, projectOffice, replayEvents } from "../src/frontend/office-projection.js";
 import { replay } from "../src/reducer.js";
 describe("Research Office event projection", () => {
   it("exposes exactly three valid replay histories", () => { expect(Object.keys(officeHistories)).toEqual(["RUNNING", "BLOCKED", "COMPLETED"]); Object.values(officeHistories).forEach((history) => expect(() => replay(history)).not.toThrow()); });
@@ -14,5 +14,24 @@ describe("Research Office event projection", () => {
     expect(running.decisionViews.reviewOffice?.blockingFeedback).toContain("unresolved_decision_critical_contradiction");
     expect(completed.decisionViews.reviewOffice?.divergences).toContain("TOP_CANDIDATE_DIVERGENCE: crosscurrent-workspace-market");
     expect(completed.decisionViews.reviewOffice?.revisionResponse).toContain("returned accept");
+  });
+  it("builds a browser-safe final report from the static fixture helpers", () => {
+    const report = projectFinalReport();
+    expect(report.fixtureId).toBe("crosscurrent-workspace-market");
+    expect(report.priorities.length).toBeGreaterThan(0);
+    expect(report.priorities.length).toBeLessThanOrEqual(5);
+    expect(report.heldOut.some((candidate) => candidate.reasonCodes.length > 0)).toBe(true);
+    expect(report.safetyGate).toBe("ALLOWED");
+    expect(report.evidenceSummary.supporting).toContain("Customer-problem evidence 91/100");
+    expect(report.evidenceSummary.opposing).toContain("Operational risk 18/100");
+    expect(report.reviewerVerdict).toBe("REVISE");
+    expect(report.nextStep).toContain("Next step");
+  });
+  it("labels replay event categories and projects valid prefixes without mutation", () => {
+    const history = officeHistories.BLOCKED;
+    const records = replayEvents(history);
+    expect(new Set(records.map((record) => record.category))).toEqual(new Set(["task", "agent", "budget", "review", "failure"]));
+    history.forEach((_, index) => expect(() => projectOffice(history.slice(0, index + 1))).not.toThrow());
+    expect(history).toHaveLength(records.length);
   });
 });

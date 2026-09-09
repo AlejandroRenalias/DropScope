@@ -1,15 +1,24 @@
-import { mkdir, readFile, appendFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, appendFile, writeFile, type FileHandle } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { missionEventSchema, type MissionEvent } from "./contracts.js";
 
 export class JsonlEventStore {
-  constructor(private readonly historyPath: string) {}
+  constructor(
+    private readonly historyPath: string,
+    private readonly activeWriter?: FileHandle,
+  ) {}
 
   async append(event: MissionEvent): Promise<void> {
     const parsed = missionEventSchema.parse(event);
+    const record = `${JSON.stringify(parsed)}\n`;
+    if (this.activeWriter) {
+      await this.activeWriter.appendFile(record, "utf8");
+      await this.activeWriter.datasync();
+      return;
+    }
     await mkdir(dirname(this.historyPath), { recursive: true });
-    await appendFile(this.historyPath, `${JSON.stringify(parsed)}\n`, "utf8");
+    await appendFile(this.historyPath, record, "utf8");
   }
 
   async readAll(): Promise<MissionEvent[]> {

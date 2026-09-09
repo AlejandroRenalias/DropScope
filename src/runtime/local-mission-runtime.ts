@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, open, readFile, unlink } from "node:fs/promises";
+import { lstat, mkdir, open, readFile, unlink, type FileHandle } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
 
@@ -25,7 +25,17 @@ export interface LocalMissionRuntimeOptions {
   createMissionId?: MissionIdFactory;
 }
 
-/** The sole local boundary allowed to create and reload persisted fixture missions. */
+export class MissionLaunchIncompleteError extends Error {
+  constructor(missionId: string) {
+    super(`Mission launch incomplete: ${missionId}`);
+  }
+}
+
+/**
+ * The sole local boundary allowed to create and reload persisted fixture missions.
+ * Its data root is trusted local application storage: Windows Node does not expose
+ * a no-follow directory-handle primitive for adversarial filesystem replacement.
+ */
 export class LocalMissionRuntime {
   private readonly missionsRoot: string;
   private readonly createMissionId: MissionIdFactory;
@@ -41,29 +51,30 @@ export class LocalMissionRuntime {
     await this.ensureMissionsRoot();
     const historyPath = this.historyPath(missionId);
     const metadataPath = this.metadataPath(missionId);
+    const reservationPath = this.reservationPath(missionId);
     await this.assertAbsent(metadataPath, `Mission ID already exists: ${missionId}`);
-    // Reserve both paths with exclusive creation before the runner gets a chance
-    // to append. `wx` refuses existing files and symlinks/reparse points.
-    await this.reserveFile(historyPath, `Mission ID already exists: ${missionId}`);
+    await this.assertAbsent(reservationPath, `Mission ID already exists: ${missionId}`);
+    await this.assertAbsent(historyPath, `Mission ID already exists: ${missionId}`);
+    // The marker is created first so a crash never leaves an unowned history.
+    // The event writer is then held open for the whole mission, so later
+    // pathname changes cannot redirect any active append.
+    await this.reserveMarker(reservationPath, `Mission ID already exists: ${missionId}`, JSON.stringify({ fixtureId: fixture.fixtureId }));
+    let historyHandle: FileHandle | undefined;
     try {
-      await this.reserveFile(this.reservationPath(missionId), `Mission ID already exists: ${missionId}`, JSON.stringify({ fixtureId: fixture.fixtureId }));
-    } catch (error) {
-      // The marker is the launch's durable ownership record. If another
-      // launch won that race, remove only our empty history reservation so it
-      // cannot look like a recoverable partial mission.
-      await unlink(historyPath);
-      throw error;
-    }
-
-    try {
-      await runFixtureMission({ fixtureId: fixture.fixtureId, missionId, historyPath });
+      historyHandle = await this.reserveHistory(historyPath, `Mission ID already exists: ${missionId}`);
+      const eventStore = new JsonlEventStore(historyPath, historyHandle);
+      await runFixtureMission({ fixtureId: fixture.fixtureId, missionId, historyPath, eventStore });
+      await historyHandle.datasync();
+      await historyHandle.close();
+      historyHandle = undefined;
       await this.writeExclusive(metadataPath, JSON.stringify({ fixtureId: fixture.fixtureId }));
+      await unlink(reservationPath);
+    } catch (error) {
+      // The marker is intentionally retained. It prevents a second writer and
+      // lets reload expose any valid event prefix after an interrupted launch.
+      throw error;
     } finally {
-      // A reservation is intentionally retained on failure, making a partial
-      // launch visible to reload instead of allowing a second writer.
-      if (await exists(this.reservationPath(missionId)) && await exists(metadataPath)) {
-        await unlink(this.reservationPath(missionId));
-      }
+      await historyHandle?.close();
     }
     return this.readDto(missionId, fixture.fixtureId);
   }
@@ -79,7 +90,7 @@ export class LocalMissionRuntime {
         return await this.readDto(validMissionId, fixtureId);
       } catch (error: unknown) {
         if (error instanceof Error && error.message === `Mission history not found: ${validMissionId}`) {
-          throw new Error(`Mission launch incomplete: ${validMissionId}`);
+          throw new MissionLaunchIncompleteError(validMissionId);
         }
         throw error;
       }
@@ -100,7 +111,13 @@ export class LocalMissionRuntime {
   private async readDto(missionId: string, fixtureId: string): Promise<MissionDto> {
     const historyPath = this.historyPath(missionId);
     await assertNotLink(historyPath);
-    const events = await new JsonlEventStore(historyPath).readAll();
+    let events: MissionEvent[];
+    try {
+      events = await new JsonlEventStore(historyPath).readAll();
+    } catch (error: unknown) {
+      if (isNotFound(error)) throw error;
+      throw new MissionLaunchIncompleteError(missionId);
+    }
     if (events.length === 0) throw new Error(`Mission history not found: ${missionId}`);
     if (events.some((event) => event.missionId !== missionId)) throw new Error("Mission history belongs to a different mission.");
     replay(events);
@@ -129,14 +146,24 @@ export class LocalMissionRuntime {
     if (!stats.isDirectory() || stats.isSymbolicLink()) throw new Error("Mission data directory must be a real directory.");
   }
 
-  private async reserveFile(path: string, collisionMessage: string, contents = ""): Promise<void> {
+  private async reserveMarker(path: string, collisionMessage: string, contents: string): Promise<void> {
     try {
       const handle = await open(path, "wx");
       try {
-        if (contents) await handle.writeFile(contents, "utf8");
+        await handle.writeFile(contents, "utf8");
+        await handle.sync();
       } finally {
         await handle.close();
       }
+    } catch (error: unknown) {
+      if (isAlreadyExists(error)) throw new Error(collisionMessage);
+      throw error;
+    }
+  }
+
+  private async reserveHistory(path: string, collisionMessage: string): Promise<FileHandle> {
+    try {
+      return await open(path, "ax");
     } catch (error: unknown) {
       if (isAlreadyExists(error)) throw new Error(collisionMessage);
       throw error;
@@ -171,6 +198,7 @@ export class LocalMissionRuntime {
     const handle = await open(path, "wx");
     try {
       await handle.writeFile(contents, "utf8");
+      await handle.sync();
     } finally {
       await handle.close();
     }

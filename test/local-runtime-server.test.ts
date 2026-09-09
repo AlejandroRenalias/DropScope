@@ -53,7 +53,7 @@ describe("local runtime HTTP bridge", () => {
     expect(missing.status).toBe(404);
   });
 
-  it("supports loopback CORS and rejects public origins and hosts", async () => {
+  it("supports loopback CORS, including default-port origins, and exposes no rebind API", async () => {
     const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "cors-mission" });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);
@@ -66,9 +66,25 @@ describe("local runtime HTTP bridge", () => {
     const launch = await fetch(`${base}/api/missions`, { method: "POST", headers: { Origin: origin, "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
     expect(launch.status).toBe(201);
     expect(launch.headers.get("access-control-allow-origin")).toBe(origin);
+    const defaultPort = await fetch(`${base}/api/missions`, { method: "OPTIONS", headers: { Origin: "http://localhost", "Access-Control-Request-Method": "POST" } });
+    expect(defaultPort.status).toBe(204);
+    expect(defaultPort.headers.get("access-control-allow-origin")).toBe("http://localhost");
     const foreign = await fetch(`${base}/api/missions`, { method: "POST", headers: { Origin: "https://example.com", "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
     expect(foreign.status).toBe(403);
+    expect(server).not.toHaveProperty("listen");
+  });
 
-    await expect(listenLocalRuntimeServer(runtime, { host: "0.0.0.0" })).rejects.toThrow("loopback hosts");
+  it("reports an interrupted mission as a deliberate conflict", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-server-"));
+    const runtime = new LocalMissionRuntime({ dataRoot });
+    const server = await listenLocalRuntimeServer(runtime);
+    servers.push(server);
+    const fs = await import("node:fs/promises");
+    await fs.mkdir(join(dataRoot, "missions"));
+    await fs.writeFile(join(dataRoot, "missions", "partial-mission.reserve"), JSON.stringify({ fixtureId: "mixed-opportunity-market" }), "utf8");
+    await fs.writeFile(join(dataRoot, "missions", "partial-mission.jsonl"), '{"schemaVersion":', "utf8");
+
+    const response = await fetch(await urlFor(server, "/api/missions/partial-mission"));
+    expect(response.status).toBe(409);
   });
 });

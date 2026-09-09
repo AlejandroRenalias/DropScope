@@ -22,6 +22,7 @@ export async function runFixtureMission(options: {
   fixtureId: string;
   missionId: string;
   historyPath: string;
+  eventStore?: JsonlEventStore;
   maxConcurrency?: number;
   missionSeed?: number;
 }): Promise<FixtureRunResult> {
@@ -30,7 +31,8 @@ export async function runFixtureMission(options: {
     missionId: options.missionId,
     missionSeed: options.missionSeed ?? fixture.seed,
     totalBudget: fixture.budget,
-    historyPath: options.historyPath,
+    historyPath: options.eventStore ? undefined : options.historyPath,
+    eventStore: options.eventStore,
     maxConcurrency: options.maxConcurrency,
     completeMission: false,
     tasks: fixture.tasks.map((task) => ({
@@ -47,7 +49,7 @@ export async function runFixtureMission(options: {
   const riskDecisions = fixture.candidateEvaluations.map((candidate) => evaluateRiskGate(candidate.riskInput));
   const candidateEligibility = fixture.candidateEvaluations.map((candidate, index) => determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }));
   const report = buildCandidateReport(fixture.candidateEvaluations, riskDecisions, candidateEligibility);
-  const store = new JsonlEventStore(options.historyPath);
+  const store = options.eventStore ?? new JsonlEventStore(options.historyPath);
   const events = await store.readAll();
   const scheduledState = replay(events);
   if (scheduledState.status !== "RUNNING") {

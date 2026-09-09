@@ -1,13 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { localMissionDtoSchema, LocalMissionRuntime } from "./runtime/local-mission-runtime.js";
+import { localMissionDtoSchema, LocalMissionRuntime, MissionLaunchIncompleteError } from "./runtime/local-mission-runtime.js";
 import { z } from "zod";
 
 const launchRequestSchema = z.object({ fixtureId: z.string().min(1) }).strict();
 const MAX_BODY_BYTES = 64 * 1024;
 
 export interface LocalRuntimeServerOptions {
-  host?: string;
   port?: number;
 }
 
@@ -18,8 +17,7 @@ export interface LocalRuntimeServerHandle {
 
 export async function listenLocalRuntimeServer(runtime: LocalMissionRuntime, options: LocalRuntimeServerOptions = {}): Promise<LocalRuntimeServerHandle> {
   const server = createServer((request, response) => { void handleRequest(runtime, request, response); });
-  const host = options.host ?? "127.0.0.1";
-  if (host !== "127.0.0.1" && host !== "localhost") throw new Error("Local runtime server accepts only loopback hosts.");
+  const host = "127.0.0.1";
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(options.port ?? 0, host, () => {
@@ -58,7 +56,7 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
     }
     throw httpError(request.method === "POST" || request.method === "GET" ? 404 : 405, "Unknown route.");
   } catch (error: unknown) {
-    const status = error instanceof HttpError ? error.status : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
+    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
     sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin));
   }
 }
@@ -103,7 +101,7 @@ function loopbackOrigin(origin: string | undefined): string | undefined {
   try {
     const parsed = new URL(origin);
     const isLoopbackHost = parsed.protocol === "http:" && (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost");
-    return isLoopbackHost && parsed.port && Number(parsed.port) <= 65535 && parsed.pathname === "/" && !parsed.search && !parsed.hash ? parsed.origin : undefined;
+    return isLoopbackHost && (parsed.port === "" || Number(parsed.port) <= 65535) && parsed.pathname === "/" && !parsed.search && !parsed.hash ? parsed.origin : undefined;
   } catch {
     return undefined;
   }

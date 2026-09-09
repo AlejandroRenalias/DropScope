@@ -104,7 +104,9 @@ function Office() {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [view, setView] = useState<OfficeView>("floor");
   useEffect(() => {
-    const missionId = window.localStorage.getItem("dropscope.activeMissionId");
+    let missionId: string | null;
+    try { missionId = window.localStorage.getItem("dropscope.activeMissionId"); }
+    catch { setRuntimeState("error"); setRuntimeMessage("Browser storage is unavailable, so no previous local mission can be restored."); return; }
     if (!missionId) return;
     setRuntimeState("loading");
     void reloadLocalMission(missionId).then((mission) => { setActiveMission(mission); setRuntimeState("success"); setRuntimeMessage("Reloaded persisted local mission."); }).catch((error: unknown) => { setRuntimeState("error"); setRuntimeMessage(error instanceof Error ? error.message : "Could not reload the local mission."); });
@@ -118,11 +120,18 @@ function Office() {
   const floorStatus = status === "BLOCKED" ? "Policy block" : status === "COMPLETED" ? "Mission complete" : "Replay running";
   const launch = async () => {
     setRuntimeState("loading"); setRuntimeMessage("Launching local mission…");
-    try { const mission = await launchLocalMission(fixtureId); window.localStorage.setItem("dropscope.activeMissionId", mission.missionId); setActiveMission(mission); setRuntimeState("success"); setRuntimeMessage(`Mission ${mission.missionId} launched and persisted.`); }
+    try {
+      const mission = await launchLocalMission(fixtureId);
+      setActiveMission(mission);
+      try { window.localStorage.setItem("dropscope.activeMissionId", mission.missionId); setRuntimeState("success"); setRuntimeMessage(`Mission ${mission.missionId} launched and persisted.`); }
+      catch { setRuntimeState("success"); setRuntimeMessage(`Mission ${mission.missionId} launched, but browser storage is unavailable. It will not auto-reload after refresh.`); }
+    }
     catch (error: unknown) { setRuntimeState("error"); setRuntimeMessage(error instanceof Error ? error.message : "Could not launch the local mission."); }
   };
   const reload = async () => {
-    const missionId = window.localStorage.getItem("dropscope.activeMissionId");
+    let missionId: string | null;
+    try { missionId = window.localStorage.getItem("dropscope.activeMissionId"); }
+    catch { setRuntimeState("error"); setRuntimeMessage("Browser storage is unavailable, so there is no saved mission to reload."); return; }
     if (!missionId) { setRuntimeState("error"); setRuntimeMessage("No local mission has been launched yet."); return; }
     setRuntimeState("loading"); setRuntimeMessage("Reloading persisted mission…");
     try { const mission = await reloadLocalMission(missionId); setActiveMission(mission); setRuntimeState("success"); setRuntimeMessage("Persisted local mission reloaded."); }

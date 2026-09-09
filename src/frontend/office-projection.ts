@@ -2,12 +2,19 @@ import type { MissionEvent } from "../contracts.js";
 import { replay, type MissionStatus, type TaskStatus } from "../reducer.js";
 import { evaluateTribunal, type TribunalResult } from "../tribunal-policy.js";
 import type { BlindReviewResult } from "../research-domain.js";
+import { loadFixture, type FixtureCandidateEvaluation } from "../fixture-model.js";
+import { evaluateRiskGate } from "../risk-policy.js";
+import { determineCandidateEligibility } from "../candidate-eligibility.js";
+import { buildCandidateReport, type CandidateReport } from "../report.js";
 
 export type OfficeScenario = "RUNNING" | "BLOCKED" | "COMPLETED";
 export type AgentState = "WORKING" | "WAITING" | "BLOCKED" | "COMPLETED";
 export interface AgentDeskRecord { id: string; role: string; state: AgentState; task: string; detail: string; evidence: string; usage: { units: number; status: string }; }
 export interface DecisionViews { agentDesk: AgentDeskRecord[]; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
+export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
+export interface ReplayEventRecord { sequence: number; type: string; category: ReplayEventCategory; detail: string; }
+export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; }
 const missionId = "crosscurrent-workspace-market";
 const sourceLabel = "Static demo history replayed through the existing MissionState reducer. It is not live engine data.";
 const timestamp = (n: number) => `2026-01-01T00:00:${String(n).padStart(2, "0")}.000Z`;
@@ -57,6 +64,13 @@ function taskState(status: TaskStatus): AgentState { if (status === "RUNNING") r
 function roleLabel(role: string): string { return role.toLowerCase().split("_").map((word) => word[0]!.toUpperCase() + word.slice(1)).join(" "); }
 function workstationId(role: string): string { return role === "MARKET_RESEARCHER" ? "commander" : role === "EVIDENCE_RESEARCHER" ? "evidence" : role === "OPERATIONS_RESEARCHER" ? "operations" : role === "RISK_RESEARCHER" ? "risk" : "evidence"; }
 function eventDetail(item: MissionEvent): string { const payload = item.payload as Record<string, unknown>; const detail = payload.reason ?? payload.finding ?? payload.objective ?? payload.status; return typeof detail === "string" ? detail : `${item.type} recorded in replay.`; }
+function eventCategory(type: MissionEvent["type"]): ReplayEventCategory {
+  if (type.includes("Budget")) return "budget";
+  if (type.includes("Review") || type.includes("Tribunal") || type.includes("Divergence") || type.includes("Revision") || type.includes("Reaudit")) return "review";
+  if (type.includes("Fail") || type.includes("Interrupt") || type.includes("Gap") || type.includes("Terminat")) return "failure";
+  if (type === "TaskStarted" || type === "FindingSubmitted") return "agent";
+  return "task";
+}
 function missionName(id: string | null): string { return (id ?? "unknown-mission").split("-").map((word) => word[0]!.toUpperCase() + word.slice(1)).join(" "); }
 function officeStatus(status: MissionStatus): OfficeScenario { return status === "COMPLETED" || status === "COMPLETED_INSUFFICIENT_EVIDENCE" ? "COMPLETED" : status === "RUNNING" || status === "NOT_STARTED" ? "RUNNING" : "BLOCKED"; }
 function phaseLabel(status: MissionStatus): string { return status === "COMPLETED" ? "Report ready" : status === "COMPLETED_INSUFFICIENT_EVIDENCE" ? "Insufficient evidence" : status === "BLOCKED_POLICY" ? "Policy block" : status === "FAILED_UNRECOVERABLE" ? "Mission stopped" : "Research in progress"; }
@@ -74,4 +88,53 @@ export function projectOffice(events: MissionEvent[]): OfficeProjection {
   const revisionResponse = state.revision?.rereview ? `Focused re-review returned ${state.revision.rereview.verdict.toLowerCase()} for the revision.` : state.revision ? "Revision requested; response is still pending." : null;
   const decisionViews: DecisionViews = { agentDesk: agents, tribunalRoom: tribunalEvent ? { result: state.tribunalResults[tribunalEvent.payload.tribunalId]!, recordedAtSequence: tribunalEvent.sequenceNumber } : null, reviewOffice: reviewEvent ? { result: state.blindReviewResults[reviewEvent.payload.reviewId]!, recordedAtSequence: reviewEvent.sequenceNumber, blockingFeedback, divergences, revisionResponse } : null };
   return { sourceLabel, mission: { name: missionName(state.missionId), phase: phaseLabel(state.status), status }, ledger: { ...state.budget }, agents, tasks, events: events.slice(-3).map((item) => ({ sequence: item.sequenceNumber, type: item.type, detail: eventDetail(item) })), decisionViews };
+}
+
+export function replayEvents(events: MissionEvent[]): ReplayEventRecord[] {
+  return events.map((item) => ({ sequence: item.sequenceNumber, type: item.type, category: eventCategory(item.type), detail: eventDetail(item) }));
+}
+
+export function projectFinalReport(): FinalReportProjection {
+  const fixture = loadFixture("crosscurrent-workspace-market");
+  const riskDecisions = fixture.candidateEvaluations.map((candidate) => evaluateRiskGate(candidate.riskInput));
+  const eligibilities = fixture.candidateEvaluations.map((candidate, index) => determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }));
+  const report = buildCandidateReport(fixture.candidateEvaluations, riskDecisions, eligibilities);
+  const heldOutIds = new Set(report.heldOut.map((candidate) => candidate.candidateId));
+  const priorities = report.ranking.map((ranked) => ({ ...fixture.candidateEvaluations.find((candidate) => candidate.candidateId === ranked.candidateId)!, researchPriorityScore: ranked.researchPriorityScore }));
+  const representative = priorities[0] ?? fixture.candidateEvaluations[0]!;
+  const review = projectOffice(officeHistories.COMPLETED).decisionViews.reviewOffice;
+  const heldOut = report.heldOut.filter((candidate) => heldOutIds.has(candidate.candidateId));
+  const nextStep = report.outcome === "INSUFFICIENT_EVIDENCE"
+    ? "Insufficient evidence: resolve held-out blockers before selecting a candidate."
+    : priorities.length > 0
+      ? `Next step: deepen validation for ${priorities[0]!.candidateId} before committing spend.`
+      : "Insufficient evidence: no candidate cleared the recorded gates.";
+  const representativeDecision = riskDecisions.find((decision) => decision.candidateId === representative.candidateId);
+  return {
+    sourceLabel: "Static fixture crosscurrent-workspace-market evaluated by browser-safe pure helpers. This is not live market data.",
+    fixtureId: fixture.fixtureId,
+    outcome: report.outcome,
+    priorities,
+    heldOut,
+    reviewerVerdict: review?.result.verdict ?? "NO_RECORDED_REVIEW",
+    customerProblemEvidence: representative.customerProblemEvidenceScore,
+    evidenceQuality: representative.evidenceQualityScore,
+    advertisingSaturation: representative.advertisingSaturationScore,
+    operationalRisk: representative.operationalRiskScore,
+    failureRisk: representative.failureRiskScore,
+    safetyGate: representativeDecision?.outcome ?? "NO_RECORDED_GATE",
+    evidenceSummary: {
+      supporting: [
+        `Customer-problem evidence ${representative.customerProblemEvidenceScore}/100`,
+        `Evidence quality ${representative.evidenceQualityScore}/100`,
+        `Trend durability ${representative.trendDurabilityScore}/100`,
+      ],
+      opposing: [
+        `Advertising saturation ${representative.advertisingSaturationScore}/100`,
+        `Operational risk ${representative.operationalRiskScore}/100`,
+        `Failure risk ${representative.failureRiskScore}/100`,
+      ],
+    },
+    nextStep,
+  };
 }

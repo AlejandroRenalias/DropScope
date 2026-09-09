@@ -5,4 +5,14 @@ describe("Research Office event projection", () => {
   it("exposes exactly three valid replay histories", () => { expect(Object.keys(officeHistories)).toEqual(["RUNNING", "BLOCKED", "COMPLETED"]); Object.values(officeHistories).forEach((history) => expect(() => replay(history)).not.toThrow()); });
   it("reads the ledger and changing display state from replay", () => { const running = projectOffice(officeHistories.RUNNING); const blocked = projectOffice(officeHistories.BLOCKED); const completed = projectOffice(officeHistories.COMPLETED); expect(running.ledger).toEqual({ total: 140, reserved: 0, committed: 50, spent: 25, available: 65 }); expect(running.mission).toMatchObject({ name: "Crosscurrent Workspace Market", status: "RUNNING" }); expect(running.tasks.filter((task) => task.state === "WORKING")).toHaveLength(2); expect(blocked.mission.status).toBe("BLOCKED"); expect(replay(officeHistories.BLOCKED).status).toBe("BLOCKED_POLICY"); expect(blocked.agents.some((agent) => agent.state === "BLOCKED")).toBe(true); expect(completed.mission.status).toBe("COMPLETED"); expect(completed.tasks.every((task) => task.state === "COMPLETED")).toBe(true); });
   it("projects dependencies and the recent event trail without precomputed values", () => { const projection = projectOffice(officeHistories.COMPLETED); expect(projection.tasks.find((task) => task.label.toLowerCase().includes("risk"))?.dependencies).toContain("workflow-interviews"); expect(projection.events.map((item) => item.type)).toEqual(["TaskStarted", "FindingSubmitted", "MissionCompleted"]); expect(projection.sourceLabel).toContain("replayed"); });
+  it("projects the decision rooms only from recorded replay results", () => {
+    const running = projectOffice(officeHistories.RUNNING);
+    const completed = projectOffice(officeHistories.COMPLETED);
+    expect(running.decisionViews.agentDesk.every((agent) => agent.usage.units > 0)).toBe(true);
+    expect(running.decisionViews.tribunalRoom?.result.recommendation).toBe("CONTINUE_RESEARCH");
+    expect(running.decisionViews.reviewOffice?.result.ranking).toEqual(["crosscurrent-workspace-market"]);
+    expect(running.decisionViews.reviewOffice?.blockingFeedback).toContain("unresolved_decision_critical_contradiction");
+    expect(completed.decisionViews.reviewOffice?.divergences).toContain("TOP_CANDIDATE_DIVERGENCE: crosscurrent-workspace-market");
+    expect(completed.decisionViews.reviewOffice?.revisionResponse).toContain("returned accept");
+  });
 });

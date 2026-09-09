@@ -18,6 +18,7 @@ import robotRoles from "./assets/robot-roles.svg";
 import { officeHistories, projectOffice, type AgentState, type OfficeScenario, type OfficeProjection } from "./office-projection.js";
 
 type Icon = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill" }>;
+type OfficeView = "floor" | "agent" | "tribunal" | "review";
 const roleIcons: Record<string, Icon> = { commander: Target, evidence: MagnifyingGlass, operations: Wrench, risk: ShieldCheck };
 
 function Robot({ id, state }: { id: string; state: AgentState }) {
@@ -60,10 +61,22 @@ function EventTrail({ projection, reduced, setReduced }: { projection: OfficePro
   return <article className="context-panel event-panel"><div className="panel-heading"><div><span className="eyebrow"><List size={14} />Event trail</span><h2>Recent activity</h2></div><button className="motion-button" onClick={() => setReduced(!reduced)}>{reduced ? "Motion off" : "Reduce motion"}</button></div><div className="event-list">{projection.events.map((event) => <div className="event" key={event.sequence}><b>{String(event.sequence).padStart(2, "0")}</b><span><strong>{event.type}</strong><small>{event.detail}</small></span></div>)}</div></article>;
 }
 
+function DecisionView({ projection, view }: { projection: OfficeProjection; view: OfficeView }) {
+  if (view === "floor") return null;
+  if (view === "agent") return <section className="decision-view" aria-label="Agent Desk"><div className="panel-heading"><div><span className="eyebrow">Agent Desk</span><h2>Worker evidence &amp; usage</h2></div></div><div className="decision-grid">{projection.decisionViews.agentDesk.map((agent) => <article className="decision-card" key={`${agent.id}-${agent.task}`}><strong>{agent.role}</strong><span>{agent.state} · {agent.task}</span><p>{agent.evidence}</p><small>Replay usage: {agent.usage.units} units · {agent.usage.status}</small></article>)}</div></section>;
+  if (view === "tribunal") {
+    const room = projection.decisionViews.tribunalRoom;
+    return <section className="decision-view" aria-label="Tribunal Room"><div className="panel-heading"><div><span className="eyebrow">Tribunal Room</span><h2>Recorded policy result</h2></div></div>{room ? <div className="decision-grid"><article className="decision-card"><strong>{room.result.recommendation}</strong><span>Candidate {room.result.candidateId} · sequence {room.recordedAtSequence}</span><p>Venture claims: {room.result.ventureClaimIds.join(", ") || "none"}</p><p>Ruin claims: {room.result.ruinClaimIds.join(", ") || "none"}</p><small>{room.result.reasons.map((reason) => reason.explanation).join(" ")}</small></article></div> : <p className="empty-state">No TribunalCompleted event in this replay.</p>}</section>;
+  }
+  const office = projection.decisionViews.reviewOffice;
+  return <section className="decision-view" aria-label="Review Office"><div className="panel-heading"><div><span className="eyebrow">Review Office</span><h2>Blind review record</h2></div></div>{office ? <div className="decision-grid">{office.result.candidateAssessments.map((assessment) => <article className="decision-card" key={assessment.anonymizedCandidateId}><strong>Rank {office.result.ranking.indexOf(assessment.anonymizedCandidateId) + 1} · {assessment.anonymizedCandidateId}</strong><span>{office.result.verdict} · score {assessment.reviewerScore}</span><p>{Object.entries(assessment.dimensionScores).map(([dimension, score]) => `${dimension}: ${score}`).join(" · ")}</p><small>Blocking feedback: {[...assessment.blockingDefects, ...assessment.missingResearchKeys].join(", ") || "none"}</small>{office.divergences.length > 0 ? <small>Divergences: {office.divergences.join(" · ")}</small> : <small>Divergences: none recorded in this replay.</small>}{office.revisionResponse && <small>{office.revisionResponse}</small>}</article>)}</div> : <p className="empty-state">No BlindReviewCompleted event in this replay.</p>}</section>;
+}
+
 function Office() {
   const [scenario, setScenario] = useState<OfficeScenario>("RUNNING");
   const [reduced, setReduced] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
+  const [view, setView] = useState<OfficeView>("floor");
   const projection = projectOffice(officeHistories[scenario]);
   const status = projection.mission.status;
   const StatusIcon = status === "BLOCKED" ? Warning : status === "COMPLETED" ? CheckCircle : Play;
@@ -73,13 +86,14 @@ function Office() {
   return <div className={`app ${reduced ? "reduced" : ""}`}>
     <header className="topbar"><div className="brand"><b>D</b><span>DropScope</span><em>RESEARCH OS</em></div><div className="topbar-mission"><span>MISSION</span><strong>{projection.mission.name}</strong></div></header>
     <div className="shell">
-      <aside className="sidebar"><div className="sidebar-label">Workspace</div><nav aria-label="Primary navigation"><NavItem icon={Play} active>Research Office</NavItem><NavItem icon={Archive}>Mission Replay</NavItem><NavItem icon={ShieldCheck}>Review Office</NavItem><NavItem icon={ChartLineUp}>Reports</NavItem></nav><div className="sidebar-foot"><span className="online-dot" />Static event replay<small>Read-only projection</small></div></aside>
+      <aside className="sidebar"><div className="sidebar-label">Workspace</div><nav aria-label="Primary navigation"><button className={`nav-item ${view === "floor" ? "active" : ""}`} onClick={() => setView("floor")}><Play size={18} /><span>Research Office</span></button><button className={`nav-item ${view === "agent" ? "active" : ""}`} onClick={() => setView("agent")}><Target size={18} /><span>Agent Desk</span></button><button className={`nav-item ${view === "tribunal" ? "active" : ""}`} onClick={() => setView("tribunal")}><ShieldCheck size={18} /><span>Tribunal Room</span></button><button className={`nav-item ${view === "review" ? "active" : ""}`} onClick={() => setView("review")}><Archive size={18} /><span>Review Office</span></button><NavItem icon={ChartLineUp}>Reports</NavItem></nav><div className="sidebar-foot"><span className="online-dot" />Static event replay<small>Read-only projection</small></div></aside>
       <main className="content">
         <section className="page-heading"><div><div className="heading-kicker"><span>Mission</span><strong>{projection.mission.name}</strong><span className={`mission-status ${status.toLowerCase()}`}><StatusIcon size={14} />{projection.mission.phase}</span></div><p className="source-note" title={projection.sourceLabel}>{projection.sourceLabel}</p></div><div className="scenario-switcher" role="group" aria-label="Replay state"><span>Replay state</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button className={scenario === name ? "selected" : ""} onClick={() => { setScenario(name); setApprovalOpen(false); }} key={name}>{name}</button>)}</div></section>
         <div className="floor-status"><span className="eyebrow"><span className="live-dot" />{floorStatus}</span><span>{projection.agents.length} assigned workers · {workingAgents} active</span></div>
-        <OfficeScene agents={projection.agents} onApproval={() => setApprovalOpen((value) => !value)} />
+        <DecisionView projection={projection} view={view} />
+        {view === "floor" && <OfficeScene agents={projection.agents} onApproval={() => setApprovalOpen((value) => !value)} />}
         {approvalOpen && status === "BLOCKED" && <div className="approval-note" role="status"><Warning size={16} /><span><strong>Policy block</strong> This replay stopped with unresolved safety evidence. This local disclosure does not change mission data or policy.</span></div>}
-        <section className="lower-layout"><WorkGraph tasks={projection.tasks} /><div className="context-stack"><MissionLedger projection={projection} /><EventTrail projection={projection} reduced={reduced} setReduced={setReduced} /></div></section>
+        {view === "floor" && <section className="lower-layout"><WorkGraph tasks={projection.tasks} /><div className="context-stack"><MissionLedger projection={projection} /><EventTrail projection={projection} reduced={reduced} setReduced={setReduced} /></div></section>}
       </main>
     </div>
   </div>;

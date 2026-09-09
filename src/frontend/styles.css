@@ -24,6 +24,14 @@ button:active { transform: translateY(1px); }
   background: #0c1113;
 }
 
+.decision-view { margin: 22px 0; padding: 22px; border: 1px solid #273034; background: #10181b; }
+.decision-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.decision-card { display: grid; gap: 8px; min-height: 140px; padding: 16px; border: 1px solid #334247; background: #121d20; }
+.decision-card strong { color: #b9edf0; }
+.decision-card span, .decision-card small { color: #91a3a7; font-size: 12px; }
+.decision-card p { margin: 0; color: #d8e2e1; font-size: 13px; line-height: 1.45; }
+.empty-state { color: #91a3a7; }
+
 .topbar {
   display: flex;
   align-items: center;

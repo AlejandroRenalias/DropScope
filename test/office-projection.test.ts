@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest";
+import { officeScenarios } from "../src/frontend/office-projection.js";
+describe("Research Office projections", () => { it("keeps ledgers balanced", () => Object.values(officeScenarios).forEach(({ ledger }) => expect(ledger.reserved + ledger.committed + ledger.spent + ledger.available).toBe(ledger.total))); it("shows concurrency and an unrelated active task when blocked", () => { expect(officeScenarios.RUNNING.agents.filter(a => a.state === "WORKING")).toHaveLength(3); expect(officeScenarios.BLOCKED.agents.some(a => a.state === "BLOCKED")).toBe(true); expect(officeScenarios.BLOCKED.agents.some(a => a.state === "WORKING")).toBe(true); }); });

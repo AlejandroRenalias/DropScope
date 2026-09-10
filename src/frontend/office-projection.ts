@@ -9,7 +9,7 @@ import { buildCandidateReport, type CandidateReport } from "../report.js";
 
 export type OfficeScenario = "RUNNING" | "BLOCKED" | "COMPLETED";
 export type AgentState = "WORKING" | "WAITING" | "BLOCKED" | "COMPLETED";
-export interface AgentDeskRecord { id: string; role: string; state: AgentState; task: string; detail: string; evidence: string; usage: { units: number; status: string }; }
+export interface AgentDeskRecord { id: string; attemptId: string; role: string; state: AgentState; task: string; detail: string; evidence: string; provenance: "RECORDED_DRY_RUN" | null; usage: { units: number; status: string }; }
 export interface DecisionViews { agentDesk: AgentDeskRecord[]; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
@@ -80,7 +80,7 @@ export function projectOffice(events: MissionEvent[]): OfficeProjection {
     const task = state.tasks[taskId];
     return { label: task?.objective ?? authorization.objective, state: task ? taskState(task.status) : "WAITING", dependencies: authorization.dependencies.length ? `After ${authorization.dependencies.join(", ")}` : "Starting task" };
   });
-  const agents = Object.values(state.attempts).map((attempt) => ({ id: workstationId(attempt.workerRole), role: roleLabel(attempt.workerRole), state: taskState(attempt.status), task: state.tasks[attempt.taskId]?.objective ?? attempt.taskId, detail: attempt.finding ?? "Assigned through replay.", evidence: attempt.finding ?? (attempt.status === "INTERRUPTED" ? "Failure or revision context recorded in replay." : "No finding recorded yet."), usage: { units: state.tasks[attempt.taskId]?.cost ?? 0, status: attempt.status } }));
+  const agents = Object.entries(state.attempts).map(([attemptId, attempt]) => ({ id: workstationId(attempt.workerRole), attemptId, role: roleLabel(attempt.workerRole), state: taskState(attempt.status), task: state.tasks[attempt.taskId]?.objective ?? attempt.taskId, detail: attempt.finding ?? "Assigned through replay.", evidence: attempt.finding ?? (attempt.status === "INTERRUPTED" ? "Failure or revision context recorded in replay." : "No finding recorded yet."), provenance: attempt.finding?.startsWith("Recorded Evidence Researcher:") ? "RECORDED_DRY_RUN" as const : null, usage: { units: state.tasks[attempt.taskId]?.cost ?? 0, status: attempt.status } }));
   const tribunalEvent = events.find((item): item is Extract<MissionEvent, { type: "TribunalCompleted" }> => item.type === "TribunalCompleted");
   const reviewEvent = events.find((item): item is Extract<MissionEvent, { type: "BlindReviewCompleted" }> => item.type === "BlindReviewCompleted");
   const blockingFeedback = reviewEvent?.payload.candidateAssessments.flatMap((assessment) => assessment.blockingDefects) ?? [];

@@ -32,6 +32,9 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByRole("status")).toContainText("launched and persisted");
   await expect(page.getByText("Local event history")).toBeVisible();
 
+  await page.getByRole("button", { name: "Agent Desk" }).click();
+  await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("Recorded dry-run · no live worker or credits used");
+
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
   await expect(page.getByText("TaskFailedTransient", { exact: true })).toBeVisible();

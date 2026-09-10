@@ -15,6 +15,15 @@ describe("Research Office event projection", () => {
     expect(completed.decisionViews.reviewOffice?.divergences).toContain("TOP_CANDIDATE_DIVERGENCE: crosscurrent-workspace-market");
     expect(completed.decisionViews.reviewOffice?.revisionResponse).toContain("returned accept");
   });
+  it("labels a recorded worker finding as a dry run without changing the replay", () => {
+    const recordedHistory = officeHistories.COMPLETED.map((event) => event.type === "FindingSubmitted" && event.payload.attemptId === "workflow:c1"
+      ? { ...event, payload: { ...event.payload, finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem." } }
+      : event);
+    const projection = projectOffice(recordedHistory);
+
+    expect(projection.decisionViews.agentDesk.find((agent) => agent.evidence.startsWith("Recorded Evidence Researcher:"))?.provenance).toBe("RECORDED_DRY_RUN");
+    expect(replay(recordedHistory).status).toBe("COMPLETED");
+  });
   it("builds a browser-safe final report from the static fixture helpers", () => {
     const report = projectFinalReport();
     expect(report.fixtureId).toBe("crosscurrent-workspace-market");

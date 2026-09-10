@@ -10,7 +10,8 @@ import { buildCandidateReport, type CandidateReport } from "../report.js";
 export type OfficeScenario = "RUNNING" | "BLOCKED" | "COMPLETED";
 export type AgentState = "WORKING" | "WAITING" | "BLOCKED" | "COMPLETED";
 export interface AgentDeskRecord { id: string; attemptId: string; role: string; state: AgentState; task: string; detail: string; evidence: string; provenance: "RECORDED_DRY_RUN" | null; usage: { units: number; status: string }; }
-export interface DecisionViews { agentDesk: AgentDeskRecord[]; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
+export interface MissionUsageSummary { dryRunCount: number; liveUsageStatus: "NOT_RECORDED"; total: number; reserved: number; committed: number; spent: number; available: number; }
+export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSummary: MissionUsageSummary | null; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
 export interface ReplayEventRecord { sequence: number; type: string; category: ReplayEventCategory; detail: string; }
@@ -86,7 +87,19 @@ export function projectOffice(events: MissionEvent[]): OfficeProjection {
   const blockingFeedback = reviewEvent?.payload.candidateAssessments.flatMap((assessment) => assessment.blockingDefects) ?? [];
   const divergences = Object.values(state.divergenceRecords).map((record) => `${record.type}: ${record.candidateIds.join(", ")}`);
   const revisionResponse = state.revision?.rereview ? `Focused re-review returned ${state.revision.rereview.verdict.toLowerCase()} for the revision.` : state.revision ? "Revision requested; response is still pending." : null;
-  const decisionViews: DecisionViews = { agentDesk: agents, tribunalRoom: tribunalEvent ? { result: state.tribunalResults[tribunalEvent.payload.tribunalId]!, recordedAtSequence: tribunalEvent.sequenceNumber } : null, reviewOffice: reviewEvent ? { result: state.blindReviewResults[reviewEvent.payload.reviewId]!, recordedAtSequence: reviewEvent.sequenceNumber, blockingFeedback, divergences, revisionResponse } : null };
+  const dryRunCount = agents.filter((agent) => agent.provenance === "RECORDED_DRY_RUN").length;
+  const missionUsageSummary: MissionUsageSummary | null = dryRunCount > 0 ? {
+    dryRunCount,
+    // This event schema records dry-run provenance but does not establish
+    // provider worker or credit usage for the other attempts.
+    liveUsageStatus: "NOT_RECORDED",
+    total: state.budget.total,
+    reserved: state.budget.reserved,
+    committed: state.budget.committed,
+    spent: state.budget.spent,
+    available: state.budget.available,
+  } : null;
+  const decisionViews: DecisionViews = { agentDesk: agents, missionUsageSummary, tribunalRoom: tribunalEvent ? { result: state.tribunalResults[tribunalEvent.payload.tribunalId]!, recordedAtSequence: tribunalEvent.sequenceNumber } : null, reviewOffice: reviewEvent ? { result: state.blindReviewResults[reviewEvent.payload.reviewId]!, recordedAtSequence: reviewEvent.sequenceNumber, blockingFeedback, divergences, revisionResponse } : null };
   return { sourceLabel, mission: { name: missionName(state.missionId), phase: phaseLabel(state.status), status }, ledger: { ...state.budget }, agents, tasks, events: events.slice(-3).map((item) => ({ sequence: item.sequenceNumber, type: item.type, detail: eventDetail(item) })), decisionViews };
 }
 

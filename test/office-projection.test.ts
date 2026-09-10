@@ -22,7 +22,11 @@ describe("Research Office event projection", () => {
     const projection = projectOffice(recordedHistory);
 
     expect(projection.decisionViews.agentDesk.find((agent) => agent.evidence.startsWith("Recorded Evidence Researcher:"))?.provenance).toBe("RECORDED_DRY_RUN");
+    expect(projection.decisionViews.missionUsageSummary).toEqual({ dryRunCount: 1, liveUsageStatus: "NOT_RECORDED", ...replay(recordedHistory).budget });
     expect(replay(recordedHistory).status).toBe("COMPLETED");
+  });
+  it("does not show a mission dry-run summary without recorded dry-run provenance", () => {
+    expect(projectOffice(officeHistories.COMPLETED).decisionViews.missionUsageSummary).toBeNull();
   });
   it("builds a browser-safe final report from the static fixture helpers", () => {
     const report = projectFinalReport();

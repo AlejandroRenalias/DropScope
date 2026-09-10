@@ -33,7 +33,12 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByText("Local event history")).toBeVisible();
 
   await page.getByRole("button", { name: "Agent Desk" }).click();
-  await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("Recorded dry-run · no live worker or credits used");
+  const agentDesk = page.getByRole("region", { name: "Agent Desk" });
+  await expect(agentDesk).toContainText("Mission usage summary · recorded dry-run provenance");
+  await expect(agentDesk).toContainText("Recorded dry-run count: 1");
+  await expect(agentDesk).toContainText("Live-worker and provider-credit usage: not recorded by this replay");
+  await expect(agentDesk).toContainText("Mission ledger: 140 total · 0 reserved · 0 committed · 130 spent · 10 available");
+  await expect(agentDesk).toContainText("Recorded dry-run · no live worker or credits used");
 
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();

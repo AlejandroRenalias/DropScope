@@ -35,12 +35,18 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
   await expect(page.getByText("TaskFailedTransient", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Event 26 \/ 26/)).toBeVisible();
+  await page.getByRole("button", { name: "Tribunal Room" }).click();
+  await expect(page.getByRole("region", { name: "Tribunal Room" })).toContainText("deskflow-alpha");
+  await page.getByRole("button", { name: "Review Office" }).click();
+  await expect(page.getByRole("region", { name: "Review Office" })).toContainText("REVISE");
+  await expect(page.getByRole("region", { name: "Review Office" })).toContainText("Focused re-review returned accept");
+  await page.getByRole("button", { name: "Mission Replay" }).click();
+  await expect(page.getByText(/Event 33 \/ 33/)).toBeVisible();
   await expect(page.getByText("MissionCompleted", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("status")).toContainText("Reloaded persisted local mission");
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
-  await expect(page.getByText(/Event 26 \/ 26/)).toBeVisible();
+  await expect(page.getByText(/Event 33 \/ 33/)).toBeVisible();
 });

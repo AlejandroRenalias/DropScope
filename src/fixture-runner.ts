@@ -7,6 +7,7 @@ import { determineCandidateEligibility, type CandidateEligibility } from "./cand
 import { evaluateRiskGate } from "./risk-policy.js";
 import type { RiskGateDecision } from "./research-domain.js";
 import { buildCandidateReport, type CandidateReport } from "./report.js";
+import { buildFixtureQualityPipeline } from "./fixture-quality-pipeline.js";
 
 export interface FixtureRunResult {
   fixtureId: string;
@@ -55,11 +56,16 @@ export async function runFixtureMission(options: {
   if (scheduledState.status !== "RUNNING") {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
+  if (fixture.fixtureId === "crosscurrent-workspace-market") {
+    const qualityEvents = buildFixtureQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
+    for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
+  }
+  const sequenceNumber = (await store.readAll()).length + 1;
   const terminalEvent: MissionEvent = {
     schemaVersion: 1,
-    sequenceNumber: events.length + 1,
+    sequenceNumber,
     missionId: options.missionId,
-    eventId: `${options.missionId}-${events.length + 1}`,
+    eventId: `${options.missionId}-${sequenceNumber}`,
     timestamp: new Date().toISOString(),
     type: report.outcome === "INSUFFICIENT_EVIDENCE" ? "MissionTerminated" : "MissionCompleted",
     payload: report.outcome === "INSUFFICIENT_EVIDENCE"

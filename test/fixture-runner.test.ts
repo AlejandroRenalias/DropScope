@@ -1,11 +1,29 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, open } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runFixtureMission } from "../src/fixture-runner.js";
 import { deriveAttemptDecision } from "../src/scheduler.js";
+import { JsonlEventStore } from "../src/event-store.js";
 
 describe("fixture-driven simulated missions", () => {
+  it("can append a mission through an already-reserved writer handle", async () => {
+    const root = await mkdtemp(join(tmpdir(), "dropscope-"));
+    const historyPath = join(root, "owned.jsonl");
+    const writer = await open(historyPath, "ax");
+    try {
+      const result = await runFixtureMission({
+        fixtureId: "mixed-opportunity-market",
+        missionId: "owned-mission",
+        historyPath,
+        eventStore: new JsonlEventStore(historyPath, writer),
+      });
+      expect(result.events.every((event) => event.missionId === "owned-mission")).toBe(true);
+    } finally {
+      await writer.close();
+    }
+  });
+
   it.each(["mixed-opportunity-market", "evidence-drought", "safety-ambiguity"])("runs %s through the shared scheduler", async (fixtureId) => {
     const result = await runFixtureMission({
       fixtureId,

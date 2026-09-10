@@ -58,6 +58,7 @@ export async function runSimulatedSchedule(options: {
   missionId: string;
   missionSeed: number;
   historyPath?: string;
+  eventStore?: JsonlEventStore;
   totalBudget: number;
   tasks: SimulatedTask[];
   maxConcurrency?: number;
@@ -70,7 +71,8 @@ export async function runSimulatedSchedule(options: {
   if (options.tasks.reduce((total, task) => total + task.cost, 0) > options.totalBudget) {
     throw new Error("Insufficient mission budget for scheduled task attempts.");
   }
-  const store = options.historyPath ? new JsonlEventStore(options.historyPath) : undefined;
+  if (options.historyPath && options.eventStore) throw new Error("Provide either historyPath or eventStore, not both.");
+  const store = options.eventStore ?? (options.historyPath ? new JsonlEventStore(options.historyPath) : undefined);
   const events: MissionEvent[] = [];
   let state = initialMissionState();
   const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {

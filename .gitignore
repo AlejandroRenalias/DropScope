@@ -1,4 +1,7 @@
 node_modules/
 .dropscope-data/
+.dropscope-e2e-data/
 coverage/
 dist/
+test-results/
+playwright-report/

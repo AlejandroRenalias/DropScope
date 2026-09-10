@@ -7,6 +7,7 @@ import { determineCandidateEligibility, type CandidateEligibility } from "./cand
 import { evaluateRiskGate } from "./risk-policy.js";
 import type { RiskGateDecision } from "./research-domain.js";
 import { buildCandidateReport, type CandidateReport } from "./report.js";
+import { buildFixtureQualityPipeline } from "./fixture-quality-pipeline.js";
 
 export interface FixtureRunResult {
   fixtureId: string;
@@ -22,6 +23,7 @@ export async function runFixtureMission(options: {
   fixtureId: string;
   missionId: string;
   historyPath: string;
+  eventStore?: JsonlEventStore;
   maxConcurrency?: number;
   missionSeed?: number;
 }): Promise<FixtureRunResult> {
@@ -30,7 +32,8 @@ export async function runFixtureMission(options: {
     missionId: options.missionId,
     missionSeed: options.missionSeed ?? fixture.seed,
     totalBudget: fixture.budget,
-    historyPath: options.historyPath,
+    historyPath: options.eventStore ? undefined : options.historyPath,
+    eventStore: options.eventStore,
     maxConcurrency: options.maxConcurrency,
     completeMission: false,
     tasks: fixture.tasks.map((task) => ({
@@ -47,17 +50,22 @@ export async function runFixtureMission(options: {
   const riskDecisions = fixture.candidateEvaluations.map((candidate) => evaluateRiskGate(candidate.riskInput));
   const candidateEligibility = fixture.candidateEvaluations.map((candidate, index) => determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }));
   const report = buildCandidateReport(fixture.candidateEvaluations, riskDecisions, candidateEligibility);
-  const store = new JsonlEventStore(options.historyPath);
+  const store = options.eventStore ?? new JsonlEventStore(options.historyPath);
   const events = await store.readAll();
   const scheduledState = replay(events);
   if (scheduledState.status !== "RUNNING") {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
+  if (fixture.fixtureId === "crosscurrent-workspace-market") {
+    const qualityEvents = buildFixtureQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
+    for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
+  }
+  const sequenceNumber = (await store.readAll()).length + 1;
   const terminalEvent: MissionEvent = {
     schemaVersion: 1,
-    sequenceNumber: events.length + 1,
+    sequenceNumber,
     missionId: options.missionId,
-    eventId: `${options.missionId}-${events.length + 1}`,
+    eventId: `${options.missionId}-${sequenceNumber}`,
     timestamp: new Date().toISOString(),
     type: report.outcome === "INSUFFICIENT_EVIDENCE" ? "MissionTerminated" : "MissionCompleted",
     payload: report.outcome === "INSUFFICIENT_EVIDENCE"

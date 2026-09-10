@@ -9,10 +9,13 @@
     "typecheck": "tsc --noEmit",
     "dev": "vite",
     "build": "vite build",
+    "test:e2e": "playwright test",
     "demo": "tsx src/cli.ts",
-    "demo:recovery": "tsx src/recovery-demo.ts"
+    "demo:recovery": "tsx src/recovery-demo.ts",
+    "runtime:dev": "tsx src/local-runtime-cli.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

@@ -63,6 +63,7 @@ export async function runSimulatedSchedule(options: {
   tasks: SimulatedTask[];
   maxConcurrency?: number;
   completeMission?: boolean;
+  workerAssignment?: { workerRole: string; adapter: WorkerAdapter };
 }): Promise<ScheduleResult> {
   const maxConcurrency = options.maxConcurrency ?? 3;
   if (maxConcurrency < 1 || maxConcurrency > 3) throw new Error("Concurrency must be between 1 and 3.");
@@ -75,6 +76,7 @@ export async function runSimulatedSchedule(options: {
   const store = options.eventStore ?? (options.historyPath ? new JsonlEventStore(options.historyPath) : undefined);
   const events: MissionEvent[] = [];
   let state = initialMissionState();
+  const workerResultGate = new WorkerResultGate();
   const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {
     const event = { schemaVersion: 1 as const, sequenceNumber: events.length + 1, missionId: options.missionId, eventId: `${options.missionId}-${events.length + 1}`, timestamp: new Date().toISOString(), type, payload } as MissionEvent;
     events.push(event);
@@ -137,8 +139,30 @@ export async function runSimulatedSchedule(options: {
     const finished = await Promise.race(running.values());
     running.delete(finished.taskId);
     const attemptId = `${finished.taskId}:a${finished.attemptNumber}`;
-    if (finished.outcome === "FAILED_TRANSIENT") {
-      await append("TaskFailedTransient", { attemptId, reason: "Simulated transient failure." });
+    let outcome = finished.outcome;
+    let failureReason = "Simulated transient failure.";
+    let finding = `${finished.taskId} completed.`;
+    if (outcome === "COMPLETED") {
+      const task = options.tasks.find((candidate) => candidate.taskId === finished.taskId)!;
+      if (options.workerAssignment?.workerRole === (task.workerRole ?? "SIMULATED_WORKER")) {
+        try {
+          const result = await workerResultGate.run(options.workerAssignment.adapter, {
+            missionId: options.missionId,
+            taskId: task.taskId,
+            attemptId,
+            objective: task.objective,
+            workerRole: task.workerRole ?? "SIMULATED_WORKER",
+            maxCost: task.cost,
+          });
+          finding = result.finding;
+        } catch (error: unknown) {
+          outcome = "FAILED_TRANSIENT";
+          failureReason = error instanceof Error ? `Worker result rejected: ${error.message}` : "Worker result rejected.";
+        }
+      }
+    }
+    if (outcome === "FAILED_TRANSIENT") {
+      await append("TaskFailedTransient", { attemptId, reason: failureReason });
       if (finished.attemptNumber < 2) {
         const task = options.tasks.find((candidate) => candidate.taskId === finished.taskId)!;
         const retryId = `${task.taskId}:a2`;
@@ -155,15 +179,15 @@ export async function runSimulatedSchedule(options: {
         running.set(task.taskId, wait(durationMs).then(() => { intervals[task.taskId] = { startedAt, finishedAt: Date.now() }; return { taskId: task.taskId, attemptNumber: 2, outcome: seededOutcome(options.missionSeed, task.taskId, 2) }; }));
         maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
       } else {
-        taskOutcomes[finished.taskId] = finished.outcome;
+        taskOutcomes[finished.taskId] = outcome;
         completionOrder.push(finished.taskId);
         await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: "Transient retry allowance was exhausted." });
         terminated = true;
       }
     } else {
-      taskOutcomes[finished.taskId] = finished.outcome;
+      taskOutcomes[finished.taskId] = outcome;
       completionOrder.push(finished.taskId);
-      await append("FindingSubmitted", { attemptId, finding: `${finished.taskId} completed.` });
+      await append("FindingSubmitted", { attemptId, finding });
       completed.add(finished.taskId);
     }
   }
@@ -173,3 +197,4 @@ export async function runSimulatedSchedule(options: {
 import { JsonlEventStore } from "./event-store.js";
 import type { MissionEvent, WorkClass } from "./contracts.js";
 import { initialMissionState, reduce } from "./reducer.js";
+import { WorkerResultGate, type WorkerAdapter } from "./worker-adapter.js";

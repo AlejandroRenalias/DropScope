@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { JsonlEventStore } from "../src/event-store.js";
 import { replay } from "../src/reducer.js";
 import { deriveAttemptDecision, runSimulatedSchedule } from "../src/scheduler.js";
+import { RecordedWorkerAdapter } from "../src/worker-adapter.js";
 
 describe("dependency-aware asynchronous scheduler", () => {
   it("derives decisions with explicit attempt identity", () => {
@@ -185,5 +186,70 @@ describe("dependency-aware asynchronous scheduler", () => {
         { taskId: "second", researchKey: "same-question", objective: "Second answer", cost: 10, durationMs: 1 },
       ],
     })).rejects.toThrow("An active or completed task already covers this research key.");
+  });
+
+  it("persists one validated dry-run specialist finding through the runtime-owned event path", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "worker-adapter.jsonl");
+    const seed = Array.from({ length: 500 }, (_, value) => value).find((value) => deriveAttemptDecision(value, "evidence", 1, 1).outcome === "COMPLETED");
+    expect(seed).toBeDefined();
+
+    await runSimulatedSchedule({
+      missionId: "worker-adapter-demo",
+      missionSeed: seed!,
+      totalBudget: 20,
+      historyPath,
+      workerAssignment: {
+        workerRole: "EVIDENCE_RESEARCHER",
+        adapter: new RecordedWorkerAdapter({
+          "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Recorded evidence supports the workflow problem." },
+        }),
+      },
+      tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    });
+    const events = await new JsonlEventStore(historyPath).readAll();
+
+    expect(events.find((event) => event.type === "FindingSubmitted")).toMatchObject({ payload: { attemptId: "evidence:a1", finding: "Recorded evidence supports the workflow problem." } });
+    expect(replay(events).tasks.evidence.status).toBe("COMPLETED");
+  });
+
+  it("records a malformed worker result as a normal transient failure before retrying", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "worker-adapter-retry.jsonl");
+    const seed = Array.from({ length: 500 }, (_, value) => value).find((value) => deriveAttemptDecision(value, "evidence", 1, 1).outcome === "COMPLETED" && deriveAttemptDecision(value, "evidence", 2, 1).outcome === "COMPLETED");
+    expect(seed).toBeDefined();
+
+    await runSimulatedSchedule({
+      missionId: "worker-adapter-retry-demo",
+      missionSeed: seed!,
+      totalBudget: 20,
+      historyPath,
+      workerAssignment: {
+        workerRole: "EVIDENCE_RESEARCHER",
+        adapter: new RecordedWorkerAdapter({
+          "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Invalid because this extra field is not accepted.", extra: true },
+          "evidence:a2": { taskId: "evidence", attemptId: "evidence:a2", status: "COMPLETED", finding: "Recorded retry result passed validation." },
+        }),
+      },
+      tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    });
+    const events = await new JsonlEventStore(historyPath).readAll();
+
+    expect(events.find((event) => event.type === "TaskFailedTransient")).toMatchObject({ payload: { attemptId: "evidence:a1", reason: expect.stringContaining("Worker result rejected") } });
+    expect(events.find((event) => event.type === "FindingSubmitted")).toMatchObject({ payload: { attemptId: "evidence:a2", finding: "Recorded retry result passed validation." } });
+    expect(replay(events).tasks.evidence.status).toBe("COMPLETED");
+  });
+
+  it("refuses unaffordable work before a dry-run adapter can run", async () => {
+    let calls = 0;
+    const adapter = { run: async () => { calls += 1; return { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED" as const, finding: "Should never run." }; } };
+
+    await expect(runSimulatedSchedule({
+      missionId: "worker-adapter-budget-demo",
+      missionSeed: 1,
+      totalBudget: 5,
+      workerAssignment: { workerRole: "EVIDENCE_RESEARCHER", adapter },
+      tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    })).rejects.toThrow("Insufficient mission budget for scheduled task attempts.");
+
+    expect(calls).toBe(0);
   });
 });

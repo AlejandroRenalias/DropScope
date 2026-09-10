@@ -29,7 +29,7 @@ export async function runFixtureMission(options: {
   missionSeed?: number;
 }): Promise<FixtureRunResult> {
   const fixture = loadFixture(options.fixtureId);
-  const workerAssignment = fixture.fixtureId === "crosscurrent-workspace-market"
+  const recordedWorkerAssignment = fixture.fixtureId === "crosscurrent-workspace-market"
     ? {
         workerRole: "EVIDENCE_RESEARCHER",
         adapter: new RecordedWorkerAdapter({
@@ -50,7 +50,7 @@ export async function runFixtureMission(options: {
     eventStore: options.eventStore,
     maxConcurrency: options.maxConcurrency,
     completeMission: false,
-    workerAssignment,
+    recordedWorkerAssignment,
     tasks: fixture.tasks.map((task) => ({
       taskId: task.id,
       objective: task.objective,

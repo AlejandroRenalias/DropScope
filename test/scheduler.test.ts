@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -198,7 +198,7 @@ describe("dependency-aware asynchronous scheduler", () => {
       missionSeed: seed!,
       totalBudget: 20,
       historyPath,
-      workerAssignment: {
+      recordedWorkerAssignment: {
         workerRole: "EVIDENCE_RESEARCHER",
         adapter: new RecordedWorkerAdapter({
           "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Recorded evidence supports the workflow problem." },
@@ -208,6 +208,8 @@ describe("dependency-aware asynchronous scheduler", () => {
     });
     const events = await new JsonlEventStore(historyPath).readAll();
 
+    expect(events.find((event) => event.type === "WorkerExecutionRecorded")).toMatchObject({ payload: { attemptId: "evidence:a1", mode: "RECORDED_DRY_RUN", providerUsageStatus: "NOT_APPLICABLE" } });
+    expect(events.findIndex((event) => event.type === "WorkerExecutionRecorded")).toBeLessThan(events.findIndex((event) => event.type === "FindingSubmitted"));
     expect(events.find((event) => event.type === "FindingSubmitted")).toMatchObject({ payload: { attemptId: "evidence:a1", finding: "Recorded evidence supports the workflow problem." } });
     expect(replay(events).tasks.evidence.status).toBe("COMPLETED");
   });
@@ -222,7 +224,7 @@ describe("dependency-aware asynchronous scheduler", () => {
       missionSeed: seed!,
       totalBudget: 20,
       historyPath,
-      workerAssignment: {
+      recordedWorkerAssignment: {
         workerRole: "EVIDENCE_RESEARCHER",
         adapter: new RecordedWorkerAdapter({
           "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Invalid because this extra field is not accepted.", extra: true },
@@ -239,17 +241,36 @@ describe("dependency-aware asynchronous scheduler", () => {
   });
 
   it("refuses unaffordable work before a dry-run adapter can run", async () => {
-    let calls = 0;
-    const adapter = { run: async () => { calls += 1; return { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED" as const, finding: "Should never run." }; } };
+    const adapter = new RecordedWorkerAdapter({
+      "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Should never run." },
+    });
+    const run = vi.spyOn(adapter, "run");
 
     await expect(runSimulatedSchedule({
       missionId: "worker-adapter-budget-demo",
       missionSeed: 1,
       totalBudget: 5,
-      workerAssignment: { workerRole: "EVIDENCE_RESEARCHER", adapter },
+      recordedWorkerAssignment: { workerRole: "EVIDENCE_RESEARCHER", adapter },
       tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
     })).rejects.toThrow("Insufficient mission budget for scheduled task attempts.");
 
-    expect(calls).toBe(0);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("refuses a recorded worker when its provenance cannot be persisted", async () => {
+    const adapter = new RecordedWorkerAdapter({
+      "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Should never run." },
+    });
+    const run = vi.spyOn(adapter, "run");
+
+    await expect(runSimulatedSchedule({
+      missionId: "worker-adapter-unpersisted-demo",
+      missionSeed: 1,
+      totalBudget: 20,
+      recordedWorkerAssignment: { workerRole: "EVIDENCE_RESEARCHER", adapter },
+      tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    })).rejects.toThrow("requires a persisted event store");
+
+    expect(run).not.toHaveBeenCalled();
   });
 });

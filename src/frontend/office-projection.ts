@@ -10,7 +10,7 @@ import { buildCandidateReport, type CandidateReport } from "../report.js";
 export type OfficeScenario = "RUNNING" | "BLOCKED" | "COMPLETED";
 export type AgentState = "WORKING" | "WAITING" | "BLOCKED" | "COMPLETED";
 export interface AgentDeskRecord { id: string; attemptId: string; role: string; state: AgentState; task: string; detail: string; evidence: string; provenance: "RECORDED_DRY_RUN" | null; usage: { units: number; status: string }; }
-export interface MissionUsageSummary { dryRunCount: number; liveUsageStatus: "NOT_RECORDED"; total: number; reserved: number; committed: number; spent: number; available: number; }
+export interface MissionUsageSummary { dryRunCount: number; unrecordedAttemptCount: number; recordedDryRunProviderUsageStatus: "NOT_APPLICABLE"; total: number; reserved: number; committed: number; spent: number; available: number; }
 export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSummary: MissionUsageSummary | null; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
@@ -81,7 +81,7 @@ export function projectOffice(events: MissionEvent[]): OfficeProjection {
     const task = state.tasks[taskId];
     return { label: task?.objective ?? authorization.objective, state: task ? taskState(task.status) : "WAITING", dependencies: authorization.dependencies.length ? `After ${authorization.dependencies.join(", ")}` : "Starting task" };
   });
-  const agents = Object.entries(state.attempts).map(([attemptId, attempt]) => ({ id: workstationId(attempt.workerRole), attemptId, role: roleLabel(attempt.workerRole), state: taskState(attempt.status), task: state.tasks[attempt.taskId]?.objective ?? attempt.taskId, detail: attempt.finding ?? "Assigned through replay.", evidence: attempt.finding ?? (attempt.status === "INTERRUPTED" ? "Failure or revision context recorded in replay." : "No finding recorded yet."), provenance: attempt.finding?.startsWith("Recorded Evidence Researcher:") ? "RECORDED_DRY_RUN" as const : null, usage: { units: state.tasks[attempt.taskId]?.cost ?? 0, status: attempt.status } }));
+  const agents = Object.entries(state.attempts).map(([attemptId, attempt]) => ({ id: workstationId(attempt.workerRole), attemptId, role: roleLabel(attempt.workerRole), state: taskState(attempt.status), task: state.tasks[attempt.taskId]?.objective ?? attempt.taskId, detail: attempt.finding ?? "Assigned through replay.", evidence: attempt.finding ?? (attempt.status === "INTERRUPTED" ? "Failure or revision context recorded in replay." : "No finding recorded yet."), provenance: state.workerExecutionProvenance[attemptId]?.mode ?? null, usage: { units: state.tasks[attempt.taskId]?.cost ?? 0, status: attempt.status } }));
   const tribunalEvent = events.find((item): item is Extract<MissionEvent, { type: "TribunalCompleted" }> => item.type === "TribunalCompleted");
   const reviewEvent = events.find((item): item is Extract<MissionEvent, { type: "BlindReviewCompleted" }> => item.type === "BlindReviewCompleted");
   const blockingFeedback = reviewEvent?.payload.candidateAssessments.flatMap((assessment) => assessment.blockingDefects) ?? [];
@@ -90,9 +90,8 @@ export function projectOffice(events: MissionEvent[]): OfficeProjection {
   const dryRunCount = agents.filter((agent) => agent.provenance === "RECORDED_DRY_RUN").length;
   const missionUsageSummary: MissionUsageSummary | null = dryRunCount > 0 ? {
     dryRunCount,
-    // This event schema records dry-run provenance but does not establish
-    // provider worker or credit usage for the other attempts.
-    liveUsageStatus: "NOT_RECORDED",
+    unrecordedAttemptCount: agents.length - dryRunCount,
+    recordedDryRunProviderUsageStatus: "NOT_APPLICABLE",
     total: state.budget.total,
     reserved: state.budget.reserved,
     committed: state.budget.committed,

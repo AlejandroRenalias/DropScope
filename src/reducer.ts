@@ -1,4 +1,4 @@
-import type { AuthorizationReason, MissionEvent, TerminalMissionStatus, TerminalGapStatus, WorkClass } from "./contracts.js";
+import type { AuthorizationReason, MissionEvent, ProviderUsageStatus, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -24,6 +24,11 @@ interface AttemptRecord {
   finding?: string;
 }
 
+export interface WorkerExecutionProvenance {
+  mode: WorkerExecutionMode;
+  providerUsageStatus: ProviderUsageStatus;
+}
+
 interface AuthorizationRecord {
   objective: string;
   cost: number;
@@ -43,6 +48,7 @@ export interface MissionState {
   budget: { total: number; reserved: number; committed: number; spent: number; available: number };
   tasks: Record<string, TaskRecord>;
   attempts: Record<string, AttemptRecord>;
+  workerExecutionProvenance: Record<string, WorkerExecutionProvenance>;
   authorizations: Record<string, AuthorizationRecord>;
   gaps: Record<string, GapRecord>;
   policyVersions: { tribunal: string } | null;
@@ -63,6 +69,7 @@ export const initialMissionState = (): MissionState => ({
   budget: { total: 0, reserved: 0, committed: 0, spent: 0, available: 0 },
   tasks: {},
   attempts: {},
+  workerExecutionProvenance: {},
   authorizations: {},
   gaps: {},
   policyVersions: null,
@@ -204,7 +211,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (existingTask && !["INTERRUPTED", "FAILED_TRANSIENT", "FAILED_PERMANENT"].includes(existingTask.status)) throw new Error("Task cannot receive another attempt.");
       if (existingTask?.status === "FAILED_TRANSIENT" && existingTask.attemptIds.filter((attemptId) => state.attempts[attemptId]?.status === "FAILED_TRANSIENT").length >= 2) throw new Error("Transient retry allowance is exhausted.");
       if (existingTask && existingTask.workClass !== event.payload.workClass) throw new Error("A retry cannot change a task's work class.");
-      if (state.attempts[event.payload.attemptId]) throw new Error("Attempt is already scheduled.");
+      if (Object.hasOwn(state.attempts, event.payload.attemptId)) throw new Error("Attempt is already scheduled.");
       const workerRole = event.payload.workerRole ?? "legacy-unknown";
       if (existingTask?.status === "FAILED_PERMANENT" && existingTask.attemptIds.some((attemptId) => state.attempts[attemptId]?.workerRole === workerRole)) {
         throw new Error("A permanent failure cannot be retried with the same worker.");
@@ -241,6 +248,23 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         },
         tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "RUNNING" } },
         attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "RUNNING", reserved: false } },
+      };
+    }
+    case "WorkerExecutionRecorded": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+        throw new Error("Only a running attempt can record worker execution provenance.");
+      }
+      if (Object.hasOwn(state.workerExecutionProvenance, event.payload.attemptId)) {
+        throw new Error("Worker execution provenance was already recorded for this attempt.");
+      }
+      return {
+        ...state,
+        workerExecutionProvenance: {
+          ...state.workerExecutionProvenance,
+          [event.payload.attemptId]: { mode: event.payload.mode, providerUsageStatus: event.payload.providerUsageStatus },
+        },
       };
     }
     case "BudgetReserved": {

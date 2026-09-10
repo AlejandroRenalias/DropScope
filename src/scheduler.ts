@@ -63,7 +63,9 @@ export async function runSimulatedSchedule(options: {
   tasks: SimulatedTask[];
   maxConcurrency?: number;
   completeMission?: boolean;
-  workerAssignment?: { workerRole: string; adapter: WorkerAdapter };
+  // This assignment is the only worker seam currently admitted by the local
+  // scheduler. It always records RECORDED_DRY_RUN provenance before invocation.
+  recordedWorkerAssignment?: { workerRole: string; adapter: RecordedWorkerAdapter };
 }): Promise<ScheduleResult> {
   const maxConcurrency = options.maxConcurrency ?? 3;
   if (maxConcurrency < 1 || maxConcurrency > 3) throw new Error("Concurrency must be between 1 and 3.");
@@ -74,6 +76,7 @@ export async function runSimulatedSchedule(options: {
   }
   if (options.historyPath && options.eventStore) throw new Error("Provide either historyPath or eventStore, not both.");
   const store = options.eventStore ?? (options.historyPath ? new JsonlEventStore(options.historyPath) : undefined);
+  if (options.recordedWorkerAssignment && !store) throw new Error("Recorded worker execution requires a persisted event store.");
   const events: MissionEvent[] = [];
   let state = initialMissionState();
   const workerResultGate = new WorkerResultGate();
@@ -144,9 +147,10 @@ export async function runSimulatedSchedule(options: {
     let finding = `${finished.taskId} completed.`;
     if (outcome === "COMPLETED") {
       const task = options.tasks.find((candidate) => candidate.taskId === finished.taskId)!;
-      if (options.workerAssignment?.workerRole === (task.workerRole ?? "SIMULATED_WORKER")) {
+      if (options.recordedWorkerAssignment?.workerRole === (task.workerRole ?? "SIMULATED_WORKER")) {
         try {
-          const result = await workerResultGate.run(options.workerAssignment.adapter, {
+          await append("WorkerExecutionRecorded", { attemptId, mode: "RECORDED_DRY_RUN", providerUsageStatus: "NOT_APPLICABLE" });
+          const result = await workerResultGate.run(options.recordedWorkerAssignment.adapter, {
             missionId: options.missionId,
             taskId: task.taskId,
             attemptId,
@@ -197,4 +201,4 @@ export async function runSimulatedSchedule(options: {
 import { JsonlEventStore } from "./event-store.js";
 import type { MissionEvent, WorkClass } from "./contracts.js";
 import { initialMissionState, reduce } from "./reducer.js";
-import { WorkerResultGate, type WorkerAdapter } from "./worker-adapter.js";
+import { RecordedWorkerAdapter, WorkerResultGate } from "./worker-adapter.js";

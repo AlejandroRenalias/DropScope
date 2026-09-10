@@ -193,6 +193,17 @@ TaskAttemptRecord
 
 Attempt ID format example: `echo-problem-validation-04:a2`.
 
+## 10.1 WorkerExecutionRecorded payload
+
+```text
+WorkerExecutionRecordedPayload
+  attemptId: string
+  mode: RECORDED_DRY_RUN
+  providerUsageStatus: NOT_APPLICABLE
+```
+
+The event is accepted only once for a running attempt immediately before the recorded local adapter is invoked. It records execution provenance, not provider billing. Histories without the event remain replayable with provenance not recorded.
+
 ## 11. BudgetLedger
 
 ```text
@@ -320,6 +331,7 @@ TaskCreated
 TaskWaitingDependencies
 TaskAuthorized
 TaskStarted
+WorkerExecutionRecorded
 TaskCompleted
 TaskFailedTransient
 TaskFailedPermanent

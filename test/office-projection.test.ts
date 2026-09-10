@@ -15,14 +15,18 @@ describe("Research Office event projection", () => {
     expect(completed.decisionViews.reviewOffice?.divergences).toContain("TOP_CANDIDATE_DIVERGENCE: crosscurrent-workspace-market");
     expect(completed.decisionViews.reviewOffice?.revisionResponse).toContain("returned accept");
   });
-  it("labels a recorded worker finding as a dry run without changing the replay", () => {
-    const recordedHistory = officeHistories.COMPLETED.map((event) => event.type === "FindingSubmitted" && event.payload.attemptId === "workflow:c1"
-      ? { ...event, payload: { ...event.payload, finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem." } }
-      : event);
+  it("projects persisted dry-run provenance without relying on finding text", () => {
+    const recordedHistory = officeHistories.COMPLETED.flatMap((event) => event.type === "FindingSubmitted" && event.payload.attemptId === "workflow:c1"
+      ? [
+          { ...event, type: "WorkerExecutionRecorded" as const, payload: { attemptId: "workflow:c1", mode: "RECORDED_DRY_RUN" as const, providerUsageStatus: "NOT_APPLICABLE" as const } },
+          { ...event, payload: { ...event.payload, finding: "Recorded result without a provenance prefix." } },
+        ]
+      : [event],
+    ).map((event, index) => ({ ...event, sequenceNumber: index + 1, eventId: `recorded-${index + 1}` }));
     const projection = projectOffice(recordedHistory);
 
-    expect(projection.decisionViews.agentDesk.find((agent) => agent.evidence.startsWith("Recorded Evidence Researcher:"))?.provenance).toBe("RECORDED_DRY_RUN");
-    expect(projection.decisionViews.missionUsageSummary).toEqual({ dryRunCount: 1, liveUsageStatus: "NOT_RECORDED", ...replay(recordedHistory).budget });
+    expect(projection.decisionViews.agentDesk.find((agent) => agent.attemptId === "workflow:c1")?.provenance).toBe("RECORDED_DRY_RUN");
+    expect(projection.decisionViews.missionUsageSummary).toEqual({ dryRunCount: 1, unrecordedAttemptCount: 3, recordedDryRunProviderUsageStatus: "NOT_APPLICABLE", ...replay(recordedHistory).budget });
     expect(replay(recordedHistory).status).toBe("COMPLETED");
   });
   it("does not show a mission dry-run summary without recorded dry-run provenance", () => {

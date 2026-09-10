@@ -20,6 +20,10 @@ export const terminalGapStatusSchema = z.enum(["RESOLVED", "EXHAUSTED", "DECLINE
 export type TerminalGapStatus = z.infer<typeof terminalGapStatusSchema>;
 export const terminalMissionStatusSchema = z.enum(["COMPLETED_INSUFFICIENT_EVIDENCE", "BLOCKED_POLICY", "BLOCKED_BUDGET", "FAILED_UNRECOVERABLE"]);
 export type TerminalMissionStatus = z.infer<typeof terminalMissionStatusSchema>;
+export const workerExecutionModeSchema = z.literal("RECORDED_DRY_RUN");
+export type WorkerExecutionMode = z.infer<typeof workerExecutionModeSchema>;
+export const providerUsageStatusSchema = z.literal("NOT_APPLICABLE");
+export type ProviderUsageStatus = z.infer<typeof providerUsageStatusSchema>;
 const missionCreatedPayloadSchema = z.union([
   z.object({
     totalBudget: z.number().int().positive(),
@@ -81,6 +85,10 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({
     type: z.literal("TaskStarted"),
     payload: z.object({ attemptId: z.string().min(1), simulatedDelayMs: z.number().int().nonnegative() }),
+  }),
+  eventBase.extend({
+    type: z.literal("WorkerExecutionRecorded"),
+    payload: z.object({ attemptId: z.string().min(1), mode: workerExecutionModeSchema, providerUsageStatus: providerUsageStatusSchema }).strict(),
   }),
   eventBase.extend({
     type: z.literal("RecoveryStarted"),

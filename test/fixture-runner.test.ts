@@ -110,6 +110,7 @@ describe("fixture-driven simulated missions", () => {
     ]);
     expect(result.events).toContainEqual(expect.objectContaining({ type: "TaskFailedTransient", payload: expect.objectContaining({ attemptId: "workflow-interviews:a1" }) }));
     expect(result.events).toContainEqual(expect.objectContaining({ type: "FindingSubmitted", payload: { attemptId: "workflow-interviews:a2", finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem." } }));
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "WorkerExecutionRecorded", payload: { attemptId: "workflow-interviews:a2", mode: "RECORDED_DRY_RUN", providerUsageStatus: "NOT_APPLICABLE" } }));
     expect(result.events.filter((event) => event.type === "FindingSubmitted" && event.payload.finding.includes("Recorded Evidence Researcher"))).toHaveLength(1);
   });
 

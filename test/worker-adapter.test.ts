@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   RecordedWorkerAdapter,
+  SubscriptionWorkerAdapter,
   WorkerResultError,
   WorkerResultGate,
   type WorkerRequest,
@@ -23,6 +24,12 @@ const validResult = {
 };
 
 describe("dry-run worker adapter boundary", () => {
+  it("rejects subscription execution deterministically after request validation", async () => {
+    await expect(new SubscriptionWorkerAdapter().run(request)).rejects.toMatchObject({
+      code: "SUBSCRIPTION_EXECUTION_DISABLED",
+      message: "Live subscription execution is disabled.",
+    });
+  });
   it("returns a valid recorded result after strict validation", async () => {
     const gate = new WorkerResultGate();
     const adapter = new RecordedWorkerAdapter(new Map([[request.attemptId, validResult]]));

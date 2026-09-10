@@ -34,6 +34,7 @@ describe("fixture-driven simulated missions", () => {
     expect(result.state.status).toBe(fixtureId === "evidence-drought" ? "COMPLETED_INSUFFICIENT_EVIDENCE" : "COMPLETED");
     expect(result.report.outcome).toBe(fixtureId === "evidence-drought" ? "INSUFFICIENT_EVIDENCE" : "RANKED");
     expect(result.events[0]?.type).toBe("MissionCreated");
+    expect(result.events[1]).toMatchObject({ type: "SubscriptionRuntimeDeclared", payload: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" } });
     expect(result.events.at(-1)?.type).toBe(fixtureId === "evidence-drought" ? "MissionTerminated" : "MissionCompleted");
     expect(new Set(Object.values(result.schedule.taskOutcomes))).toEqual(new Set(["COMPLETED"]));
   });

@@ -204,6 +204,17 @@ WorkerExecutionRecordedPayload
 
 The event is accepted only once for a running attempt immediately before the recorded local adapter is invoked. It records execution provenance, not provider billing. Histories without the event remain replayable with provenance not recorded.
 
+## 10.2 SubscriptionRuntimeDeclared payload
+
+```text
+SubscriptionRuntimeDeclaredPayload
+  executionEnabled: false
+  accessStatus: NOT_CHECKED
+  usageStatus: NOT_ITEMIZED
+```
+
+This closed declaration is persisted for new local fixture missions only. It does not invoke a worker or infer status for legacy histories.
+
 ## 11. BudgetLedger
 
 ```text

@@ -214,6 +214,16 @@ describe("dependency-aware asynchronous scheduler", () => {
     expect(replay(events).tasks.evidence.status).toBe("COMPLETED");
   });
 
+  it("persists an explicit disabled subscription declaration immediately after mission creation", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "subscription-declaration.jsonl");
+    await runSimulatedSchedule({ missionId: "subscription-declaration-demo", missionSeed: 1, totalBudget: 20, historyPath,
+      subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
+      tasks: [{ taskId: "evidence", objective: "Check evidence.", cost: 10, durationMs: 1 }] });
+    const events = await new JsonlEventStore(historyPath).readAll();
+    expect(events.slice(0, 2).map((event) => event.type)).toEqual(["MissionCreated", "SubscriptionRuntimeDeclared"]);
+    expect(replay(events).subscriptionRuntimeDeclaration).toEqual({ executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" });
+  });
+
   it("records a malformed worker result as a normal transient failure before retrying", async () => {
     const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "worker-adapter-retry.jsonl");
     const seed = Array.from({ length: 500 }, (_, value) => value).find((value) => deriveAttemptDecision(value, "evidence", 1, 1).outcome === "COMPLETED" && deriveAttemptDecision(value, "evidence", 2, 1).outcome === "COMPLETED");

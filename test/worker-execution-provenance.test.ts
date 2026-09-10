@@ -23,6 +23,27 @@ const startedAttempt = (attemptId = "recorded:a1") => [
 const recorded = (sequenceNumber: number, attemptId: string) => event(sequenceNumber, "WorkerExecutionRecorded", { attemptId, mode: "RECORDED_DRY_RUN", providerUsageStatus: "NOT_APPLICABLE" });
 
 describe("worker execution provenance", () => {
+  it("accepts only the closed subscription runtime declaration payload", () => {
+    const valid = event(2, "SubscriptionRuntimeDeclared", { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" });
+    expect(missionEventSchema.safeParse(valid).success).toBe(true);
+    expect(missionEventSchema.safeParse({ ...valid, payload: { ...valid.payload, executionEnabled: true } }).success).toBe(false);
+    expect(missionEventSchema.safeParse({ ...valid, payload: { ...valid.payload, accessStatus: "CHECKED" } }).success).toBe(false);
+    expect(missionEventSchema.safeParse({ ...valid, payload: { ...valid.payload, usageStatus: "ITEMIZED" } }).success).toBe(false);
+    expect(missionEventSchema.safeParse({ ...valid, payload: { ...valid.payload, extra: true } }).success).toBe(false);
+  });
+
+  it("does not infer a subscription declaration for legacy history", () => {
+    expect(replay([event(1, "MissionCreated", { totalBudget: 20, missionSeed: 1 })]).subscriptionRuntimeDeclaration).toBeUndefined();
+  });
+
+  it("rejects a declaration before mission creation and duplicate declarations", () => {
+    const declaration = event(1, "SubscriptionRuntimeDeclared", { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" });
+    expect(() => replay([declaration])).toThrow("running mission");
+    const created = event(1, "MissionCreated", { totalBudget: 20, missionSeed: 1 });
+    expect(() => replay([created, { ...declaration, sequenceNumber: 2, missionId: created.missionId }])).not.toThrow();
+    expect(() => replay([created, { ...declaration, sequenceNumber: 2, missionId: created.missionId }, { ...declaration, sequenceNumber: 3, missionId: created.missionId }])).toThrow("already recorded");
+  });
+
   it("persists one recorded dry-run declaration against a running attempt", () => {
     const state = replay([...startedAttempt(), recorded(6, "recorded:a1")]);
 

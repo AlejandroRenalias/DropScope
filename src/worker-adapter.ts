@@ -28,11 +28,20 @@ export type WorkerAdapter = {
 
 export class WorkerResultError extends Error {
   constructor(
-    public readonly code: "INVALID_REQUEST" | "MISSING_RESULT" | "INVALID_RESULT" | "IDENTITY_MISMATCH" | "DUPLICATE_RESULT",
+    public readonly code: "INVALID_REQUEST" | "MISSING_RESULT" | "INVALID_RESULT" | "IDENTITY_MISMATCH" | "DUPLICATE_RESULT" | "SUBSCRIPTION_EXECUTION_DISABLED",
     message: string,
   ) {
     super(message);
     this.name = "WorkerResultError";
+  }
+}
+
+/** Explicitly disabled boundary reserved for a future subscription runtime. */
+export class SubscriptionWorkerAdapter implements WorkerAdapter {
+  async run(request: WorkerRequest): Promise<unknown> {
+    const parsedRequest = workerRequestSchema.safeParse(request);
+    if (!parsedRequest.success) throw new WorkerResultError("INVALID_REQUEST", "Worker request does not match the required shape.");
+    throw new WorkerResultError("SUBSCRIPTION_EXECUTION_DISABLED", "Live subscription execution is disabled.");
   }
 }
 

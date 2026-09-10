@@ -24,6 +24,12 @@ export const workerExecutionModeSchema = z.literal("RECORDED_DRY_RUN");
 export type WorkerExecutionMode = z.infer<typeof workerExecutionModeSchema>;
 export const providerUsageStatusSchema = z.literal("NOT_APPLICABLE");
 export type ProviderUsageStatus = z.infer<typeof providerUsageStatusSchema>;
+export const subscriptionRuntimeDeclarationSchema = z.object({
+  executionEnabled: z.literal(false),
+  accessStatus: z.literal("NOT_CHECKED"),
+  usageStatus: z.literal("NOT_ITEMIZED"),
+}).strict();
+export type SubscriptionRuntimeDeclaration = z.infer<typeof subscriptionRuntimeDeclarationSchema>;
 const missionCreatedPayloadSchema = z.union([
   z.object({
     totalBudget: z.number().int().positive(),
@@ -40,6 +46,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
     type: z.literal("MissionCreated"),
     payload: missionCreatedPayloadSchema,
   }),
+  eventBase.extend({ type: z.literal("SubscriptionRuntimeDeclared"), payload: subscriptionRuntimeDeclarationSchema }),
   eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
   eventBase.extend({ type: z.literal("AuditCompleted"), payload: evidenceAuditResultSchema }),
   eventBase.extend({ type: z.literal("BlindReviewCompleted"), payload: blindReviewResultSchema }),

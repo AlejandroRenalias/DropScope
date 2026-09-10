@@ -32,6 +32,13 @@ describe("Research Office event projection", () => {
   it("does not show a mission dry-run summary without recorded dry-run provenance", () => {
     expect(projectOffice(officeHistories.COMPLETED).decisionViews.missionUsageSummary).toBeNull();
   });
+  it("derives subscription status only from a persisted declaration", () => {
+    expect(projectOffice(officeHistories.COMPLETED).decisionViews.subscriptionRuntime).toBeNull();
+    const history = officeHistories.COMPLETED.map((item, index) => ({ ...item, sequenceNumber: index + 1, eventId: `declared-${index + 1}` }));
+    const declaration = { ...history[0]!, type: "SubscriptionRuntimeDeclared" as const, payload: { executionEnabled: false as const, accessStatus: "NOT_CHECKED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: 2, eventId: "declared-2" };
+    const declared = [history[0]!, declaration, ...history.slice(1).map((item, index) => ({ ...item, sequenceNumber: index + 3, eventId: `declared-${index + 3}` }))];
+    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toEqual({ execution: "DISABLED", access: "LOCAL_SUBSCRIPTION_NOT_CHECKED", usage: "SUBSCRIPTION_NOT_ITEMIZED" });
+  });
   it("builds a browser-safe final report from the static fixture helpers", () => {
     const report = projectFinalReport();
     expect(report.fixtureId).toBe("crosscurrent-workspace-market");

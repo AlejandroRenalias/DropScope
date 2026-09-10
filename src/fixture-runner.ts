@@ -51,6 +51,7 @@ export async function runFixtureMission(options: {
     maxConcurrency: options.maxConcurrency,
     completeMission: false,
     recordedWorkerAssignment,
+    subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
     tasks: fixture.tasks.map((task) => ({
       taskId: task.id,
       objective: task.objective,

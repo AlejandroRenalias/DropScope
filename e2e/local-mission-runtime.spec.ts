@@ -39,6 +39,9 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(agentDesk).toContainText("Recorded dry-run provider usage: not applicable · other attempt provenance: 4 not recorded");
   await expect(agentDesk).toContainText("Mission ledger: 140 total · 0 reserved · 0 committed · 130 spent · 10 available");
   await expect(agentDesk).toContainText("Recorded dry-run · no live worker or credits used");
+  await expect(agentDesk).toContainText("Subscription runtime · disabled");
+  await expect(agentDesk).toContainText("Local subscription access not checked.");
+  await expect(agentDesk).toContainText("Subscription usage not itemized.");
 
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
@@ -49,12 +52,12 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByRole("region", { name: "Review Office" })).toContainText("REVISE");
   await expect(page.getByRole("region", { name: "Review Office" })).toContainText("Focused re-review returned accept");
   await page.getByRole("button", { name: "Mission Replay" }).click();
-  await expect(page.getByText(/Event 34 \/ 34/)).toBeVisible();
+  await expect(page.getByText(/Event 35 \/ 35/)).toBeVisible();
   await expect(page.getByText("MissionCompleted", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("status")).toContainText("Reloaded persisted local mission");
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
-  await expect(page.getByText(/Event 34 \/ 34/)).toBeVisible();
+  await expect(page.getByText(/Event 35 \/ 35/)).toBeVisible();
 });

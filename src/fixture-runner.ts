@@ -8,6 +8,7 @@ import { evaluateRiskGate } from "./risk-policy.js";
 import type { RiskGateDecision } from "./research-domain.js";
 import { buildCandidateReport, type CandidateReport } from "./report.js";
 import { buildFixtureQualityPipeline } from "./fixture-quality-pipeline.js";
+import { RecordedWorkerAdapter } from "./worker-adapter.js";
 
 export interface FixtureRunResult {
   fixtureId: string;
@@ -28,6 +29,19 @@ export async function runFixtureMission(options: {
   missionSeed?: number;
 }): Promise<FixtureRunResult> {
   const fixture = loadFixture(options.fixtureId);
+  const workerAssignment = fixture.fixtureId === "crosscurrent-workspace-market"
+    ? {
+        workerRole: "EVIDENCE_RESEARCHER",
+        adapter: new RecordedWorkerAdapter({
+          "workflow-interviews:a2": {
+            taskId: "workflow-interviews",
+            attemptId: "workflow-interviews:a2",
+            status: "COMPLETED" as const,
+            finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem.",
+          },
+        }),
+      }
+    : undefined;
   const schedule = await runSimulatedSchedule({
     missionId: options.missionId,
     missionSeed: options.missionSeed ?? fixture.seed,
@@ -36,6 +50,7 @@ export async function runFixtureMission(options: {
     eventStore: options.eventStore,
     maxConcurrency: options.maxConcurrency,
     completeMission: false,
+    workerAssignment,
     tasks: fixture.tasks.map((task) => ({
       taskId: task.id,
       objective: task.objective,

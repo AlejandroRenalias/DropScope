@@ -108,5 +108,14 @@ describe("fixture-driven simulated missions", () => {
       ["REGULATORY_CHILD_DIRECTED", "RISK_GATE_NOT_ALLOWED"],
       ["INSUFFICIENT_INFORMATION_MATERIAL_CONFLICT", "RISK_GATE_NOT_ALLOWED", "UNRESOLVED_BLOCKING_CONTRADICTION", "DECISION_CRITICAL_MISSING_EVIDENCE"],
     ]);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "TaskFailedTransient", payload: expect.objectContaining({ attemptId: "workflow-interviews:a1" }) }));
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "FindingSubmitted", payload: { attemptId: "workflow-interviews:a2", finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem." } }));
+    expect(result.events.filter((event) => event.type === "FindingSubmitted" && event.payload.finding.includes("Recorded Evidence Researcher"))).toHaveLength(1);
+  });
+
+  it("does not activate the recorded specialist for unrelated fixtures", async () => {
+    const result = await runFixtureMission({ fixtureId: "mixed-opportunity-market", missionId: "fixture-no-worker", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+
+    expect(result.events.some((event) => event.type === "FindingSubmitted" && event.payload.finding.includes("Recorded Evidence Researcher"))).toBe(false);
   });
 });

@@ -18,6 +18,19 @@ describe("LocalMissionRuntime", () => {
     expect(await readdir(join(dataRoot, "missions"))).toEqual(expect.arrayContaining(["mission-one.jsonl", "mission-one.meta.json"]));
   });
 
+  it("launches and reloads the cross-current recorded specialist finding", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
+    const runtime = new LocalMissionRuntime({ dataRoot, createMissionId: () => "crosscurrent-mission" });
+
+    const launched = await runtime.launch("crosscurrent-workspace-market");
+    const reloaded = await runtime.reload(launched.missionId);
+    const findings = reloaded.events.filter((event) => event.type === "FindingSubmitted");
+
+    expect(launched.events).toContainEqual(expect.objectContaining({ type: "TaskFailedTransient", payload: expect.objectContaining({ attemptId: "workflow-interviews:a1" }) }));
+    expect(findings).toContainEqual(expect.objectContaining({ payload: { attemptId: "workflow-interviews:a2", finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem." } }));
+    expect(reloaded).toEqual(launched);
+  });
+
   it("rejects unsafe ID factory output before creating a history path", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
     const runtime = new LocalMissionRuntime({ dataRoot, createMissionId: () => "../outside" });

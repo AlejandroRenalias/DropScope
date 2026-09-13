@@ -8,6 +8,7 @@ import { loadFixture } from "../fixture-model.js";
 import { runFixtureMission } from "../fixture-runner.js";
 import { missionEventSchema, type MissionEvent } from "../contracts.js";
 import { replay } from "../reducer.js";
+import { CodexAppServerPreflight, type SubscriptionRuntimePreflight } from "../subscription-runtime-preflight.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const missionIdSchema = fixtureIdSchema.max(120);
@@ -23,6 +24,7 @@ export type MissionIdFactory = (fixtureId: string) => string;
 export interface LocalMissionRuntimeOptions {
   dataRoot: string;
   createMissionId?: MissionIdFactory;
+  subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
 }
 
 export class MissionLaunchIncompleteError extends Error {
@@ -39,10 +41,13 @@ export class MissionLaunchIncompleteError extends Error {
 export class LocalMissionRuntime {
   private readonly missionsRoot: string;
   private readonly createMissionId: MissionIdFactory;
+  private readonly subscriptionRuntimePreflight: SubscriptionRuntimePreflight;
+  private readonly preflightingMissionIds = new Set<string>();
 
   constructor(options: LocalMissionRuntimeOptions) {
     this.missionsRoot = resolve(options.dataRoot, "missions");
     this.createMissionId = options.createMissionId ?? ((fixtureId) => `${fixtureId}-${randomUUID()}`);
+    this.subscriptionRuntimePreflight = options.subscriptionRuntimePreflight ?? new CodexAppServerPreflight();
   }
 
   async launch(fixtureId: string): Promise<MissionDto> {
@@ -102,6 +107,36 @@ export class LocalMissionRuntime {
     const fixtureId = z.object({ fixtureId: fixtureIdSchema }).strict().parse(metadata).fixtureId;
     loadFixture(fixtureId);
     return this.readDto(validMissionId, fixtureId);
+  }
+
+  /** A user-triggered, one-shot auth check. It does not start a Codex thread or turn. */
+  async preflightSubscriptionRuntime(missionId: string): Promise<MissionDto> {
+    const validMissionId = this.validateMissionId(missionId);
+    if (this.preflightingMissionIds.has(validMissionId)) throw new Error("Subscription runtime preflight is already in progress.");
+    this.preflightingMissionIds.add(validMissionId);
+    try {
+      const mission = await this.reload(validMissionId);
+      const currentState = replay(mission.events);
+      if (!currentState.subscriptionRuntimeDeclaration) throw new Error("Subscription runtime is not declared for this mission.");
+      if (currentState.subscriptionRuntimePreflight) throw new Error("Subscription runtime preflight is already recorded.");
+      const accessStatus = await this.subscriptionRuntimePreflight.check();
+      const events = await new JsonlEventStore(this.historyPath(validMissionId)).readAll();
+      const stateBeforeAppend = replay(events);
+      if (stateBeforeAppend.subscriptionRuntimePreflight) throw new Error("Subscription runtime preflight is already recorded.");
+      const sequenceNumber = events.length + 1;
+      await new JsonlEventStore(this.historyPath(validMissionId)).append({
+        schemaVersion: 1,
+        sequenceNumber,
+        missionId: validMissionId,
+        eventId: `${validMissionId}-${sequenceNumber}`,
+        timestamp: new Date().toISOString(),
+        type: "SubscriptionRuntimePreflightCompleted",
+        payload: { accessStatus, usageStatus: "NOT_ITEMIZED" },
+      });
+      return this.readDto(validMissionId, mission.fixtureId);
+    } finally {
+      this.preflightingMissionIds.delete(validMissionId);
+    }
   }
 
   private async readDto(missionId: string, fixtureId: string): Promise<MissionDto> {

@@ -8,10 +8,11 @@ import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
 
 let runtimeServer: LocalRuntimeServerHandle;
 let viteServer: ViteDevServer;
+let preflightChecks = 0;
 
 test.beforeAll(async () => {
   runtimeServer = await listenLocalRuntimeServer(
-    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")) }),
+    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: async () => { preflightChecks += 1; return "CHATGPT_AUTHENTICATED"; } } }),
     { port: 8791 },
   );
   process.env.VITE_LOCAL_RUNTIME_BASE_URL = "http://127.0.0.1:8791";
@@ -42,6 +43,11 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(agentDesk).toContainText("Subscription runtime · disabled");
   await expect(agentDesk).toContainText("Local subscription access not checked.");
   await expect(agentDesk).toContainText("Subscription usage not itemized.");
+  expect(preflightChecks).toBe(0);
+  await page.getByRole("button", { name: "Check subscription runtime" }).click();
+  await expect(page.getByRole("status")).toContainText("Subscription runtime check recorded. No worker was started.");
+  await expect(agentDesk).toContainText("Local ChatGPT authentication detected. This does not authorize a worker run.");
+  expect(preflightChecks).toBe(1);
 
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
@@ -52,12 +58,12 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByRole("region", { name: "Review Office" })).toContainText("REVISE");
   await expect(page.getByRole("region", { name: "Review Office" })).toContainText("Focused re-review returned accept");
   await page.getByRole("button", { name: "Mission Replay" }).click();
-  await expect(page.getByText(/Event 35 \/ 35/)).toBeVisible();
+  await expect(page.getByText(/Event 36 \/ 36/)).toBeVisible();
   await expect(page.getByText("MissionCompleted", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("status")).toContainText("Reloaded persisted local mission");
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
-  await expect(page.getByText(/Event 35 \/ 35/)).toBeVisible();
+  await expect(page.getByText(/Event 36 \/ 36/)).toBeVisible();
 });

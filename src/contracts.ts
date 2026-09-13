@@ -30,6 +30,13 @@ export const subscriptionRuntimeDeclarationSchema = z.object({
   usageStatus: z.literal("NOT_ITEMIZED"),
 }).strict();
 export type SubscriptionRuntimeDeclaration = z.infer<typeof subscriptionRuntimeDeclarationSchema>;
+export const subscriptionRuntimePreflightStatusSchema = z.enum(["CHATGPT_AUTHENTICATED", "AUTHENTICATION_REQUIRED", "UNSUPPORTED_AUTH_MODE", "UNAVAILABLE"]);
+export type SubscriptionRuntimePreflightStatus = z.infer<typeof subscriptionRuntimePreflightStatusSchema>;
+export const subscriptionRuntimePreflightSchema = z.object({
+  accessStatus: subscriptionRuntimePreflightStatusSchema,
+  usageStatus: z.literal("NOT_ITEMIZED"),
+}).strict();
+export type SubscriptionRuntimePreflight = z.infer<typeof subscriptionRuntimePreflightSchema>;
 const missionCreatedPayloadSchema = z.union([
   z.object({
     totalBudget: z.number().int().positive(),
@@ -47,6 +54,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
     payload: missionCreatedPayloadSchema,
   }),
   eventBase.extend({ type: z.literal("SubscriptionRuntimeDeclared"), payload: subscriptionRuntimeDeclarationSchema }),
+  eventBase.extend({ type: z.literal("SubscriptionRuntimePreflightCompleted"), payload: subscriptionRuntimePreflightSchema }),
   eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
   eventBase.extend({ type: z.literal("AuditCompleted"), payload: evidenceAuditResultSchema }),
   eventBase.extend({ type: z.literal("BlindReviewCompleted"), payload: blindReviewResultSchema }),

@@ -16,7 +16,7 @@ import "@radix-ui/themes/styles.css";
 import "./styles.css";
 import robotRoles from "./assets/robot-roles.svg";
 import { officeHistories, projectOffice, projectFinalReport, replayEvents, type AgentState, type OfficeScenario, type OfficeProjection, type ReplayEventCategory } from "./office-projection.js";
-import { launchLocalMission, reloadLocalMission, type LocalMissionDto } from "./runtime-client.js";
+import { launchLocalMission, preflightSubscriptionRuntime, reloadLocalMission, type LocalMissionDto } from "./runtime-client.js";
 import { fixtureIds } from "../fixture-model.js";
 
 type Icon = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill" }>;
@@ -63,9 +63,17 @@ function EventTrail({ projection, reduced, setReduced }: { projection: OfficePro
   return <article className="context-panel event-panel"><div className="panel-heading"><div><span className="eyebrow"><List size={14} />Event trail</span><h2>Recent activity</h2></div><button className="motion-button" onClick={() => setReduced(!reduced)}>{reduced ? "Motion off" : "Reduce motion"}</button></div><div className="event-list">{projection.events.map((event) => <div className="event" key={event.sequence}><b>{String(event.sequence).padStart(2, "0")}</b><span><strong>{event.type}</strong><small>{event.detail}</small></span></div>)}</div></article>;
 }
 
-function DecisionView({ projection, view }: { projection: OfficeProjection; view: OfficeView }) {
+function subscriptionAccessCopy(access: NonNullable<OfficeProjection["decisionViews"]["subscriptionRuntime"]>["access"]): string {
+  if (access === "LOCAL_CHATGPT_AUTHENTICATED") return "Local ChatGPT authentication detected. This does not authorize a worker run.";
+  if (access === "LOCAL_AUTHENTICATION_REQUIRED") return "Local ChatGPT authentication is required. No login was started.";
+  if (access === "LOCAL_UNSUPPORTED_AUTH_MODE") return "Local runtime authentication is not a ChatGPT subscription. No worker was started.";
+  if (access === "LOCAL_RUNTIME_UNAVAILABLE") return "Local subscription runtime is unavailable. No worker was started.";
+  return "Local subscription access not checked.";
+}
+
+function DecisionView({ projection, view, onSubscriptionPreflight, subscriptionPreflightLoading }: { projection: OfficeProjection; view: OfficeView; onSubscriptionPreflight?: () => void; subscriptionPreflightLoading: boolean }) {
   if (view === "floor") return null;
-  if (view === "agent") return <section className="decision-view" aria-label="Agent Desk"><div className="panel-heading"><div><span className="eyebrow">Agent Desk</span><h2>Worker evidence &amp; usage</h2></div></div>{projection.decisionViews.subscriptionRuntime && <article className="decision-card mission-usage-summary"><strong>Subscription runtime · disabled</strong><p>Local subscription access not checked.</p><small>Subscription usage not itemized.</small></article>}{projection.decisionViews.missionUsageSummary && <article className="decision-card mission-usage-summary"><strong>Mission usage summary · recorded dry-run provenance</strong><p>Recorded dry-run count: {projection.decisionViews.missionUsageSummary.dryRunCount}</p><small>Recorded dry-run provider usage: not applicable · other attempt provenance: {projection.decisionViews.missionUsageSummary.unrecordedAttemptCount} not recorded</small><small>Mission ledger: {projection.decisionViews.missionUsageSummary.total} total · {projection.decisionViews.missionUsageSummary.reserved} reserved · {projection.decisionViews.missionUsageSummary.committed} committed · {projection.decisionViews.missionUsageSummary.spent} spent · {projection.decisionViews.missionUsageSummary.available} available</small></article>}<div className="decision-grid">{projection.decisionViews.agentDesk.map((agent) => <article className="decision-card" key={agent.attemptId}><strong>{agent.role}</strong><span>{agent.state} · {agent.task}</span><p>{agent.evidence}</p>{agent.provenance === "RECORDED_DRY_RUN" && <small>Recorded dry-run · no live worker or credits used</small>}<small>Replay usage: {agent.usage.units} units · {agent.usage.status}</small></article>)}</div></section>;
+  if (view === "agent") return <section className="decision-view" aria-label="Agent Desk"><div className="panel-heading"><div><span className="eyebrow">Agent Desk</span><h2>Worker evidence &amp; usage</h2></div></div>{projection.decisionViews.subscriptionRuntime && <article className="decision-card mission-usage-summary"><strong>Subscription runtime · disabled</strong><p>{subscriptionAccessCopy(projection.decisionViews.subscriptionRuntime.access)}</p><small>Subscription usage not itemized.</small>{onSubscriptionPreflight && <button onClick={onSubscriptionPreflight} disabled={subscriptionPreflightLoading || projection.decisionViews.subscriptionRuntime.access !== "LOCAL_SUBSCRIPTION_NOT_CHECKED"}>{subscriptionPreflightLoading ? "Checking subscription runtime…" : "Check subscription runtime"}</button>}</article>}{projection.decisionViews.missionUsageSummary && <article className="decision-card mission-usage-summary"><strong>Mission usage summary · recorded dry-run provenance</strong><p>Recorded dry-run count: {projection.decisionViews.missionUsageSummary.dryRunCount}</p><small>Recorded dry-run provider usage: not applicable · other attempt provenance: {projection.decisionViews.missionUsageSummary.unrecordedAttemptCount} not recorded</small><small>Mission ledger: {projection.decisionViews.missionUsageSummary.total} total · {projection.decisionViews.missionUsageSummary.reserved} reserved · {projection.decisionViews.missionUsageSummary.committed} committed · {projection.decisionViews.missionUsageSummary.spent} spent · {projection.decisionViews.missionUsageSummary.available} available</small></article>}<div className="decision-grid">{projection.decisionViews.agentDesk.map((agent) => <article className="decision-card" key={agent.attemptId}><strong>{agent.role}</strong><span>{agent.state} · {agent.task}</span><p>{agent.evidence}</p>{agent.provenance === "RECORDED_DRY_RUN" && <small>Recorded dry-run · no live worker or credits used</small>}<small>Replay usage: {agent.usage.units} units · {agent.usage.status}</small></article>)}</div></section>;
   if (view === "tribunal") {
     const room = projection.decisionViews.tribunalRoom;
     return <section className="decision-view" aria-label="Tribunal Room"><div className="panel-heading"><div><span className="eyebrow">Tribunal Room</span><h2>Recorded policy result</h2></div></div>{room ? <div className="decision-grid"><article className="decision-card"><strong>{room.result.recommendation}</strong><span>Candidate {room.result.candidateId} · sequence {room.recordedAtSequence}</span><p>Venture claims: {room.result.ventureClaimIds.join(", ") || "none"}</p><p>Ruin claims: {room.result.ruinClaimIds.join(", ") || "none"}</p><small>{room.result.reasons.map((reason) => reason.explanation).join(" ")}</small></article></div> : <p className="empty-state">No TribunalCompleted event in this replay.</p>}</section>;
@@ -100,6 +108,7 @@ function Office() {
   const [fixtureId, setFixtureId] = useState("crosscurrent-workspace-market");
   const [runtimeState, setRuntimeState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [runtimeMessage, setRuntimeMessage] = useState("");
+  const [subscriptionPreflightLoading, setSubscriptionPreflightLoading] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [view, setView] = useState<OfficeView>("floor");
@@ -137,6 +146,21 @@ function Office() {
     try { const mission = await reloadLocalMission(missionId); setActiveMission(mission); setRuntimeState("success"); setRuntimeMessage("Persisted local mission reloaded."); }
     catch (error: unknown) { setRuntimeState("error"); setRuntimeMessage(error instanceof Error ? error.message : "Could not reload the local mission."); }
   };
+  const checkSubscriptionRuntime = async () => {
+    if (!activeMission) return;
+    setSubscriptionPreflightLoading(true);
+    try {
+      const mission = await preflightSubscriptionRuntime(activeMission.missionId);
+      setActiveMission(mission);
+      setRuntimeState("success");
+      setRuntimeMessage("Subscription runtime check recorded. No worker was started.");
+    } catch (error: unknown) {
+      setRuntimeState("error");
+      setRuntimeMessage(error instanceof Error ? error.message : "Could not check the local subscription runtime.");
+    } finally {
+      setSubscriptionPreflightLoading(false);
+    }
+  };
 
   return <div className={`app ${reduced ? "reduced" : ""}`}>
     <header className="topbar"><div className="brand"><b>D</b><span>DropScope</span><em>RESEARCH OS</em></div><div className="topbar-mission"><span>MISSION</span><strong>{projection.mission.name}</strong></div></header>
@@ -146,7 +170,7 @@ function Office() {
         <section className="runtime-controls" aria-label="Local mission controls"><div><span className="eyebrow">Local runtime</span><strong>{activeMission ? `Mission ${activeMission.missionId}` : "Synthetic demo fallback"}</strong></div><label htmlFor="fixture-select">Fixture</label><select id="fixture-select" value={fixtureId} onChange={(event) => setFixtureId(event.currentTarget.value)}>{fixtureIds.map((id) => <option value={id} key={id}>{id}</option>)}</select><button onClick={() => void launch()} disabled={runtimeState === "loading"}>Launch local mission</button><button onClick={() => void reload()} disabled={runtimeState === "loading"}>Reload latest</button>{runtimeMessage && <span className={`runtime-message ${runtimeState}`} role="status">{runtimeMessage}</span>}</section>
         <section className="page-heading"><div><div className="heading-kicker"><span>Mission</span><strong>{projection.mission.name}</strong><span className={`mission-status ${status.toLowerCase()}`}><StatusIcon size={14} />{projection.mission.phase}</span></div><p className="source-note" title={activeMission ? `Persisted local mission ${activeMission.missionId}` : projection.sourceLabel}>{activeMission ? `Persisted local mission ${activeMission.missionId}.` : projection.sourceLabel}</p></div><div className="scenario-switcher" role="group" aria-label="Replay state"><span>{activeMission ? "Demo fallback" : "Replay state"}</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button className={scenario === name ? "selected" : ""} onClick={() => { setScenario(name); setApprovalOpen(false); }} key={name}>{name}</button>)}</div></section>
         <div className="floor-status"><span className="eyebrow"><span className="live-dot" />{floorStatus}</span><span>{floorAgents.length} assigned workers · {workingAgents} active</span></div>
-        {view === "report" ? <FinalReport /> : view === "replay" ? <MissionReplay scenario={scenario} setScenario={setScenario} activeHistory={activeMission} /> : <DecisionView projection={projection} view={view} />}
+        {view === "report" ? <FinalReport /> : view === "replay" ? <MissionReplay scenario={scenario} setScenario={setScenario} activeHistory={activeMission} /> : <DecisionView projection={projection} view={view} onSubscriptionPreflight={activeMission ? () => void checkSubscriptionRuntime() : undefined} subscriptionPreflightLoading={subscriptionPreflightLoading} />}
         {view === "floor" && <OfficeScene agents={floorAgents} onApproval={() => setApprovalOpen((value) => !value)} />}
         {approvalOpen && status === "BLOCKED" && <div className="approval-note" role="status"><Warning size={16} /><span><strong>Policy block</strong> This replay stopped with unresolved safety evidence. This local disclosure does not change mission data or policy.</span></div>}
         {view === "floor" && <section className="lower-layout"><WorkGraph tasks={projection.tasks} /><div className="context-stack"><MissionLedger projection={projection} /><EventTrail projection={projection} reduced={reduced} setReduced={setReduced} /></div></section>}

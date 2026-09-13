@@ -1,4 +1,4 @@
-import type { AuthorizationReason, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
+import type { AuthorizationReason, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -50,6 +50,7 @@ export interface MissionState {
   attempts: Record<string, AttemptRecord>;
   workerExecutionProvenance: Record<string, WorkerExecutionProvenance>;
   subscriptionRuntimeDeclaration?: SubscriptionRuntimeDeclaration;
+  subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
   authorizations: Record<string, AuthorizationRecord>;
   gaps: Record<string, GapRecord>;
   policyVersions: { tribunal: string } | null;
@@ -121,6 +122,10 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (state.status !== "RUNNING") throw new Error("A running mission is required to declare subscription runtime status.");
       if (state.subscriptionRuntimeDeclaration) throw new Error("Subscription runtime declaration is already recorded.");
       return { ...state, subscriptionRuntimeDeclaration: event.payload };
+    case "SubscriptionRuntimePreflightCompleted":
+      if (!state.subscriptionRuntimeDeclaration) throw new Error("Subscription runtime must be declared before a preflight.");
+      if (state.subscriptionRuntimePreflight) throw new Error("Subscription runtime preflight is already recorded.");
+      return { ...state, subscriptionRuntimePreflight: event.payload };
     case "AuditCompleted":
       if (state.status !== "RUNNING" || Object.hasOwn(state.auditResults, event.payload.auditId)) throw new Error("Audit result cannot be recorded.");
       return { ...state, auditResults: { ...state.auditResults, [event.payload.auditId]: event.payload } };

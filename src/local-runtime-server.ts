@@ -46,6 +46,14 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
       sendJson(response, 201, localMissionDtoSchema.parse(await runtime.launch(body.fixtureId)), corsOrigin);
       return;
     }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/subscription-preflight")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/subscription-preflight".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      sendJson(response, 200, localMissionDtoSchema.parse(await runtime.preflightSubscriptionRuntime(missionId)), corsOrigin);
+      return;
+    }
     if (request.method === "GET" && url.pathname.startsWith("/api/missions/")) {
       const encodedMissionId = url.pathname.slice("/api/missions/".length);
       if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");

@@ -44,6 +44,17 @@ describe("worker execution provenance", () => {
     expect(() => replay([created, { ...declaration, sequenceNumber: 2, missionId: created.missionId }, { ...declaration, sequenceNumber: 3, missionId: created.missionId }])).toThrow("already recorded");
   });
 
+  it("persists one sanitized subscription preflight after the disabled declaration", () => {
+    const created = event(1, "MissionCreated", { totalBudget: 20, missionSeed: 1 });
+    const declaration = event(2, "SubscriptionRuntimeDeclared", { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" });
+    const preflight = event(3, "SubscriptionRuntimePreflightCompleted", { accessStatus: "CHATGPT_AUTHENTICATED", usageStatus: "NOT_ITEMIZED" });
+    expect(missionEventSchema.safeParse(preflight).success).toBe(true);
+    expect(missionEventSchema.safeParse({ ...preflight, payload: { ...preflight.payload, usageStatus: "REPORTED" } }).success).toBe(false);
+    expect(replay([created, declaration, preflight]).subscriptionRuntimePreflight).toEqual(preflight.payload);
+    expect(() => replay([created, { ...preflight, sequenceNumber: 2 }])).toThrow("must be declared");
+    expect(() => replay([created, declaration, preflight, { ...preflight, sequenceNumber: 4 }])).toThrow("already recorded");
+  });
+
   it("persists one recorded dry-run declaration against a running attempt", () => {
     const state = replay([...startedAttempt(), recorded(6, "recorded:a1")]);
 

@@ -215,6 +215,16 @@ SubscriptionRuntimeDeclaredPayload
 
 This closed declaration is persisted for new local fixture missions only. It does not invoke a worker or infer status for legacy histories.
 
+## 10.3 SubscriptionRuntimePreflightCompleted payload
+
+```text
+SubscriptionRuntimePreflightCompletedPayload
+  accessStatus: CHATGPT_AUTHENTICATED | AUTHENTICATION_REQUIRED | UNSUPPORTED_AUTH_MODE | UNAVAILABLE
+  usageStatus: NOT_ITEMIZED
+```
+
+This is a one-shot user-triggered account-status observation after the disabled declaration. It contains no identity, plan, token, rate-limit, usage, or billing data and does not authorize a worker.
+
 ## 11. BudgetLedger
 
 ```text

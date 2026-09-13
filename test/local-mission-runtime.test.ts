@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
 
 describe("LocalMissionRuntime", () => {
@@ -29,6 +29,20 @@ describe("LocalMissionRuntime", () => {
     expect(launched.events).toContainEqual(expect.objectContaining({ type: "TaskFailedTransient", payload: expect.objectContaining({ attemptId: "workflow-interviews:a1" }) }));
     expect(findings).toContainEqual(expect.objectContaining({ payload: { attemptId: "workflow-interviews:a2", finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem." } }));
     expect(reloaded).toEqual(launched);
+  });
+
+  it("persists one user-triggered sanitized subscription preflight without starting a worker", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
+    const check = vi.fn(async () => "CHATGPT_AUTHENTICATED" as const);
+    const runtime = new LocalMissionRuntime({ dataRoot, createMissionId: () => "preflight-mission", subscriptionRuntimePreflight: { check } });
+    await runtime.launch("mixed-opportunity-market");
+
+    const checked = await runtime.preflightSubscriptionRuntime("preflight-mission");
+
+    expect(check).toHaveBeenCalledOnce();
+    expect(checked.events.at(-1)).toMatchObject({ type: "SubscriptionRuntimePreflightCompleted", payload: { accessStatus: "CHATGPT_AUTHENTICATED", usageStatus: "NOT_ITEMIZED" } });
+    await expect(runtime.preflightSubscriptionRuntime("preflight-mission")).rejects.toThrow("already recorded");
+    expect(await runtime.reload("preflight-mission")).toEqual(checked);
   });
 
   it("rejects unsafe ID factory output before creating a history path", async () => {

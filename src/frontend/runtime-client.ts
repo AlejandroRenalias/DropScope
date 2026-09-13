@@ -39,3 +39,7 @@ export function launchLocalMission(fixtureId: string): Promise<LocalMissionDto> 
 export function reloadLocalMission(missionId: string): Promise<LocalMissionDto> {
   return request(`/api/missions/${encodeURIComponent(missionId)}`);
 }
+
+export function preflightSubscriptionRuntime(missionId: string): Promise<LocalMissionDto> {
+  return request(`/api/missions/${encodeURIComponent(missionId)}/subscription-preflight`, { method: "POST" });
+}

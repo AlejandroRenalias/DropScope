@@ -35,6 +35,20 @@ describe("local runtime HTTP bridge", () => {
     expect(await reloadResponse.json()).toEqual(launched);
   });
 
+  it("accepts only a user POST for a sanitized subscription preflight", async () => {
+    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "preflight-server-mission", subscriptionRuntimePreflight: { check: async () => "AUTHENTICATION_REQUIRED" } });
+    const server = await listenLocalRuntimeServer(runtime);
+    servers.push(server);
+    const launch = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
+    const mission = await launch.json() as { missionId: string };
+
+    const preflight = await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" });
+
+    expect(preflight.status).toBe(200);
+    expect((await preflight.json() as { events: Array<{ type: string; payload: unknown }> }).events.at(-1)).toMatchObject({ type: "SubscriptionRuntimePreflightCompleted", payload: { accessStatus: "AUTHENTICATION_REQUIRED", usageStatus: "NOT_ITEMIZED" } });
+    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`))).status).toBe(400);
+  });
+
   it("returns clean client errors and does not accept event-authoring requests", async () => {
     const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")) });
     const server = await listenLocalRuntimeServer(runtime);

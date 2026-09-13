@@ -67,7 +67,7 @@ export function buildSubscriptionLiveWorkerPlan(request: WorkerRequest, cwd: str
             type: "readOnly",
             access: {
               type: "restricted",
-              includePlatformDefaults: true,
+              includePlatformDefaults: false,
               readableRoots: [cwd],
             },
           },

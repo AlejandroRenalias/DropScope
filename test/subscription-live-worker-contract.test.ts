@@ -20,7 +20,7 @@ describe("first subscription worker contract", () => {
     expect(plan.guard).toEqual({ execution: "REQUIRES_FRESH_EXPLICIT_APPROVAL", maximumTurns: 1, timeoutMs: 90_000, retryPolicy: "NONE", filesystem: "READ_ONLY", network: "DISABLED_BY_HOST_POLICY", output: "STRICT_STRUCTURED_RESULT" });
     expect(plan.requests.map((item) => item.method)).toEqual(["thread/start", "turn/start"]);
     expect(plan.requests[0].params).toMatchObject({ cwd: "C:/dropscope-fixture", approvalPolicy: "onRequest", sandbox: "readOnly", serviceName: "dropscope" });
-    expect(plan.requests[1].params).toMatchObject({ threadId: "$NEW_THREAD_ID", cwd: "C:/dropscope-fixture", approvalPolicy: "onRequest", sandboxPolicy: { type: "readOnly", access: { type: "restricted", readableRoots: ["C:/dropscope-fixture"] } } });
+    expect(plan.requests[1].params).toMatchObject({ threadId: "$NEW_THREAD_ID", cwd: "C:/dropscope-fixture", approvalPolicy: "onRequest", sandboxPolicy: { type: "readOnly", access: { type: "restricted", includePlatformDefaults: false, readableRoots: ["C:/dropscope-fixture"] } } });
   });
 
   it("uses the runtime result boundary and constrains the fixture-only instruction", () => {

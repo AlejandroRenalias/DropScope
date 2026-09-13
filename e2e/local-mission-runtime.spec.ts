@@ -9,10 +9,11 @@ import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
 let runtimeServer: LocalRuntimeServerHandle;
 let viteServer: ViteDevServer;
 let preflightChecks = 0;
+let resolvePreflight: (() => void) | undefined;
 
 test.beforeAll(async () => {
   runtimeServer = await listenLocalRuntimeServer(
-    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: async () => { preflightChecks += 1; return "CHATGPT_AUTHENTICATED"; } } }),
+    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve("CHATGPT_AUTHENTICATED"); }) } }),
     { port: 8791 },
   );
   process.env.VITE_LOCAL_RUNTIME_BASE_URL = "http://127.0.0.1:8791";
@@ -45,6 +46,10 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(agentDesk).toContainText("Subscription usage not itemized.");
   expect(preflightChecks).toBe(0);
   await page.getByRole("button", { name: "Check subscription runtime" }).click();
+  await expect.poll(() => preflightChecks).toBe(1);
+  await expect(page.getByRole("button", { name: "Launch local mission" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Reload latest" })).toBeDisabled();
+  resolvePreflight?.();
   await expect(page.getByRole("status")).toContainText("Subscription runtime check recorded. No worker was started.");
   await expect(agentDesk).toContainText("Local ChatGPT authentication detected. This does not authorize a worker run.");
   expect(preflightChecks).toBe(1);

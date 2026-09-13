@@ -64,7 +64,7 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
     }
     throw httpError(request.method === "POST" || request.method === "GET" ? 404 : 405, "Unknown route.");
   } catch (error: unknown) {
-    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
+    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
     sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin));
   }
 }
@@ -102,6 +102,9 @@ function isClientError(error: unknown): boolean {
 }
 function isMissingHistory(error: unknown): boolean {
   return error instanceof Error && error.message.includes("Mission history not found");
+}
+function isPreflightConflict(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("Subscription runtime preflight is already");
 }
 
 function loopbackOrigin(origin: string | undefined): string | undefined {

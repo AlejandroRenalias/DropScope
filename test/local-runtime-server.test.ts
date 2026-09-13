@@ -47,6 +47,7 @@ describe("local runtime HTTP bridge", () => {
     expect(preflight.status).toBe(200);
     expect((await preflight.json() as { events: Array<{ type: string; payload: unknown }> }).events.at(-1)).toMatchObject({ type: "SubscriptionRuntimePreflightCompleted", payload: { accessStatus: "AUTHENTICATION_REQUIRED", usageStatus: "NOT_ITEMIZED" } });
     expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`))).status).toBe(400);
+    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" })).status).toBe(409);
   });
 
   it("returns clean client errors and does not accept event-authoring requests", async () => {

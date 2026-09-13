@@ -149,6 +149,8 @@ function Office() {
   const checkSubscriptionRuntime = async () => {
     if (!activeMission) return;
     setSubscriptionPreflightLoading(true);
+    setRuntimeState("loading");
+    setRuntimeMessage("Checking subscription runtime…");
     try {
       const mission = await preflightSubscriptionRuntime(activeMission.missionId);
       setActiveMission(mission);

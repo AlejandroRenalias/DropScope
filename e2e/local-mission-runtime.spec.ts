@@ -44,6 +44,10 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(agentDesk).toContainText("Subscription runtime · disabled");
   await expect(agentDesk).toContainText("Local subscription access not checked.");
   await expect(agentDesk).toContainText("Subscription usage not itemized.");
+  await expect(agentDesk).toContainText("First live worker · approval required");
+  await expect(agentDesk).toContainText("One fresh thread · one turn · 90-second maximum · read-only fixture access · network denied by host policy · no automatic retry.");
+  await expect(agentDesk).toContainText("This disabled control has no execution path.");
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
   expect(preflightChecks).toBe(0);
   await page.getByRole("button", { name: "Check subscription runtime" }).click();
   await expect.poll(() => preflightChecks).toBe(1);

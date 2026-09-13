@@ -6,12 +6,13 @@ import { loadFixture, type FixtureCandidateEvaluation } from "../fixture-model.j
 import { evaluateRiskGate } from "../risk-policy.js";
 import { determineCandidateEligibility } from "../candidate-eligibility.js";
 import { buildCandidateReport, type CandidateReport } from "../report.js";
+import { firstLiveSubscriptionWorkerGuard, type FirstLiveSubscriptionWorkerGuard } from "../subscription-live-worker-contract.js";
 
 export type OfficeScenario = "RUNNING" | "BLOCKED" | "COMPLETED";
 export type AgentState = "WORKING" | "WAITING" | "BLOCKED" | "COMPLETED";
 export interface AgentDeskRecord { id: string; attemptId: string; role: string; state: AgentState; task: string; detail: string; evidence: string; provenance: "RECORDED_DRY_RUN" | null; usage: { units: number; status: string }; }
 export interface MissionUsageSummary { dryRunCount: number; unrecordedAttemptCount: number; recordedDryRunProviderUsageStatus: "NOT_APPLICABLE"; total: number; reserved: number; committed: number; spent: number; available: number; }
-export interface SubscriptionRuntimeProjection { execution: "DISABLED"; access: "LOCAL_SUBSCRIPTION_NOT_CHECKED" | "LOCAL_CHATGPT_AUTHENTICATED" | "LOCAL_AUTHENTICATION_REQUIRED" | "LOCAL_UNSUPPORTED_AUTH_MODE" | "LOCAL_RUNTIME_UNAVAILABLE"; usage: "SUBSCRIPTION_NOT_ITEMIZED"; }
+export interface SubscriptionRuntimeProjection { execution: "DISABLED"; access: "LOCAL_SUBSCRIPTION_NOT_CHECKED" | "LOCAL_CHATGPT_AUTHENTICATED" | "LOCAL_AUTHENTICATION_REQUIRED" | "LOCAL_UNSUPPORTED_AUTH_MODE" | "LOCAL_RUNTIME_UNAVAILABLE"; usage: "SUBSCRIPTION_NOT_ITEMIZED"; firstLiveWorker: FirstLiveSubscriptionWorkerGuard; }
 export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSummary: MissionUsageSummary | null; subscriptionRuntime: SubscriptionRuntimeProjection | null; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
@@ -104,7 +105,7 @@ export function projectOffice(events: MissionEvent[]): OfficeProjection {
       : state.subscriptionRuntimePreflight?.accessStatus === "UNSUPPORTED_AUTH_MODE" ? "LOCAL_UNSUPPORTED_AUTH_MODE" as const
         : state.subscriptionRuntimePreflight?.accessStatus === "UNAVAILABLE" ? "LOCAL_RUNTIME_UNAVAILABLE" as const
           : "LOCAL_SUBSCRIPTION_NOT_CHECKED" as const;
-  const subscriptionRuntime = state.subscriptionRuntimeDeclaration ? { execution: "DISABLED" as const, access, usage: "SUBSCRIPTION_NOT_ITEMIZED" as const } : null;
+  const subscriptionRuntime = state.subscriptionRuntimeDeclaration ? { execution: "DISABLED" as const, access, usage: "SUBSCRIPTION_NOT_ITEMIZED" as const, firstLiveWorker: firstLiveSubscriptionWorkerGuard } : null;
   const decisionViews: DecisionViews = { agentDesk: agents, missionUsageSummary, subscriptionRuntime, tribunalRoom: tribunalEvent ? { result: state.tribunalResults[tribunalEvent.payload.tribunalId]!, recordedAtSequence: tribunalEvent.sequenceNumber } : null, reviewOffice: reviewEvent ? { result: state.blindReviewResults[reviewEvent.payload.reviewId]!, recordedAtSequence: reviewEvent.sequenceNumber, blockingFeedback, divergences, revisionResponse } : null };
   return { sourceLabel, mission: { name: missionName(state.missionId), phase: phaseLabel(state.status), status }, ledger: { ...state.budget }, agents, tasks, events: events.slice(-3).map((item) => ({ sequence: item.sequenceNumber, type: item.type, detail: eventDetail(item) })), decisionViews };
 }

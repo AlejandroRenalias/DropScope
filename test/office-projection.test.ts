@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { officeHistories, projectFinalReport, projectOffice, replayEvents } from "../src/frontend/office-projection.js";
 import { replay } from "../src/reducer.js";
+import { firstLiveSubscriptionWorkerGuard } from "../src/subscription-live-worker-contract.js";
 describe("Research Office event projection", () => {
   it("exposes exactly three valid replay histories", () => { expect(Object.keys(officeHistories)).toEqual(["RUNNING", "BLOCKED", "COMPLETED"]); Object.values(officeHistories).forEach((history) => expect(() => replay(history)).not.toThrow()); });
   it("reads the ledger and changing display state from replay", () => { const running = projectOffice(officeHistories.RUNNING); const blocked = projectOffice(officeHistories.BLOCKED); const completed = projectOffice(officeHistories.COMPLETED); expect(running.ledger).toEqual({ total: 140, reserved: 0, committed: 50, spent: 25, available: 65 }); expect(running.mission).toMatchObject({ name: "Crosscurrent Workspace Market", status: "RUNNING" }); expect(running.tasks.filter((task) => task.state === "WORKING")).toHaveLength(2); expect(blocked.mission.status).toBe("BLOCKED"); expect(replay(officeHistories.BLOCKED).status).toBe("BLOCKED_POLICY"); expect(blocked.agents.some((agent) => agent.state === "BLOCKED")).toBe(true); expect(completed.mission.status).toBe("COMPLETED"); expect(completed.tasks.every((task) => task.state === "COMPLETED")).toBe(true); });
@@ -37,14 +38,14 @@ describe("Research Office event projection", () => {
     const history = officeHistories.COMPLETED.map((item, index) => ({ ...item, sequenceNumber: index + 1, eventId: `declared-${index + 1}` }));
     const declaration = { ...history[0]!, type: "SubscriptionRuntimeDeclared" as const, payload: { executionEnabled: false as const, accessStatus: "NOT_CHECKED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: 2, eventId: "declared-2" };
     const declared = [history[0]!, declaration, ...history.slice(1).map((item, index) => ({ ...item, sequenceNumber: index + 3, eventId: `declared-${index + 3}` }))];
-    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toEqual({ execution: "DISABLED", access: "LOCAL_SUBSCRIPTION_NOT_CHECKED", usage: "SUBSCRIPTION_NOT_ITEMIZED" });
+    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toEqual({ execution: "DISABLED", access: "LOCAL_SUBSCRIPTION_NOT_CHECKED", usage: "SUBSCRIPTION_NOT_ITEMIZED", firstLiveWorker: firstLiveSubscriptionWorkerGuard });
   });
   it("projects sanitized persisted subscription preflight status without account details", () => {
     const history = officeHistories.COMPLETED.map((item, index) => ({ ...item, sequenceNumber: index + 1, eventId: `preflight-${index + 1}` }));
     const declaration = { ...history[0]!, type: "SubscriptionRuntimeDeclared" as const, payload: { executionEnabled: false as const, accessStatus: "NOT_CHECKED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: 2, eventId: "preflight-2" };
     const preflight = { ...history[0]!, type: "SubscriptionRuntimePreflightCompleted" as const, payload: { accessStatus: "CHATGPT_AUTHENTICATED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: history.length + 2, eventId: `preflight-${history.length + 2}` };
     const declared = [history[0]!, declaration, ...history.slice(1).map((item, index) => ({ ...item, sequenceNumber: index + 3, eventId: `preflight-${index + 3}` })), preflight];
-    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toEqual({ execution: "DISABLED", access: "LOCAL_CHATGPT_AUTHENTICATED", usage: "SUBSCRIPTION_NOT_ITEMIZED" });
+    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toEqual({ execution: "DISABLED", access: "LOCAL_CHATGPT_AUTHENTICATED", usage: "SUBSCRIPTION_NOT_ITEMIZED", firstLiveWorker: firstLiveSubscriptionWorkerGuard });
   });
   it("builds a browser-safe final report from the static fixture helpers", () => {
     const report = projectFinalReport();

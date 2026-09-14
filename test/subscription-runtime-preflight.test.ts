@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
-import { CodexAppServerPreflight, mapAccountReadResponse, type AppServerProcess } from "../src/subscription-runtime-preflight.js";
+import { appServerSpawnSpec, CodexAppServerPreflight, mapAccountReadResponse, type AppServerProcess } from "../src/subscription-runtime-preflight.js";
 
 class FakeAppServer extends EventEmitter implements AppServerProcess {
   readonly stdin = new PassThrough();
@@ -48,6 +48,14 @@ function isInitializedNotification(message: unknown): boolean {
 }
 
 describe("Codex app-server subscription preflight", () => {
+  it("uses the fixed Windows command interpreter only for the codex.cmd shim", () => {
+    expect(appServerSpawnSpec("win32")).toEqual({
+      command: "cmd.exe",
+      args: ["/d", "/s", "/c", "codex.cmd app-server"],
+    });
+    expect(appServerSpawnSpec("linux")).toEqual({ command: "codex", args: ["app-server"] });
+  });
+
   it("initializes then reads only sanitized ChatGPT auth status without a thread or turn", async () => {
     const process = new FakeAppServer({ account: { type: "chatgpt", email: "private@example.com", planType: "pro" }, requiresOpenaiAuth: true });
     const result = await new CodexAppServerPreflight(() => process, 100).check();

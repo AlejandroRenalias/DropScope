@@ -21,16 +21,30 @@ export interface AppServerProcess {
 }
 export type AppServerSpawner = () => AppServerProcess;
 
+export interface AppServerSpawnSpec {
+  command: string;
+  args: string[];
+}
+
 interface RpcResponse {
   id?: number;
   result?: unknown;
   error?: { message?: unknown };
 }
 
-const defaultSpawner: AppServerSpawner = () => spawn("codex", ["app-server"], {
-  stdio: ["pipe", "pipe", "ignore"],
-  windowsHide: true,
-});
+export function appServerSpawnSpec(platform: NodeJS.Platform): AppServerSpawnSpec {
+  return platform === "win32"
+    ? { command: "cmd.exe", args: ["/d", "/s", "/c", "codex.cmd app-server"] }
+    : { command: "codex", args: ["app-server"] };
+}
+
+const defaultSpawner: AppServerSpawner = () => {
+  const { command, args } = appServerSpawnSpec(process.platform);
+  return spawn(command, args, {
+    stdio: ["pipe", "pipe", "ignore"],
+    windowsHide: true,
+  });
+};
 
 /**
  * Runs only Codex app-server initialization and account/read with refresh disabled.

@@ -67,6 +67,7 @@ export function buildSubscriptionLiveWorkerPlan(request: WorkerRequest, cwd: str
           approvalPolicy: "onRequest",
           sandboxPolicy: {
             type: "readOnly",
+            networkAccess: false,
             access: {
               type: "restricted",
               includePlatformDefaults: false,

@@ -47,6 +47,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(agentDesk).toContainText("First live worker · approval required");
   await expect(agentDesk).toContainText("One fresh thread · one turn · 90-second maximum · read-only fixture access · network denied by host policy · no automatic retry.");
   await expect(agentDesk).toContainText("Confirmation is one-use, stays only in local runtime memory, and expires after 60 seconds.");
+  await expect(agentDesk).toContainText("Protocol preview · approvals: command, file change, permissions; terminal outcomes: completed, timed out, unavailable, approval declined, interrupted, invalid result, turn failed.");
   await expect(agentDesk).toContainText("This disabled control has no execution path.");
   await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
   expect(preflightChecks).toBe(0);
@@ -88,6 +89,7 @@ test("launches the isolated live-worker pilot without starting a worker", async 
   const agentDesk = page.getByRole("region", { name: "Agent Desk" });
   await expect(agentDesk).toContainText("Subscription runtime · disabled");
   await expect(agentDesk).toContainText("First live worker · approval required");
+  await expect(agentDesk).toContainText("Protocol preview · approvals: command, file change, permissions; terminal outcomes: completed, timed out, unavailable, approval declined, interrupted, invalid result, turn failed.");
   await expect(agentDesk).toContainText("This disabled control has no execution path.");
   await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
   expect(preflightChecks).toBe(1);

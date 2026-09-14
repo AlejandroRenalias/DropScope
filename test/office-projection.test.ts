@@ -38,14 +38,14 @@ describe("Research Office event projection", () => {
     const history = officeHistories.COMPLETED.map((item, index) => ({ ...item, sequenceNumber: index + 1, eventId: `declared-${index + 1}` }));
     const declaration = { ...history[0]!, type: "SubscriptionRuntimeDeclared" as const, payload: { executionEnabled: false as const, accessStatus: "NOT_CHECKED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: 2, eventId: "declared-2" };
     const declared = [history[0]!, declaration, ...history.slice(1).map((item, index) => ({ ...item, sequenceNumber: index + 3, eventId: `declared-${index + 3}` }))];
-    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toEqual({ execution: "DISABLED", access: "LOCAL_SUBSCRIPTION_NOT_CHECKED", usage: "SUBSCRIPTION_NOT_ITEMIZED", firstLiveWorker: firstLiveSubscriptionWorkerGuard });
+    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toMatchObject({ execution: "DISABLED", access: "LOCAL_SUBSCRIPTION_NOT_CHECKED", usage: "SUBSCRIPTION_NOT_ITEMIZED", firstLiveWorker: firstLiveSubscriptionWorkerGuard, protocolFake: { approvalCategories: ["command", "file change", "permissions"], terminalOutcomes: ["completed", "timed out", "unavailable", "approval declined", "interrupted", "invalid result", "turn failed"] } });
   });
   it("projects sanitized persisted subscription preflight status without account details", () => {
     const history = officeHistories.COMPLETED.map((item, index) => ({ ...item, sequenceNumber: index + 1, eventId: `preflight-${index + 1}` }));
     const declaration = { ...history[0]!, type: "SubscriptionRuntimeDeclared" as const, payload: { executionEnabled: false as const, accessStatus: "NOT_CHECKED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: 2, eventId: "preflight-2" };
     const preflight = { ...history[0]!, type: "SubscriptionRuntimePreflightCompleted" as const, payload: { accessStatus: "CHATGPT_AUTHENTICATED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: history.length + 2, eventId: `preflight-${history.length + 2}` };
     const declared = [history[0]!, declaration, ...history.slice(1).map((item, index) => ({ ...item, sequenceNumber: index + 3, eventId: `preflight-${index + 3}` })), preflight];
-    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toEqual({ execution: "DISABLED", access: "LOCAL_CHATGPT_AUTHENTICATED", usage: "SUBSCRIPTION_NOT_ITEMIZED", firstLiveWorker: firstLiveSubscriptionWorkerGuard });
+    expect(projectOffice(declared).decisionViews.subscriptionRuntime).toMatchObject({ execution: "DISABLED", access: "LOCAL_CHATGPT_AUTHENTICATED", usage: "SUBSCRIPTION_NOT_ITEMIZED", firstLiveWorker: firstLiveSubscriptionWorkerGuard, protocolFake: { approvalCategories: ["command", "file change", "permissions"], terminalOutcomes: ["completed", "timed out", "unavailable", "approval declined", "interrupted", "invalid result", "turn failed"] } });
   });
   it("projects a sanitized persisted subscription-worker outcome without a thread or provider measurement", () => {
     const history = officeHistories.RUNNING.map((item, index) => ({ ...item, sequenceNumber: index + 1, eventId: `outcome-${index + 1}` }));

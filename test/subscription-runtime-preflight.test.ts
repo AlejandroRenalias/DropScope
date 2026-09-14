@@ -13,14 +13,19 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
     return true;
   });
 
-  constructor(accountResponse: unknown) {
+  constructor(
+    accountResponse: unknown,
+    private readonly accountResponseDelayMs = 0,
+  ) {
     super();
     this.stdin.on("data", (chunk: Buffer) => {
       for (const line of chunk.toString("utf8").split("\n").filter(Boolean)) {
         const message = JSON.parse(line) as { id?: number; method?: string };
         this.messages.push(message);
         if (message.id === 1) this.stdout.write(JSON.stringify({ id: 1, result: {} }) + "\n");
-        if (message.id === 2) this.stdout.write(JSON.stringify({ id: 2, result: accountResponse }) + "\n");
+        if (message.id === 2) {
+          setTimeout(() => this.stdout.write(JSON.stringify({ id: 2, result: accountResponse }) + "\n"), this.accountResponseDelayMs);
+        }
       }
     });
   }
@@ -50,7 +55,18 @@ describe("Codex app-server subscription preflight", () => {
   });
 
   it("uses a ten-second default window for a cold local app-server start", async () => {
-    const process = new FakeAppServer({ account: { type: "chatgpt" }, requiresOpenaiAuth: true });
-    await expect(new CodexAppServerPreflight(() => process).check()).resolves.toBe("CHATGPT_AUTHENTICATED");
+    vi.useFakeTimers();
+    try {
+      const process = new FakeAppServer({ account: { type: "chatgpt" }, requiresOpenaiAuth: true }, 4_000);
+      const check = new CodexAppServerPreflight(() => process).check();
+
+      await vi.advanceTimersByTimeAsync(3_001);
+      expect(process.kill).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(999);
+      await expect(check).resolves.toBe("CHATGPT_AUTHENTICATED");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

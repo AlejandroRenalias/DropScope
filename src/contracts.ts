@@ -37,6 +37,13 @@ export const subscriptionRuntimePreflightSchema = z.object({
   usageStatus: z.literal("NOT_ITEMIZED"),
 }).strict();
 export type SubscriptionRuntimePreflight = z.infer<typeof subscriptionRuntimePreflightSchema>;
+export const subscriptionWorkerExecutionOutcomeSchema = z.object({
+  attemptId: z.string().min(1),
+  outcome: z.enum(["COMPLETED", "TIMEOUT", "UNAVAILABLE", "APPROVAL_DECLINED", "INTERRUPTED", "INVALID_RESULT", "TURN_FAILED"]),
+  providerUsageStatus: z.literal("UNKNOWN"),
+  elapsedMs: z.number().int().nonnegative().max(90_000),
+}).strict();
+export type SubscriptionWorkerExecutionOutcome = z.infer<typeof subscriptionWorkerExecutionOutcomeSchema>;
 const missionCreatedPayloadSchema = z.union([
   z.object({
     totalBudget: z.number().int().positive(),
@@ -55,6 +62,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   }),
   eventBase.extend({ type: z.literal("SubscriptionRuntimeDeclared"), payload: subscriptionRuntimeDeclarationSchema }),
   eventBase.extend({ type: z.literal("SubscriptionRuntimePreflightCompleted"), payload: subscriptionRuntimePreflightSchema }),
+  eventBase.extend({ type: z.literal("SubscriptionWorkerExecutionOutcomeRecorded"), payload: subscriptionWorkerExecutionOutcomeSchema }),
   eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
   eventBase.extend({ type: z.literal("AuditCompleted"), payload: evidenceAuditResultSchema }),
   eventBase.extend({ type: z.literal("BlindReviewCompleted"), payload: blindReviewResultSchema }),

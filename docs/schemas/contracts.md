@@ -225,6 +225,19 @@ SubscriptionRuntimePreflightCompletedPayload
 
 This is a one-shot user-triggered account-status observation after the disabled declaration. It contains no identity, plan, token, rate-limit, usage, or billing data and does not authorize a worker.
 
+## 10.4 SubscriptionWorkerExecutionOutcomeRecorded payload
+
+```text
+SubscriptionWorkerExecutionOutcomeRecordedPayload
+  attemptId: string
+  outcome: COMPLETED | TIMEOUT | UNAVAILABLE | APPROVAL_DECLINED |
+           INTERRUPTED | INVALID_RESULT | TURN_FAILED
+  providerUsageStatus: UNKNOWN
+  elapsedMs: integer 0..90000
+```
+
+This durable event records only the sanitized terminal result of a separately authorized subscription worker. It requires an authenticated preflight and a running attempt, occurs at most once per attempt before its existing finding or failure lifecycle event, and never contains a Codex thread ID, account data, quota, price, raw error, or provider usage measurement. A confirmation is deliberately not persisted.
+
 ## 11. BudgetLedger
 
 ```text

@@ -47,6 +47,15 @@ describe("Research Office event projection", () => {
     const declared = [history[0]!, declaration, ...history.slice(1).map((item, index) => ({ ...item, sequenceNumber: index + 3, eventId: `preflight-${index + 3}` })), preflight];
     expect(projectOffice(declared).decisionViews.subscriptionRuntime).toEqual({ execution: "DISABLED", access: "LOCAL_CHATGPT_AUTHENTICATED", usage: "SUBSCRIPTION_NOT_ITEMIZED", firstLiveWorker: firstLiveSubscriptionWorkerGuard });
   });
+  it("projects a sanitized persisted subscription-worker outcome without a thread or provider measurement", () => {
+    const history = officeHistories.RUNNING.map((item, index) => ({ ...item, sequenceNumber: index + 1, eventId: `outcome-${index + 1}` }));
+    const declaration = { ...history[0]!, type: "SubscriptionRuntimeDeclared" as const, payload: { executionEnabled: false as const, accessStatus: "NOT_CHECKED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: 2, eventId: "outcome-2" };
+    const preflight = { ...history[0]!, type: "SubscriptionRuntimePreflightCompleted" as const, payload: { accessStatus: "CHATGPT_AUTHENTICATED" as const, usageStatus: "NOT_ITEMIZED" as const }, sequenceNumber: 3, eventId: "outcome-3" };
+    const events = [history[0]!, declaration, preflight, ...history.slice(1).map((item, index) => ({ ...item, sequenceNumber: index + 4, eventId: `outcome-${index + 4}` }))];
+    const outcome = { ...history[0]!, type: "SubscriptionWorkerExecutionOutcomeRecorded" as const, payload: { attemptId: "workflow:a1", outcome: "TIMEOUT" as const, providerUsageStatus: "UNKNOWN" as const, elapsedMs: 90_000 }, sequenceNumber: events.length + 1, eventId: `outcome-${events.length + 1}` };
+
+    expect(projectOffice([...events, outcome]).decisionViews.subscriptionRuntime?.lastWorkerOutcome).toEqual(outcome.payload);
+  });
   it("builds a browser-safe final report from the static fixture helpers", () => {
     const report = projectFinalReport();
     expect(report.fixtureId).toBe("crosscurrent-workspace-market");

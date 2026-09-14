@@ -12,6 +12,8 @@ export const firstLiveSubscriptionWorkerGuard = {
   filesystem: "READ_ONLY",
   network: "DISABLED_BY_HOST_POLICY",
   output: "STRICT_STRUCTURED_RESULT",
+  confirmation: "ONE_TIME_IN_MEMORY",
+  confirmationTtlMs: 60_000,
 } as const;
 
 export type FirstLiveSubscriptionWorkerGuard = typeof firstLiveSubscriptionWorkerGuard;

@@ -17,7 +17,7 @@ describe("first subscription worker contract", () => {
     const plan = buildSubscriptionLiveWorkerPlan(request, "C:/dropscope-fixture");
 
     expect(plan.guard).toEqual(firstLiveSubscriptionWorkerGuard);
-    expect(plan.guard).toEqual({ execution: "REQUIRES_FRESH_EXPLICIT_APPROVAL", maximumTurns: 1, timeoutMs: 90_000, retryPolicy: "NONE", filesystem: "READ_ONLY", network: "DISABLED_BY_HOST_POLICY", output: "STRICT_STRUCTURED_RESULT" });
+    expect(plan.guard).toEqual({ execution: "REQUIRES_FRESH_EXPLICIT_APPROVAL", maximumTurns: 1, timeoutMs: 90_000, retryPolicy: "NONE", filesystem: "READ_ONLY", network: "DISABLED_BY_HOST_POLICY", output: "STRICT_STRUCTURED_RESULT", confirmation: "ONE_TIME_IN_MEMORY", confirmationTtlMs: 60_000 });
     expect(plan.requests.map((item) => item.method)).toEqual(["thread/start", "turn/start"]);
     expect(plan.requests[0].params).toMatchObject({ cwd: "C:/dropscope-fixture", approvalPolicy: "onRequest", sandbox: "readOnly", serviceName: "dropscope" });
     expect(plan.requests[1].params).toMatchObject({ threadId: "$NEW_THREAD_ID", cwd: "C:/dropscope-fixture", approvalPolicy: "onRequest", sandboxPolicy: { type: "readOnly", access: { type: "restricted", includePlatformDefaults: false, readableRoots: ["C:/dropscope-fixture"] } } });

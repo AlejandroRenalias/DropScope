@@ -1,4 +1,4 @@
-import type { AuthorizationReason, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
+import type { AuthorizationReason, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -51,6 +51,7 @@ export interface MissionState {
   workerExecutionProvenance: Record<string, WorkerExecutionProvenance>;
   subscriptionRuntimeDeclaration?: SubscriptionRuntimeDeclaration;
   subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
+  subscriptionWorkerExecutionOutcomes: Record<string, SubscriptionWorkerExecutionOutcome>;
   authorizations: Record<string, AuthorizationRecord>;
   gaps: Record<string, GapRecord>;
   policyVersions: { tribunal: string } | null;
@@ -72,6 +73,7 @@ export const initialMissionState = (): MissionState => ({
   tasks: {},
   attempts: {},
   workerExecutionProvenance: {},
+  subscriptionWorkerExecutionOutcomes: {},
   authorizations: {},
   gaps: {},
   policyVersions: null,
@@ -126,6 +128,20 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (!state.subscriptionRuntimeDeclaration) throw new Error("Subscription runtime must be declared before a preflight.");
       if (state.subscriptionRuntimePreflight) throw new Error("Subscription runtime preflight is already recorded.");
       return { ...state, subscriptionRuntimePreflight: event.payload };
+    case "SubscriptionWorkerExecutionOutcomeRecorded": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (!state.subscriptionRuntimeDeclaration || state.subscriptionRuntimePreflight?.accessStatus !== "CHATGPT_AUTHENTICATED") {
+        throw new Error("Authenticated subscription preflight is required before recording a worker outcome.");
+      }
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+        throw new Error("Only a running attempt can record a subscription worker outcome.");
+      }
+      if (Object.hasOwn(state.subscriptionWorkerExecutionOutcomes, event.payload.attemptId)) {
+        throw new Error("Subscription worker outcome was already recorded for this attempt.");
+      }
+      return { ...state, subscriptionWorkerExecutionOutcomes: { ...state.subscriptionWorkerExecutionOutcomes, [event.payload.attemptId]: event.payload } };
+    }
     case "AuditCompleted":
       if (state.status !== "RUNNING" || Object.hasOwn(state.auditResults, event.payload.auditId)) throw new Error("Audit result cannot be recorded.");
       return { ...state, auditResults: { ...state.auditResults, [event.payload.auditId]: event.payload } };

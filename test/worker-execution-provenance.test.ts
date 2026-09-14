@@ -21,6 +21,16 @@ const startedAttempt = (attemptId = "recorded:a1") => [
 ];
 
 const recorded = (sequenceNumber: number, attemptId: string) => event(sequenceNumber, "WorkerExecutionRecorded", { attemptId, mode: "RECORDED_DRY_RUN", providerUsageStatus: "NOT_APPLICABLE" });
+const subscriptionStartedAttempt = (attemptId = "subscription:a1") => [
+  event(1, "MissionCreated", { totalBudget: 20, missionSeed: 1, policyVersions: { tribunal: "1" } }),
+  event(2, "SubscriptionRuntimeDeclared", { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" }),
+  event(3, "SubscriptionRuntimePreflightCompleted", { accessStatus: "CHATGPT_AUTHENTICATED", usageStatus: "NOT_ITEMIZED" }),
+  event(4, "TaskAuthorized", { taskId: "subscription", objective: "Read fixture-only evidence.", cost: 10, workClass: "MANDATORY", researchKey: "subscription", authorizationReason: "MANDATORY_BASELINE", dependencies: [] }),
+  event(5, "TaskScheduled", { taskId: "subscription", attemptId, objective: "Read fixture-only evidence.", cost: 10, workClass: "MANDATORY", researchKey: "subscription", workerRole: "EVIDENCE_RESEARCHER", dependencies: [] }),
+  event(6, "BudgetReserved", { attemptId, cost: 10 }),
+  event(7, "TaskStarted", { attemptId, simulatedDelayMs: 0 }),
+];
+const subscriptionOutcome = (sequenceNumber: number, attemptId: string) => event(sequenceNumber, "SubscriptionWorkerExecutionOutcomeRecorded", { attemptId, outcome: "TIMEOUT", providerUsageStatus: "UNKNOWN", elapsedMs: 90_000 });
 
 describe("worker execution provenance", () => {
   it("accepts only the closed subscription runtime declaration payload", () => {
@@ -75,5 +85,22 @@ describe("worker execution provenance", () => {
     expect(missionEventSchema.safeParse(valid).success).toBe(true);
     expect(missionEventSchema.safeParse({ ...valid, payload: { ...valid.payload, mode: "LIVE_PROVIDER" } }).success).toBe(false);
     expect(missionEventSchema.safeParse({ ...valid, payload: { ...valid.payload, providerUsageStatus: "REPORTED" } }).success).toBe(false);
+  });
+
+  it("records one sanitized live-worker outcome only after authenticated preflight and task start", () => {
+    const outcome = subscriptionOutcome(8, "subscription:a1");
+    expect(missionEventSchema.safeParse(outcome).success).toBe(true);
+    expect(missionEventSchema.safeParse({ ...outcome, payload: { ...outcome.payload, providerUsageStatus: "NOT_ITEMIZED" } }).success).toBe(false);
+    expect(missionEventSchema.safeParse({ ...outcome, payload: { ...outcome.payload, threadId: "private" } }).success).toBe(false);
+    expect(replay([...subscriptionStartedAttempt(), outcome]).subscriptionWorkerExecutionOutcomes).toEqual({
+      "subscription:a1": { attemptId: "subscription:a1", outcome: "TIMEOUT", providerUsageStatus: "UNKNOWN", elapsedMs: 90_000 },
+    });
+  });
+
+  it("rejects subscription outcomes before authentication, task start, or a duplicate outcome", () => {
+    const outcome = subscriptionOutcome(8, "subscription:a1");
+    expect(() => replay([...startedAttempt("subscription:a1"), { ...outcome, sequenceNumber: 6 }])).toThrow("Authenticated subscription preflight");
+    expect(() => replay([...subscriptionStartedAttempt().slice(0, 6), { ...outcome, sequenceNumber: 7 }])).toThrow("Only a running attempt");
+    expect(() => replay([...subscriptionStartedAttempt(), outcome, { ...outcome, sequenceNumber: 9 }])).toThrow("already recorded");
   });
 });

@@ -155,6 +155,17 @@ const definitions: readonly Fixture[] = [
       { id: "crosscurrent-risk-review", objective: "Review conflicting risk signals.", cost: 25, durationMs: 10, workClass: "MANDATORY", researchKey: "crosscurrent-risk", dependencies: ["workflow-interviews", "supplier-check"], workerRole: "RISK_RESEARCHER" },
     ],
   },
+  {
+    fixtureId: "live-worker-pilot",
+    seed: 1,
+    budget: 20,
+    candidateEvaluations: [
+      { candidateId: "pilot-workspace", riskInput: riskInput("pilot-workspace"), customerProblemEvidenceScore: 80, evidenceQualityScore: 80, trendDurabilityScore: 70, advertisingSaturationScore: 35, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [
+      { id: "pilot-evidence", objective: "Analyze the supplied local pilot fixture only.", cost: 10, durationMs: 1, workClass: "MANDATORY", researchKey: "pilot-evidence", dependencies: [], workerRole: "EVIDENCE_RESEARCHER" },
+    ],
+  },
 ];
 
 const fixtureRegistry = new Map(definitions.map((fixture) => [fixture.fixtureId, fixture]));

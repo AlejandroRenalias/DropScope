@@ -120,4 +120,13 @@ describe("fixture-driven simulated missions", () => {
 
     expect(result.events.some((event) => event.type === "FindingSubmitted" && event.payload.finding.includes("Recorded Evidence Researcher"))).toBe(false);
   });
+
+  it("keeps the isolated live-worker pilot running without a worker execution event", async () => {
+    const result = await runFixtureMission({ fixtureId: "live-worker-pilot", missionId: "live-worker-pilot-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+
+    expect(result.state).toMatchObject({ status: "RUNNING", attempts: { "pilot-evidence:a1": { status: "RUNNING" } } });
+    expect(result.events.map((event) => event.type)).toEqual(["MissionCreated", "SubscriptionRuntimeDeclared", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+    expect(result.events.some((event) => event.type === "WorkerExecutionRecorded" || event.type === "SubscriptionWorkerExecutionOutcomeRecorded")).toBe(false);
+    expect(result.events.some((event) => event.type === "MissionCompleted" || event.type === "MissionTerminated")).toBe(false);
+  });
 });

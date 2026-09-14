@@ -50,6 +50,7 @@ export async function runFixtureMission(options: {
     eventStore: options.eventStore,
     maxConcurrency: options.maxConcurrency,
     completeMission: false,
+    ...(fixture.fixtureId === "live-worker-pilot" ? { pauseAfterStartingTaskId: "pilot-evidence" } : {}),
     recordedWorkerAssignment,
     subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
     tasks: fixture.tasks.map((task) => ({
@@ -70,6 +71,9 @@ export async function runFixtureMission(options: {
   const events = await store.readAll();
   const scheduledState = replay(events);
   if (scheduledState.status !== "RUNNING") {
+    return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
+  }
+  if (fixture.fixtureId === "live-worker-pilot") {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
   if (fixture.fixtureId === "crosscurrent-workspace-market") {

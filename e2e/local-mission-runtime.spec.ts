@@ -77,3 +77,24 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
   await expect(page.getByText(/Event 36 \/ 36/)).toBeVisible();
 });
+
+test("launches the isolated live-worker pilot without starting a worker", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#fixture-select").selectOption("live-worker-pilot");
+  await page.getByRole("button", { name: "Launch local mission" }).click();
+  await expect(page.getByRole("status")).toContainText("Mission live-worker-pilot-");
+
+  await page.getByRole("button", { name: "Agent Desk" }).click();
+  const agentDesk = page.getByRole("region", { name: "Agent Desk" });
+  await expect(agentDesk).toContainText("Subscription runtime · disabled");
+  await expect(agentDesk).toContainText("First live worker · approval required");
+  await expect(agentDesk).toContainText("This disabled control has no execution path.");
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
+  expect(preflightChecks).toBe(1);
+
+  await page.getByRole("button", { name: "Mission Replay" }).click();
+  const replay = page.getByRole("region", { name: "Mission Replay" });
+  await expect(replay).toContainText("Event 6 / 6");
+  await expect(replay.getByText("TaskStarted", { exact: true })).toBeVisible();
+  await expect(replay.getByText("MissionCompleted", { exact: true })).toHaveCount(0);
+});

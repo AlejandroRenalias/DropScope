@@ -31,6 +31,17 @@ describe("LocalMissionRuntime", () => {
     expect(reloaded).toEqual(launched);
   });
 
+  it("launches and reloads the isolated live-worker pilot as a running mission", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
+    const runtime = new LocalMissionRuntime({ dataRoot, createMissionId: () => "live-worker-pilot-mission" });
+
+    const launched = await runtime.launch("live-worker-pilot");
+
+    expect(launched.events.map((event) => event.type)).toEqual(["MissionCreated", "SubscriptionRuntimeDeclared", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+    expect(launched.events.some((event) => event.type === "WorkerExecutionRecorded" || event.type === "SubscriptionWorkerExecutionOutcomeRecorded")).toBe(false);
+    expect(await runtime.reload("live-worker-pilot-mission")).toEqual(launched);
+  });
+
   it("persists one user-triggered sanitized subscription preflight without starting a worker", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
     const check = vi.fn(async () => "CHATGPT_AUTHENTICATED" as const);

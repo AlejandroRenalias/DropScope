@@ -63,6 +63,9 @@ export async function runSimulatedSchedule(options: {
   tasks: SimulatedTask[];
   maxConcurrency?: number;
   completeMission?: boolean;
+  // A deliberately narrow fixture-only pause point. It leaves one authorized,
+  // budget-committed attempt running without invoking a worker adapter.
+  pauseAfterStartingTaskId?: string;
   // This assignment is the only worker seam currently admitted by the local
   // scheduler. It always records RECORDED_DRY_RUN provenance before invocation.
   recordedWorkerAssignment?: { workerRole: string; adapter: RecordedWorkerAdapter };
@@ -72,6 +75,12 @@ export async function runSimulatedSchedule(options: {
   if (maxConcurrency < 1 || maxConcurrency > 3) throw new Error("Concurrency must be between 1 and 3.");
   if (new Set(options.tasks.map((task) => task.taskId)).size !== options.tasks.length) throw new Error("Task IDs must be unique.");
   validateDependencyGraph(options.tasks);
+  if (options.pauseAfterStartingTaskId) {
+    if (options.tasks.length !== 1 || options.tasks[0]?.taskId !== options.pauseAfterStartingTaskId) {
+      throw new Error("A paused schedule requires exactly one matching task.");
+    }
+    if (options.recordedWorkerAssignment) throw new Error("A paused schedule cannot invoke a worker assignment.");
+  }
   if (options.tasks.reduce((total, task) => total + task.cost, 0) > options.totalBudget) {
     throw new Error("Insufficient mission budget for scheduled task attempts.");
   }
@@ -98,6 +107,7 @@ export async function runSimulatedSchedule(options: {
   const completionOrder: string[] = [];
   let maxConcurrentAttempts = 0;
   let terminated = false;
+  let paused = false;
 
   const canStart = (task: SimulatedTask) => (task.dependencies ?? []).every((dependency) => completed.has(dependency));
   const startEligibleTasks = async () => {
@@ -130,6 +140,11 @@ export async function runSimulatedSchedule(options: {
       const attemptNumber = 1;
       const durationMs = seededDelay(options.missionSeed, task.taskId, attemptNumber, task.durationMs);
       await append("TaskStarted", { attemptId, simulatedDelayMs: durationMs });
+      if (task.taskId === options.pauseAfterStartingTaskId) {
+        paused = true;
+        maxConcurrentAttempts = Math.max(maxConcurrentAttempts, 1);
+        continue;
+      }
       running.set(task.taskId, wait(durationMs).then(() => {
         intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
         return { taskId: task.taskId, attemptNumber, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
@@ -140,6 +155,7 @@ export async function runSimulatedSchedule(options: {
 
   while (!terminated && (pending.size > 0 || running.size > 0)) {
     await startEligibleTasks();
+    if (paused) return { executionIntervals: intervals, maxConcurrentAttempts, taskOutcomes, completionOrder };
     if (running.size === 0) throw new Error("No eligible task remains; dependencies are missing or cyclic.");
     const finished = await Promise.race(running.values());
     running.delete(finished.taskId);

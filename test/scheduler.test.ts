@@ -224,6 +224,24 @@ describe("dependency-aware asynchronous scheduler", () => {
     expect(replay(events).subscriptionRuntimeDeclaration).toEqual({ executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" });
   });
 
+  it("can leave one explicit fixture-only attempt running without invoking a worker", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "paused-pilot.jsonl");
+    const result = await runSimulatedSchedule({
+      missionId: "paused-pilot",
+      missionSeed: 1,
+      totalBudget: 20,
+      historyPath,
+      subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
+      pauseAfterStartingTaskId: "pilot-evidence",
+      tasks: [{ taskId: "pilot-evidence", objective: "Analyze the supplied local pilot fixture only.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    });
+    const events = await new JsonlEventStore(historyPath).readAll();
+
+    expect(events.map((event) => event.type)).toEqual(["MissionCreated", "SubscriptionRuntimeDeclared", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+    expect(replay(events)).toMatchObject({ status: "RUNNING", attempts: { "pilot-evidence:a1": { status: "RUNNING" } } });
+    expect(result).toMatchObject({ taskOutcomes: {}, completionOrder: [], maxConcurrentAttempts: 1 });
+  });
+
   it("records a malformed worker result as a normal transient failure before retrying", async () => {
     const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "worker-adapter-retry.jsonl");
     const seed = Array.from({ length: 500 }, (_, value) => value).find((value) => deriveAttemptDecision(value, "evidence", 1, 1).outcome === "COMPLETED" && deriveAttemptDecision(value, "evidence", 2, 1).outcome === "COMPLETED");

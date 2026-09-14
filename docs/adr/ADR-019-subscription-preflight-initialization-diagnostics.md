@@ -1,0 +1,15 @@
+# ADR-019: Subscription preflight initialization diagnostics
+
+## Status
+
+Accepted for Phase 3.8j.
+
+## Decision
+
+Phase 3.8i's closed preflight diagnostic vocabulary is extended only for the initialization handshake. New unavailable results distinguish an app-server process that exits before replying, a JSON-RPC initialization rejection, an initialization response DropScope cannot safely recognize, and the existing fixed-window initialization timeout. The former generic `INITIALIZATION_FAILED` remains valid for already persisted histories and unclassified local process errors.
+
+The mapper uses internal error classes rather than passing through an exit message, JSON-RPC message, stderr, account field, token, plan, usage value, or command detail. The browser projects only the closed code after replay; it never invokes the process or reads an account response.
+
+## Non-goals
+
+This does not start login, refresh a token, read usage or rate limits, change the app-server command, make retries, capture stderr, create a thread or turn, invoke a worker, or enable the disabled live-worker control.

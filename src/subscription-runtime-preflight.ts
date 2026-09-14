@@ -52,7 +52,8 @@ export class CodexAppServerPreflight implements SubscriptionRuntimePreflight {
     }
     try {
       const rpc = new AppServerRpc(process, this.timeoutMs);
-      await rpc.request(1, "initialize", { clientInfo: { name: "dropscope", title: "DropScope", version: "0.1" } });
+      const initializeResponse = await rpc.request(1, "initialize", { clientInfo: { name: "dropscope", title: "DropScope", version: "0.1" } });
+      if (!isRecord(initializeResponse)) return unavailable("INITIALIZATION_RESPONSE_INVALID");
       rpc.notify("initialized", {});
       let response: unknown;
       try {
@@ -65,11 +66,18 @@ export class CodexAppServerPreflight implements SubscriptionRuntimePreflight {
         ? unavailable("ACCOUNT_RESPONSE_INVALID")
         : { accessStatus, diagnosticCode: "NOT_APPLICABLE" };
     } catch (error) {
-      return unavailable(error instanceof AppServerTimeoutError ? "INITIALIZATION_TIMED_OUT" : "INITIALIZATION_FAILED");
+      return unavailable(classifyInitializationFailure(error));
     } finally {
       process?.kill();
     }
   }
+}
+
+function classifyInitializationFailure(error: unknown): Exclude<SubscriptionRuntimePreflightDiagnosticCode, "NOT_APPLICABLE"> {
+  if (error instanceof AppServerTimeoutError) return "INITIALIZATION_TIMED_OUT";
+  if (error instanceof AppServerExitedError) return "APP_SERVER_EXITED_DURING_INITIALIZATION";
+  if (error instanceof AppServerRpcRejectedError) return "INITIALIZATION_REJECTED";
+  return "INITIALIZATION_FAILED";
 }
 
 export function mapAccountReadResponse(response: unknown): SubscriptionRuntimePreflightStatus {
@@ -91,8 +99,8 @@ class AppServerRpc {
   constructor(private readonly process: AppServerProcess, private readonly timeoutMs: number) {
     const lines = createInterface({ input: process.stdout });
     lines.on("line", (line) => this.receive(line));
-    process.once("error", () => this.rejectAll(new Error("Codex app-server is unavailable.")));
-    process.once("exit", () => this.rejectAll(new Error("Codex app-server exited before the preflight completed.")));
+    process.once("error", () => this.rejectAll(new AppServerProcessError()));
+    process.once("exit", () => this.rejectAll(new AppServerExitedError()));
   }
 
   request(id: number, method: string, params: unknown): Promise<unknown> {
@@ -117,7 +125,7 @@ class AppServerRpc {
     if (!pending) return;
     this.pending.delete(response.id);
     if (response.error) {
-      pending.reject(new Error(typeof response.error.message === "string" ? response.error.message : "Codex app-server rejected the preflight."));
+      pending.reject(new AppServerRpcRejectedError());
       return;
     }
     pending.resolve(response.result);
@@ -142,6 +150,24 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout: () =>
 class AppServerTimeoutError extends Error {
   constructor() {
     super("Codex app-server preflight timed out.");
+  }
+}
+
+class AppServerProcessError extends Error {
+  constructor() {
+    super("Codex app-server process failed.");
+  }
+}
+
+class AppServerExitedError extends Error {
+  constructor() {
+    super("Codex app-server exited before the preflight completed.");
+  }
+}
+
+class AppServerRpcRejectedError extends Error {
+  constructor() {
+    super("Codex app-server rejected the preflight.");
   }
 }
 

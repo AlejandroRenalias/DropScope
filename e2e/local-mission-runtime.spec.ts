@@ -131,3 +131,20 @@ test("replays a safe account-read timeout diagnostic without starting a worker",
   await expect(agentDesk.getByRole("button", { name: "Confirm one live worker" })).toBeDisabled();
   await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
 });
+
+test("replays an app-server initialization exit without starting a worker", async ({ page }) => {
+  nextPreflightResult = { accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_EXITED_DURING_INITIALIZATION" };
+  await page.goto("/");
+  await page.locator("#fixture-select").selectOption("live-worker-pilot");
+  await page.getByRole("button", { name: "Launch local mission" }).click();
+  await page.getByRole("button", { name: "Agent Desk" }).click();
+  const agentDesk = page.getByRole("region", { name: "Agent Desk" });
+
+  await page.getByRole("button", { name: "Check subscription runtime" }).click();
+  await expect.poll(() => preflightChecks).toBe(4);
+  resolvePreflight?.();
+
+  await expect(agentDesk).toContainText("Codex app-server exited before replying to DropScope's setup request. No worker was started.");
+  await expect(agentDesk.getByRole("button", { name: "Confirm one live worker" })).toBeDisabled();
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
+});

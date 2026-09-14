@@ -15,7 +15,7 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
 
   constructor(
     accountResponse: unknown,
-    private readonly options: { initializationResponseDelayMs?: number; accountResponseDelayMs?: number; failInitialization?: boolean; failAccountRead?: boolean } = {},
+    private readonly options: { initializationResponseDelayMs?: number; accountResponseDelayMs?: number; rejectInitialization?: boolean; exitDuringInitialization?: boolean; invalidInitializationResponse?: boolean; failAccountRead?: boolean } = {},
   ) {
     super();
     this.stdin.on("data", (chunk: Buffer) => {
@@ -23,7 +23,16 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
         const message = JSON.parse(line) as { id?: number; method?: string };
         this.messages.push(message);
         if (message.id === 1) {
-          setTimeout(() => this.stdout.write(JSON.stringify(this.options.failInitialization ? { id: 1, error: { message: "private initialization failure" } } : { id: 1, result: {} }) + "\n"), this.options.initializationResponseDelayMs ?? 0);
+          setTimeout(() => {
+            if (this.options.exitDuringInitialization) {
+              this.emit("exit");
+              return;
+            }
+            const response = this.options.rejectInitialization
+              ? { id: 1, error: { message: "private initialization failure" } }
+              : { id: 1, result: this.options.invalidInitializationResponse ? null : {} };
+            this.stdout.write(JSON.stringify(response) + "\n");
+          }, this.options.initializationResponseDelayMs ?? 0);
         }
         if (message.id === 2) {
           setTimeout(() => this.stdout.write(JSON.stringify(this.options.failAccountRead ? { id: 2, error: { message: "private account failure" } } : { id: 2, result: accountResponse }) + "\n"), this.options.accountResponseDelayMs ?? 0);
@@ -54,7 +63,11 @@ describe("Codex app-server subscription preflight", () => {
     expect(mapAccountReadResponse({ account: null, requiresOpenaiAuth: false })).toBe("UNSUPPORTED_AUTH_MODE");
     expect(mapAccountReadResponse({ account: { type: "chatgpt" }, requiresOpenaiAuth: true })).toBe("CHATGPT_AUTHENTICATED");
     await expect(new CodexAppServerPreflight(() => { throw new Error("private start failure"); }, 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_START_FAILED" });
-    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { failInitialization: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "INITIALIZATION_FAILED" });
+    const rejected = await new CodexAppServerPreflight(() => new FakeAppServer({}, { rejectInitialization: true }), 10).check();
+    expect(rejected).toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "INITIALIZATION_REJECTED" });
+    expect(JSON.stringify(rejected)).not.toContain("private initialization failure");
+    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { invalidInitializationResponse: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "INITIALIZATION_RESPONSE_INVALID" });
+    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { exitDuringInitialization: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_EXITED_DURING_INITIALIZATION" });
     await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { failAccountRead: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_FAILED" });
     await expect(new CodexAppServerPreflight(() => new FakeAppServer("not-an-account-response"), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_RESPONSE_INVALID" });
   });

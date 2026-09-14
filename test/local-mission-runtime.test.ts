@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
+import { SubscriptionLiveWorkerAuthorization } from "../src/subscription-live-worker-authorization.js";
 
 describe("LocalMissionRuntime", () => {
   it("launches a fixture and reloads the persisted event history", async () => {
@@ -54,6 +55,39 @@ describe("LocalMissionRuntime", () => {
     expect(checked.events.at(-1)).toMatchObject({ type: "SubscriptionRuntimePreflightCompleted", payload: { accessStatus: "CHATGPT_AUTHENTICATED", usageStatus: "NOT_ITEMIZED" } });
     await expect(runtime.preflightSubscriptionRuntime("preflight-mission")).rejects.toThrow("already recorded");
     expect(await runtime.reload("preflight-mission")).toEqual(checked);
+  });
+
+  it("confirms only the authenticated live-worker pilot without persisting or exposing its capability", async () => {
+    let now = 10_000;
+    const authorization = new SubscriptionLiveWorkerAuthorization(() => now, () => "private-capability");
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")),
+      createMissionId: () => "pilot-confirmation-mission",
+      subscriptionLiveWorkerAuthorization: authorization,
+      subscriptionRuntimePreflight: { check: async () => "CHATGPT_AUTHENTICATED" },
+    });
+    const launched = await runtime.launch("live-worker-pilot");
+    const checked = await runtime.preflightSubscriptionRuntime(launched.missionId);
+
+    const confirmation = await runtime.confirmSubscriptionWorker(checked.missionId);
+
+    expect(confirmation).toEqual({ missionId: checked.missionId, attemptId: "pilot-evidence:a1", status: "CONFIRMED", expiresAtMs: 70_000 });
+    expect(confirmation).not.toHaveProperty("capability");
+    expect((await runtime.reload(checked.missionId)).events).toHaveLength(7);
+    now = 70_000;
+    const replacement = await runtime.confirmSubscriptionWorker(checked.missionId);
+    expect(replacement.expiresAtMs).toBe(130_000);
+  });
+
+  it("fails closed for non-pilot, unauthenticated, and non-running missions", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
+    const runtime = new LocalMissionRuntime({ dataRoot, createMissionId: () => "ordinary-mission" });
+    await runtime.launch("mixed-opportunity-market");
+    await expect(runtime.confirmSubscriptionWorker("ordinary-mission")).rejects.toThrow("only for the live-worker pilot");
+
+    const pilot = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")), createMissionId: () => "unauthenticated-pilot" });
+    await pilot.launch("live-worker-pilot");
+    await expect(pilot.confirmSubscriptionWorker("unauthenticated-pilot")).rejects.toThrow("Authenticated subscription preflight");
   });
 
   it("rejects unsafe ID factory output before creating a history path", async () => {

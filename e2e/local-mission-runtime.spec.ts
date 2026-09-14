@@ -94,9 +94,19 @@ test("launches the isolated live-worker pilot without starting a worker", async 
   await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
   expect(preflightChecks).toBe(1);
 
+  await page.getByRole("button", { name: "Check subscription runtime" }).click();
+  await expect.poll(() => preflightChecks).toBe(2);
+  resolvePreflight?.();
+  await expect(page.getByRole("status")).toContainText("Subscription runtime check recorded. No worker was started.");
+  await expect(agentDesk.getByRole("button", { name: "Confirm one live worker" })).toBeEnabled();
+  await agentDesk.getByRole("button", { name: "Confirm one live worker" }).click();
+  await expect(page.locator("span.runtime-message[role=status]")).toContainText("Local confirmation recorded in memory. No worker was started.");
+  await expect(agentDesk).toContainText("Confirmation status: confirmed locally · expires at");
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
+
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
-  await expect(replay).toContainText("Event 6 / 6");
+  await expect(replay).toContainText("Event 7 / 7");
   await expect(replay.getByText("TaskStarted", { exact: true })).toBeVisible();
   await expect(replay.getByText("MissionCompleted", { exact: true })).toHaveCount(0);
 });

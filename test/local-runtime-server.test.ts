@@ -50,6 +50,28 @@ describe("local runtime HTTP bridge", () => {
     expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" })).status).toBe(409);
   });
 
+  it("returns a sanitized in-memory confirmation for the authenticated pilot", async () => {
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
+      createMissionId: () => "confirmation-server-mission",
+      subscriptionRuntimePreflight: { check: async () => "CHATGPT_AUTHENTICATED" },
+    });
+    const server = await listenLocalRuntimeServer(runtime);
+    servers.push(server);
+    const launch = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "live-worker-pilot" }) });
+    const mission = await launch.json() as { missionId: string };
+    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST" })).status).toBe(409);
+    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" })).status).toBe(200);
+
+    const response = await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST" });
+    expect(response.status).toBe(200);
+    const body = await response.json() as Record<string, unknown>;
+    expect(body).toMatchObject({ missionId: mission.missionId, attemptId: "pilot-evidence:a1", status: "CONFIRMED" });
+    expect(body).toHaveProperty("expiresAtMs");
+    expect(body).not.toHaveProperty("capability");
+    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST", body: "{}" })).status).toBe(400);
+  });
+
   it("returns clean client errors and does not accept event-authoring requests", async () => {
     const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")) });
     const server = await listenLocalRuntimeServer(runtime);

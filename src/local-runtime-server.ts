@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { localMissionDtoSchema, LocalMissionRuntime, MissionLaunchIncompleteError } from "./runtime/local-mission-runtime.js";
+import { localMissionDtoSchema, LocalMissionRuntime, MissionLaunchIncompleteError, subscriptionConfirmationDtoSchema } from "./runtime/local-mission-runtime.js";
 import { z } from "zod";
 
 const launchRequestSchema = z.object({ fixtureId: z.string().min(1) }).strict();
@@ -54,6 +54,15 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
       sendJson(response, 200, localMissionDtoSchema.parse(await runtime.preflightSubscriptionRuntime(missionId)), corsOrigin);
       return;
     }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/subscription-confirmation")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/subscription-confirmation".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      if (request.headers["content-length"] && Number(request.headers["content-length"]) > 0) throw httpError(400, "Subscription confirmation requests must not include a body.");
+      sendJson(response, 200, subscriptionConfirmationDtoSchema.parse(await runtime.confirmSubscriptionWorker(missionId)), corsOrigin);
+      return;
+    }
     if (request.method === "GET" && url.pathname.startsWith("/api/missions/")) {
       const encodedMissionId = url.pathname.slice("/api/missions/".length);
       if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
@@ -64,7 +73,7 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
     }
     throw httpError(request.method === "POST" || request.method === "GET" ? 404 : 405, "Unknown route.");
   } catch (error: unknown) {
-    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
+    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) || isConfirmationConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
     sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin));
   }
 }
@@ -105,6 +114,9 @@ function isMissingHistory(error: unknown): boolean {
 }
 function isPreflightConflict(error: unknown): boolean {
   return error instanceof Error && error.message.includes("Subscription runtime preflight is already");
+}
+function isConfirmationConflict(error: unknown): boolean {
+  return error instanceof Error && (error.message.includes("only for the live-worker pilot") || error.message.includes("declaration is required before confirmation") || error.message.includes("Authenticated subscription preflight is required before confirmation") || error.message.includes("Exactly one running live-worker pilot attempt"));
 }
 
 function loopbackOrigin(origin: string | undefined): string | undefined {

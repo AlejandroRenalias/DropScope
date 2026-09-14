@@ -4,11 +4,12 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
 
 import { JsonlEventStore } from "../event-store.js";
-import { loadFixture } from "../fixture-model.js";
+import { liveWorkerPilotFixtureId, liveWorkerPilotTask, loadFixture } from "../fixture-model.js";
 import { runFixtureMission } from "../fixture-runner.js";
 import { missionEventSchema, type MissionEvent } from "../contracts.js";
 import { replay } from "../reducer.js";
 import { CodexAppServerPreflight, type SubscriptionRuntimePreflight } from "../subscription-runtime-preflight.js";
+import { SubscriptionLiveWorkerAuthorization, type SubscriptionLiveWorkerConfirmation } from "../subscription-live-worker-authorization.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const missionIdSchema = fixtureIdSchema.max(120);
@@ -17,14 +18,22 @@ const missionDtoSchema = z.object({
   fixtureId: fixtureIdSchema,
   events: z.array(missionEventSchema),
 }).strict();
+export const subscriptionConfirmationDtoSchema = z.object({
+  missionId: missionIdSchema,
+  attemptId: z.string().min(1),
+  status: z.literal("CONFIRMED"),
+  expiresAtMs: z.number().int().nonnegative(),
+}).strict();
 
 export type MissionDto = z.infer<typeof missionDtoSchema>;
+export type SubscriptionConfirmationDto = z.infer<typeof subscriptionConfirmationDtoSchema>;
 export type MissionIdFactory = (fixtureId: string) => string;
 
 export interface LocalMissionRuntimeOptions {
   dataRoot: string;
   createMissionId?: MissionIdFactory;
   subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
+  subscriptionLiveWorkerAuthorization?: SubscriptionLiveWorkerAuthorization;
 }
 
 export class MissionLaunchIncompleteError extends Error {
@@ -42,12 +51,14 @@ export class LocalMissionRuntime {
   private readonly missionsRoot: string;
   private readonly createMissionId: MissionIdFactory;
   private readonly subscriptionRuntimePreflight: SubscriptionRuntimePreflight;
+  private readonly subscriptionLiveWorkerAuthorization: SubscriptionLiveWorkerAuthorization;
   private readonly preflightingMissionIds = new Set<string>();
 
   constructor(options: LocalMissionRuntimeOptions) {
     this.missionsRoot = resolve(options.dataRoot, "missions");
     this.createMissionId = options.createMissionId ?? ((fixtureId) => `${fixtureId}-${randomUUID()}`);
     this.subscriptionRuntimePreflight = options.subscriptionRuntimePreflight ?? new CodexAppServerPreflight();
+    this.subscriptionLiveWorkerAuthorization = options.subscriptionLiveWorkerAuthorization ?? new SubscriptionLiveWorkerAuthorization();
   }
 
   async launch(fixtureId: string): Promise<MissionDto> {
@@ -137,6 +148,31 @@ export class LocalMissionRuntime {
     } finally {
       this.preflightingMissionIds.delete(validMissionId);
     }
+  }
+
+  /**
+   * Issues a sanitized, one-use confirmation for the fixed pilot only. The
+   * capability returned by the authorization object never crosses this API.
+   */
+  async confirmSubscriptionWorker(missionId: string): Promise<SubscriptionConfirmationDto> {
+    const validMissionId = this.validateMissionId(missionId);
+    const mission = await this.reload(validMissionId);
+    if (mission.fixtureId !== liveWorkerPilotFixtureId) throw new Error("Subscription worker confirmation is available only for the live-worker pilot.");
+    const state = replay(mission.events);
+    if (!state.subscriptionRuntimeDeclaration || state.subscriptionRuntimeDeclaration.executionEnabled !== false) {
+      throw new Error("A disabled subscription runtime declaration is required before confirmation.");
+    }
+    if (state.subscriptionRuntimePreflight?.accessStatus !== "CHATGPT_AUTHENTICATED") {
+      throw new Error("Authenticated subscription preflight is required before confirmation.");
+    }
+    const runningPilotAttempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
+      const task = state.tasks[attempt.taskId];
+      return attemptId.length > 0 && attempt.status === "RUNNING" && attempt.taskId === liveWorkerPilotTask.id && task?.status === "RUNNING";
+    });
+    if (runningPilotAttempts.length !== 1) throw new Error("Exactly one running live-worker pilot attempt is required before confirmation.");
+    const [attemptId] = runningPilotAttempts[0]!;
+    const confirmation: SubscriptionLiveWorkerConfirmation = this.subscriptionLiveWorkerAuthorization.confirm({ missionId: validMissionId, attemptId });
+    return subscriptionConfirmationDtoSchema.parse({ missionId: validMissionId, attemptId: confirmation.attemptId, status: "CONFIRMED", expiresAtMs: confirmation.expiresAtMs });
   }
 
   private async readDto(missionId: string, fixtureId: string): Promise<MissionDto> {

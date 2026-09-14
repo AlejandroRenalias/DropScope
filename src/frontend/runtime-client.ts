@@ -11,8 +11,15 @@ const missionDtoSchema = z.object({
   fixtureId: z.string().min(1),
   events: z.array(missionEventSchema),
 }).strict();
+const subscriptionConfirmationDtoSchema = z.object({
+  missionId: z.string().min(1),
+  attemptId: z.string().min(1),
+  status: z.literal("CONFIRMED"),
+  expiresAtMs: z.number().int().nonnegative(),
+}).strict();
 
 export type LocalMissionDto = { missionId: string; fixtureId: string; events: MissionEvent[] };
+export type SubscriptionConfirmationDto = z.infer<typeof subscriptionConfirmationDtoSchema>;
 
 export class RuntimeClientError extends Error {
   constructor(message: string, readonly status?: number) { super(message); }
@@ -32,6 +39,20 @@ async function request(path: string, init?: RequestInit): Promise<LocalMissionDt
   return parsed.data;
 }
 
+async function requestSubscriptionConfirmation(path: string): Promise<SubscriptionConfirmationDto> {
+  let response: Response;
+  try { response = await fetch(`${LOCAL_RUNTIME_BASE_URL}${path}`, { method: "POST" }); }
+  catch { throw new RuntimeClientError("Local runtime is unavailable. Start it with npm run runtime:dev."); }
+  const body: unknown = await response.json().catch(() => undefined);
+  if (!response.ok) {
+    const message = typeof body === "object" && body !== null && "error" in body && typeof body.error === "string" ? body.error : `Runtime request failed (${response.status}).`;
+    throw new RuntimeClientError(message, response.status);
+  }
+  const parsed = subscriptionConfirmationDtoSchema.safeParse(body);
+  if (!parsed.success) throw new RuntimeClientError("Local runtime returned an invalid subscription confirmation.");
+  return parsed.data;
+}
+
 export function launchLocalMission(fixtureId: string): Promise<LocalMissionDto> {
   return request("/api/missions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId }) });
 }
@@ -42,4 +63,8 @@ export function reloadLocalMission(missionId: string): Promise<LocalMissionDto> 
 
 export function preflightSubscriptionRuntime(missionId: string): Promise<LocalMissionDto> {
   return request(`/api/missions/${encodeURIComponent(missionId)}/subscription-preflight`, { method: "POST" });
+}
+
+export function confirmSubscriptionWorker(missionId: string): Promise<SubscriptionConfirmationDto> {
+  return requestSubscriptionConfirmation(`/api/missions/${encodeURIComponent(missionId)}/subscription-confirmation`);
 }

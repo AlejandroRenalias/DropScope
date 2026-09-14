@@ -15,16 +15,18 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
 
   constructor(
     accountResponse: unknown,
-    private readonly accountResponseDelayMs = 0,
+    private readonly options: { initializationResponseDelayMs?: number; accountResponseDelayMs?: number; failInitialization?: boolean; failAccountRead?: boolean } = {},
   ) {
     super();
     this.stdin.on("data", (chunk: Buffer) => {
       for (const line of chunk.toString("utf8").split("\n").filter(Boolean)) {
         const message = JSON.parse(line) as { id?: number; method?: string };
         this.messages.push(message);
-        if (message.id === 1) this.stdout.write(JSON.stringify({ id: 1, result: {} }) + "\n");
+        if (message.id === 1) {
+          setTimeout(() => this.stdout.write(JSON.stringify(this.options.failInitialization ? { id: 1, error: { message: "private initialization failure" } } : { id: 1, result: {} }) + "\n"), this.options.initializationResponseDelayMs ?? 0);
+        }
         if (message.id === 2) {
-          setTimeout(() => this.stdout.write(JSON.stringify({ id: 2, result: accountResponse }) + "\n"), this.accountResponseDelayMs);
+          setTimeout(() => this.stdout.write(JSON.stringify(this.options.failAccountRead ? { id: 2, error: { message: "private account failure" } } : { id: 2, result: accountResponse }) + "\n"), this.options.accountResponseDelayMs ?? 0);
         }
       }
     });
@@ -36,7 +38,7 @@ describe("Codex app-server subscription preflight", () => {
     const process = new FakeAppServer({ account: { type: "chatgpt", email: "private@example.com", planType: "pro" }, requiresOpenaiAuth: true });
     const result = await new CodexAppServerPreflight(() => process, 100).check();
 
-    expect(result).toBe("CHATGPT_AUTHENTICATED");
+    expect(result).toEqual({ accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" });
     expect(process.messages).toEqual([
       expect.objectContaining({ id: 1, method: "initialize" }),
       expect.objectContaining({ method: "initialized" }),
@@ -46,25 +48,57 @@ describe("Codex app-server subscription preflight", () => {
     expect(process.kill).toHaveBeenCalledOnce();
   });
 
-  it("maps only coarse statuses and treats a failed local process as unavailable", async () => {
+  it("maps account responses and persists only closed failure diagnostics", async () => {
     expect(mapAccountReadResponse({ account: null, requiresOpenaiAuth: true })).toBe("AUTHENTICATION_REQUIRED");
     expect(mapAccountReadResponse({ account: { type: "apiKey" }, requiresOpenaiAuth: true })).toBe("UNSUPPORTED_AUTH_MODE");
     expect(mapAccountReadResponse({ account: null, requiresOpenaiAuth: false })).toBe("UNSUPPORTED_AUTH_MODE");
     expect(mapAccountReadResponse({ account: { type: "chatgpt" }, requiresOpenaiAuth: true })).toBe("CHATGPT_AUTHENTICATED");
-    await expect(new CodexAppServerPreflight(() => { throw new Error("missing"); }, 10).check()).resolves.toBe("UNAVAILABLE");
+    await expect(new CodexAppServerPreflight(() => { throw new Error("private start failure"); }, 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_START_FAILED" });
+    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { failInitialization: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "INITIALIZATION_FAILED" });
+    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { failAccountRead: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_FAILED" });
+    await expect(new CodexAppServerPreflight(() => new FakeAppServer("not-an-account-response"), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_RESPONSE_INVALID" });
   });
 
   it("uses a ten-second default window for a cold local app-server start", async () => {
     vi.useFakeTimers();
     try {
-      const process = new FakeAppServer({ account: { type: "chatgpt" }, requiresOpenaiAuth: true }, 4_000);
+      const process = new FakeAppServer({ account: { type: "chatgpt" }, requiresOpenaiAuth: true }, { accountResponseDelayMs: 4_000 });
       const check = new CodexAppServerPreflight(() => process).check();
 
       await vi.advanceTimersByTimeAsync(3_001);
       expect(process.kill).not.toHaveBeenCalled();
 
       await vi.advanceTimersByTimeAsync(999);
-      await expect(check).resolves.toBe("CHATGPT_AUTHENTICATED");
+      await expect(check).resolves.toEqual({ accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("categorizes an initialization timeout without retaining the underlying error", async () => {
+    vi.useFakeTimers();
+    try {
+      const process = new FakeAppServer({ account: { type: "chatgpt" }, requiresOpenaiAuth: true }, { initializationResponseDelayMs: 11 });
+      const check = new CodexAppServerPreflight(() => process, 10).check();
+
+      await vi.advanceTimersByTimeAsync(11);
+      await expect(check).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "INITIALIZATION_TIMED_OUT" });
+      expect(JSON.stringify(await check)).not.toContain("private");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("categorizes an account-read timeout without retaining the underlying error", async () => {
+    vi.useFakeTimers();
+    try {
+      const process = new FakeAppServer({ account: { type: "chatgpt" }, requiresOpenaiAuth: true }, { accountResponseDelayMs: 11 });
+      const check = new CodexAppServerPreflight(() => process, 10).check();
+
+      await vi.advanceTimersByTimeAsync(11);
+      const result = await check;
+      expect(result).toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_TIMED_OUT" });
+      expect(JSON.stringify(result)).not.toContain("private");
     } finally {
       vi.useRealTimers();
     }

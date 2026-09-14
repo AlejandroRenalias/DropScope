@@ -5,15 +5,17 @@ import { join } from "node:path";
 import { createServer, type ViteDevServer } from "vite";
 import { listenLocalRuntimeServer, type LocalRuntimeServerHandle } from "../src/local-runtime-server.js";
 import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
+import type { SubscriptionPreflightResult } from "../src/subscription-runtime-preflight.js";
 
 let runtimeServer: LocalRuntimeServerHandle;
 let viteServer: ViteDevServer;
 let preflightChecks = 0;
 let resolvePreflight: (() => void) | undefined;
+let nextPreflightResult: SubscriptionPreflightResult = { accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" };
 
 test.beforeAll(async () => {
   runtimeServer = await listenLocalRuntimeServer(
-    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve("CHATGPT_AUTHENTICATED"); }) } }),
+    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve(nextPreflightResult); }) } }),
     { port: 8791 },
   );
   process.env.VITE_LOCAL_RUNTIME_BASE_URL = "http://127.0.0.1:8791";
@@ -80,6 +82,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
 });
 
 test("launches the isolated live-worker pilot without starting a worker", async ({ page }) => {
+  nextPreflightResult = { accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" };
   await page.goto("/");
   await page.locator("#fixture-select").selectOption("live-worker-pilot");
   await page.getByRole("button", { name: "Launch local mission" }).click();
@@ -109,4 +112,22 @@ test("launches the isolated live-worker pilot without starting a worker", async 
   await expect(replay).toContainText("Event 7 / 7");
   await expect(replay.getByText("TaskStarted", { exact: true })).toBeVisible();
   await expect(replay.getByText("MissionCompleted", { exact: true })).toHaveCount(0);
+});
+
+test("replays a safe account-read timeout diagnostic without starting a worker", async ({ page }) => {
+  nextPreflightResult = { accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_TIMED_OUT" };
+  await page.goto("/");
+  await page.locator("#fixture-select").selectOption("live-worker-pilot");
+  await page.getByRole("button", { name: "Launch local mission" }).click();
+  await page.getByRole("button", { name: "Agent Desk" }).click();
+  const agentDesk = page.getByRole("region", { name: "Agent Desk" });
+
+  await page.getByRole("button", { name: "Check subscription runtime" }).click();
+  await expect.poll(() => preflightChecks).toBe(3);
+  resolvePreflight?.();
+
+  await expect(page.getByRole("status")).toContainText("Subscription runtime check recorded. No worker was started.");
+  await expect(agentDesk).toContainText("Codex app-server started, but did not return account status within 10 seconds. No worker was started.");
+  await expect(agentDesk.getByRole("button", { name: "Confirm one live worker" })).toBeDisabled();
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
 });

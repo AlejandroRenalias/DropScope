@@ -65,6 +65,17 @@ describe("worker execution provenance", () => {
     expect(() => replay([created, declaration, preflight, { ...preflight, sequenceNumber: 4 }])).toThrow("already recorded");
   });
 
+  it("accepts only closed preflight diagnostics and keeps legacy events replayable", () => {
+    const created = event(1, "MissionCreated", { totalBudget: 20, missionSeed: 1 });
+    const declaration = event(2, "SubscriptionRuntimeDeclared", { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" });
+    const diagnosed = event(3, "SubscriptionRuntimePreflightCompleted", { accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_TIMED_OUT", usageStatus: "NOT_ITEMIZED" });
+
+    expect(missionEventSchema.safeParse(diagnosed).success).toBe(true);
+    expect(missionEventSchema.safeParse({ ...diagnosed, payload: { ...diagnosed.payload, diagnosticCode: "private failure" } }).success).toBe(false);
+    expect(missionEventSchema.safeParse({ ...diagnosed, payload: { ...diagnosed.payload, rawError: "private failure" } }).success).toBe(false);
+    expect(replay([created, declaration, diagnosed]).subscriptionRuntimePreflight).toEqual(diagnosed.payload);
+  });
+
   it("persists one recorded dry-run declaration against a running attempt", () => {
     const state = replay([...startedAttempt(), recorded(6, "recorded:a1")]);
 

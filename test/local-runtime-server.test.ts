@@ -36,7 +36,7 @@ describe("local runtime HTTP bridge", () => {
   });
 
   it("accepts only a user POST for a sanitized subscription preflight", async () => {
-    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "preflight-server-mission", subscriptionRuntimePreflight: { check: async () => "AUTHENTICATION_REQUIRED" } });
+    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "preflight-server-mission", subscriptionRuntimePreflight: { check: async () => ({ accessStatus: "AUTHENTICATION_REQUIRED", diagnosticCode: "NOT_APPLICABLE" }) } });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);
     const launch = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
@@ -54,7 +54,7 @@ describe("local runtime HTTP bridge", () => {
     const runtime = new LocalMissionRuntime({
       dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
       createMissionId: () => "confirmation-server-mission",
-      subscriptionRuntimePreflight: { check: async () => "CHATGPT_AUTHENTICATED" },
+      subscriptionRuntimePreflight: { check: async () => ({ accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" }) },
     });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);

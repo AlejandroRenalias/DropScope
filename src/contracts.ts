@@ -32,10 +32,33 @@ export const subscriptionRuntimeDeclarationSchema = z.object({
 export type SubscriptionRuntimeDeclaration = z.infer<typeof subscriptionRuntimeDeclarationSchema>;
 export const subscriptionRuntimePreflightStatusSchema = z.enum(["CHATGPT_AUTHENTICATED", "AUTHENTICATION_REQUIRED", "UNSUPPORTED_AUTH_MODE", "UNAVAILABLE"]);
 export type SubscriptionRuntimePreflightStatus = z.infer<typeof subscriptionRuntimePreflightStatusSchema>;
-export const subscriptionRuntimePreflightSchema = z.object({
+export const subscriptionRuntimePreflightDiagnosticCodeSchema = z.enum([
+  "NOT_APPLICABLE",
+  "APP_SERVER_START_FAILED",
+  "INITIALIZATION_FAILED",
+  "INITIALIZATION_TIMED_OUT",
+  "ACCOUNT_READ_FAILED",
+  "ACCOUNT_READ_TIMED_OUT",
+  "ACCOUNT_RESPONSE_INVALID",
+]);
+export type SubscriptionRuntimePreflightDiagnosticCode = z.infer<typeof subscriptionRuntimePreflightDiagnosticCodeSchema>;
+const subscriptionRuntimePreflightBaseSchema = z.object({
   accessStatus: subscriptionRuntimePreflightStatusSchema,
   usageStatus: z.literal("NOT_ITEMIZED"),
 }).strict();
+export const subscriptionRuntimePreflightSchema = z.union([
+  // Existing persisted histories remain replayable. New runtime events always
+  // include a closed diagnostic code and never persist the underlying error.
+  subscriptionRuntimePreflightBaseSchema,
+  subscriptionRuntimePreflightBaseSchema.extend({
+    accessStatus: z.enum(["CHATGPT_AUTHENTICATED", "AUTHENTICATION_REQUIRED", "UNSUPPORTED_AUTH_MODE"]),
+    diagnosticCode: z.literal("NOT_APPLICABLE"),
+  }).strict(),
+  subscriptionRuntimePreflightBaseSchema.extend({
+    accessStatus: z.literal("UNAVAILABLE"),
+    diagnosticCode: subscriptionRuntimePreflightDiagnosticCodeSchema.exclude(["NOT_APPLICABLE"]),
+  }).strict(),
+]);
 export type SubscriptionRuntimePreflight = z.infer<typeof subscriptionRuntimePreflightSchema>;
 export const subscriptionWorkerExecutionOutcomeSchema = z.object({
   attemptId: z.string().min(1),

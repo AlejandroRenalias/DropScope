@@ -130,7 +130,7 @@ export class LocalMissionRuntime {
       const currentState = replay(mission.events);
       if (!currentState.subscriptionRuntimeDeclaration) throw new Error("Subscription runtime is not declared for this mission.");
       if (currentState.subscriptionRuntimePreflight) throw new Error("Subscription runtime preflight is already recorded.");
-      const accessStatus = await this.subscriptionRuntimePreflight.check();
+      const preflight = await this.subscriptionRuntimePreflight.check();
       const events = await new JsonlEventStore(this.historyPath(validMissionId)).readAll();
       const stateBeforeAppend = replay(events);
       if (stateBeforeAppend.subscriptionRuntimePreflight) throw new Error("Subscription runtime preflight is already recorded.");
@@ -142,7 +142,7 @@ export class LocalMissionRuntime {
         eventId: `${validMissionId}-${sequenceNumber}`,
         timestamp: new Date().toISOString(),
         type: "SubscriptionRuntimePreflightCompleted",
-        payload: { accessStatus, usageStatus: "NOT_ITEMIZED" },
+        payload: { ...preflight, usageStatus: "NOT_ITEMIZED" },
       });
       return this.readDto(validMissionId, mission.fixtureId);
     } finally {

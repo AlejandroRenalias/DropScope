@@ -1,17 +1,15 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import type { Readable, Writable } from "node:stream";
+import type { SubscriptionRuntimePreflightDiagnosticCode, SubscriptionRuntimePreflightStatus } from "./contracts.js";
 
-export const subscriptionPreflightStatuses = [
-  "CHATGPT_AUTHENTICATED",
-  "AUTHENTICATION_REQUIRED",
-  "UNSUPPORTED_AUTH_MODE",
-  "UNAVAILABLE",
-] as const;
-export type SubscriptionPreflightStatus = (typeof subscriptionPreflightStatuses)[number];
+export interface SubscriptionPreflightResult {
+  accessStatus: SubscriptionRuntimePreflightStatus;
+  diagnosticCode: SubscriptionRuntimePreflightDiagnosticCode;
+}
 
 export interface SubscriptionRuntimePreflight {
-  check(): Promise<SubscriptionPreflightStatus>;
+  check(): Promise<SubscriptionPreflightResult>;
 }
 
 export interface AppServerProcess {
@@ -45,30 +43,46 @@ export class CodexAppServerPreflight implements SubscriptionRuntimePreflight {
     private readonly timeoutMs = 10_000,
   ) {}
 
-  async check(): Promise<SubscriptionPreflightStatus> {
+  async check(): Promise<SubscriptionPreflightResult> {
     let process: AppServerProcess | undefined;
     try {
       process = this.spawnAppServer();
+    } catch {
+      return unavailable("APP_SERVER_START_FAILED");
+    }
+    try {
       const rpc = new AppServerRpc(process, this.timeoutMs);
       await rpc.request(1, "initialize", { clientInfo: { name: "dropscope", title: "DropScope", version: "0.1" } });
       rpc.notify("initialized", {});
-      const response = await rpc.request(2, "account/read", { refreshToken: false });
-      return mapAccountReadResponse(response);
-    } catch {
-      return "UNAVAILABLE";
+      let response: unknown;
+      try {
+        response = await rpc.request(2, "account/read", { refreshToken: false });
+      } catch (error) {
+        return unavailable(error instanceof AppServerTimeoutError ? "ACCOUNT_READ_TIMED_OUT" : "ACCOUNT_READ_FAILED");
+      }
+      const accessStatus = mapAccountReadResponse(response);
+      return accessStatus === "UNAVAILABLE"
+        ? unavailable("ACCOUNT_RESPONSE_INVALID")
+        : { accessStatus, diagnosticCode: "NOT_APPLICABLE" };
+    } catch (error) {
+      return unavailable(error instanceof AppServerTimeoutError ? "INITIALIZATION_TIMED_OUT" : "INITIALIZATION_FAILED");
     } finally {
       process?.kill();
     }
   }
 }
 
-export function mapAccountReadResponse(response: unknown): SubscriptionPreflightStatus {
+export function mapAccountReadResponse(response: unknown): SubscriptionRuntimePreflightStatus {
   if (!isRecord(response)) return "UNAVAILABLE";
   const account = response.account;
   if (isRecord(account) && account.type === "chatgpt") return "CHATGPT_AUTHENTICATED";
   if (account === null && response.requiresOpenaiAuth === true) return "AUTHENTICATION_REQUIRED";
   if (account === null || isRecord(account)) return "UNSUPPORTED_AUTH_MODE";
   return "UNAVAILABLE";
+}
+
+function unavailable(diagnosticCode: Exclude<SubscriptionRuntimePreflightDiagnosticCode, "NOT_APPLICABLE">): SubscriptionPreflightResult {
+  return { accessStatus: "UNAVAILABLE", diagnosticCode };
 }
 
 class AppServerRpc {
@@ -119,10 +133,16 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout: () =>
   return new Promise<T>((resolve, reject) => {
     const timeout = setTimeout(() => {
       onTimeout();
-      reject(new Error("Codex app-server preflight timed out."));
+      reject(new AppServerTimeoutError());
     }, timeoutMs);
     void promise.then((value) => { clearTimeout(timeout); resolve(value); }, (error: unknown) => { clearTimeout(timeout); reject(error); });
   });
+}
+
+class AppServerTimeoutError extends Error {
+  constructor() {
+    super("Codex app-server preflight timed out.");
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

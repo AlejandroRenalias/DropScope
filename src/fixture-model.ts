@@ -85,6 +85,18 @@ export type FixtureTask = z.infer<typeof fixtureTaskSchema>;
 export type FixtureCandidateEvaluation = z.infer<typeof fixtureCandidateEvaluationSchema>;
 export type Fixture = z.infer<typeof fixtureSchema>;
 
+export const liveWorkerPilotFixtureId = "live-worker-pilot";
+export const liveWorkerPilotTask = {
+  id: "pilot-evidence",
+  objective: "Analyze the supplied local pilot fixture only.",
+  cost: 10,
+  durationMs: 1,
+  workClass: "MANDATORY",
+  researchKey: "pilot-evidence",
+  dependencies: [],
+  workerRole: "EVIDENCE_RESEARCHER",
+} as const satisfies FixtureTask;
+
 const defaultRiskAttributes: z.infer<typeof riskGateInputSchema>["attributes"] = { intendedUser: "GENERAL", foodOrIngestion: "NO", bodyContact: "NONE", healthPositioning: "NONE", electricalPower: "NONE", thermalOrFireHazard: "NONE", physicalHazard: "NONE", protectiveFunction: "NONE", chemicalExposure: "NONE_DECLARED", regulatedCategorySignal: "NONE", brandOrCreativeSimilaritySignal: "NONE_OBSERVED", evidenceCompleteness: "SUFFICIENT" };
 const riskInput = (candidateId: string, attributes: Partial<z.infer<typeof riskGateInputSchema>["attributes"]> = {}): z.infer<typeof riskGateInputSchema> => ({
   decisionId: `${candidateId}-risk`, candidateId, decidedByPolicyVersion: "risk-v1",
@@ -156,15 +168,13 @@ const definitions: readonly Fixture[] = [
     ],
   },
   {
-    fixtureId: "live-worker-pilot",
+    fixtureId: liveWorkerPilotFixtureId,
     seed: 1,
     budget: 20,
     candidateEvaluations: [
       { candidateId: "pilot-workspace", riskInput: riskInput("pilot-workspace"), customerProblemEvidenceScore: 80, evidenceQualityScore: 80, trendDurabilityScore: 70, advertisingSaturationScore: 35, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
     ],
-    tasks: [
-      { id: "pilot-evidence", objective: "Analyze the supplied local pilot fixture only.", cost: 10, durationMs: 1, workClass: "MANDATORY", researchKey: "pilot-evidence", dependencies: [], workerRole: "EVIDENCE_RESEARCHER" },
-    ],
+    tasks: [liveWorkerPilotTask],
   },
 ];
 

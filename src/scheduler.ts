@@ -22,6 +22,7 @@ export interface ScheduleResult {
 }
 
 const wait = (durationMs: number) => new Promise<void>((resolve) => setTimeout(resolve, durationMs));
+const pilotPause = Symbol("live-worker-pilot-pause");
 const seededDelay = (seed: number, taskId: string, attemptNumber: number, baseDurationMs: number) => {
   const taskHash = [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0);
   return baseDurationMs + 9 - ((seed + taskHash + attemptNumber) % 10);
@@ -63,21 +64,21 @@ export async function runSimulatedSchedule(options: {
   tasks: SimulatedTask[];
   maxConcurrency?: number;
   completeMission?: boolean;
-  // A deliberately narrow fixture-only pause point. It leaves one authorized,
-  // budget-committed attempt running without invoking a worker adapter.
-  pauseAfterStartingTaskId?: string;
   // This assignment is the only worker seam currently admitted by the local
   // scheduler. It always records RECORDED_DRY_RUN provenance before invocation.
   recordedWorkerAssignment?: { workerRole: string; adapter: RecordedWorkerAdapter };
   subscriptionRuntimeDeclaration?: import("./contracts.js").SubscriptionRuntimeDeclaration;
+  [pilotPause]?: true;
 }): Promise<ScheduleResult> {
   const maxConcurrency = options.maxConcurrency ?? 3;
   if (maxConcurrency < 1 || maxConcurrency > 3) throw new Error("Concurrency must be between 1 and 3.");
   if (new Set(options.tasks.map((task) => task.taskId)).size !== options.tasks.length) throw new Error("Task IDs must be unique.");
   validateDependencyGraph(options.tasks);
-  if (options.pauseAfterStartingTaskId) {
-    if (options.tasks.length !== 1 || options.tasks[0]?.taskId !== options.pauseAfterStartingTaskId) {
-      throw new Error("A paused schedule requires exactly one matching task.");
+  const pauseForPilot = options[pilotPause] === true;
+  if (pauseForPilot) {
+    const [task] = options.tasks;
+    if (options.tasks.length !== 1 || task?.taskId !== liveWorkerPilotTask.id || task.objective !== liveWorkerPilotTask.objective || task.cost !== liveWorkerPilotTask.cost || task.workerRole !== liveWorkerPilotTask.workerRole || options.missionSeed !== 1 || options.totalBudget !== 20 || !options.subscriptionRuntimeDeclaration) {
+      throw new Error("Only the fixed live-worker pilot may pause after task start.");
     }
     if (options.recordedWorkerAssignment) throw new Error("A paused schedule cannot invoke a worker assignment.");
   }
@@ -140,7 +141,7 @@ export async function runSimulatedSchedule(options: {
       const attemptNumber = 1;
       const durationMs = seededDelay(options.missionSeed, task.taskId, attemptNumber, task.durationMs);
       await append("TaskStarted", { attemptId, simulatedDelayMs: durationMs });
-      if (task.taskId === options.pauseAfterStartingTaskId) {
+      if (pauseForPilot && task.taskId === liveWorkerPilotTask.id) {
         paused = true;
         maxConcurrentAttempts = Math.max(maxConcurrentAttempts, 1);
         continue;
@@ -220,3 +221,20 @@ import { JsonlEventStore } from "./event-store.js";
 import type { MissionEvent, WorkClass } from "./contracts.js";
 import { initialMissionState, reduce } from "./reducer.js";
 import { RecordedWorkerAdapter, WorkerResultGate } from "./worker-adapter.js";
+import { liveWorkerPilotTask } from "./fixture-model.js";
+
+/** The only public way to prepare the fixed, non-executing live-worker pilot. */
+export function prepareLiveWorkerPilotSchedule(options: { missionId: string; historyPath?: string; eventStore?: JsonlEventStore }): Promise<ScheduleResult> {
+  return runSimulatedSchedule({
+    missionId: options.missionId,
+    missionSeed: 1,
+    totalBudget: 20,
+    historyPath: options.historyPath,
+    eventStore: options.eventStore,
+    maxConcurrency: 1,
+    completeMission: false,
+    subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
+    tasks: [{ taskId: liveWorkerPilotTask.id, objective: liveWorkerPilotTask.objective, cost: liveWorkerPilotTask.cost, durationMs: liveWorkerPilotTask.durationMs, workClass: liveWorkerPilotTask.workClass, researchKey: liveWorkerPilotTask.researchKey, dependencies: [...liveWorkerPilotTask.dependencies], workerRole: liveWorkerPilotTask.workerRole }],
+    [pilotPause]: true,
+  });
+}

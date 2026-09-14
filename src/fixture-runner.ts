@@ -1,7 +1,7 @@
 import { JsonlEventStore } from "./event-store.js";
-import { loadFixture } from "./fixture-model.js";
+import { liveWorkerPilotFixtureId, loadFixture } from "./fixture-model.js";
 import { replay, type MissionState } from "./reducer.js";
-import { runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
+import { prepareLiveWorkerPilotSchedule, runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
 import type { MissionEvent } from "./contracts.js";
 import { determineCandidateEligibility, type CandidateEligibility } from "./candidate-eligibility.js";
 import { evaluateRiskGate } from "./risk-policy.js";
@@ -42,7 +42,9 @@ export async function runFixtureMission(options: {
         }),
       }
     : undefined;
-  const schedule = await runSimulatedSchedule({
+  const schedule = fixture.fixtureId === liveWorkerPilotFixtureId
+    ? await prepareLiveWorkerPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
+    : await runSimulatedSchedule({
     missionId: options.missionId,
     missionSeed: options.missionSeed ?? fixture.seed,
     totalBudget: fixture.budget,
@@ -50,7 +52,6 @@ export async function runFixtureMission(options: {
     eventStore: options.eventStore,
     maxConcurrency: options.maxConcurrency,
     completeMission: false,
-    ...(fixture.fixtureId === "live-worker-pilot" ? { pauseAfterStartingTaskId: "pilot-evidence" } : {}),
     recordedWorkerAssignment,
     subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
     tasks: fixture.tasks.map((task) => ({
@@ -73,7 +74,7 @@ export async function runFixtureMission(options: {
   if (scheduledState.status !== "RUNNING") {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
-  if (fixture.fixtureId === "live-worker-pilot") {
+  if (fixture.fixtureId === liveWorkerPilotFixtureId) {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
   if (fixture.fixtureId === "crosscurrent-workspace-market") {

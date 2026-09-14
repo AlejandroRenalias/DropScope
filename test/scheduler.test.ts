@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { JsonlEventStore } from "../src/event-store.js";
 import { replay } from "../src/reducer.js";
-import { deriveAttemptDecision, runSimulatedSchedule } from "../src/scheduler.js";
+import { deriveAttemptDecision, prepareLiveWorkerPilotSchedule, runSimulatedSchedule } from "../src/scheduler.js";
 import { RecordedWorkerAdapter } from "../src/worker-adapter.js";
 
 describe("dependency-aware asynchronous scheduler", () => {
@@ -226,20 +226,27 @@ describe("dependency-aware asynchronous scheduler", () => {
 
   it("can leave one explicit fixture-only attempt running without invoking a worker", async () => {
     const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "paused-pilot.jsonl");
-    const result = await runSimulatedSchedule({
-      missionId: "paused-pilot",
-      missionSeed: 1,
-      totalBudget: 20,
-      historyPath,
-      subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
-      pauseAfterStartingTaskId: "pilot-evidence",
-      tasks: [{ taskId: "pilot-evidence", objective: "Analyze the supplied local pilot fixture only.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
-    });
+    const result = await prepareLiveWorkerPilotSchedule({ missionId: "paused-pilot", historyPath });
     const events = await new JsonlEventStore(historyPath).readAll();
 
     expect(events.map((event) => event.type)).toEqual(["MissionCreated", "SubscriptionRuntimeDeclared", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
     expect(replay(events)).toMatchObject({ status: "RUNNING", attempts: { "pilot-evidence:a1": { status: "RUNNING" } } });
     expect(result).toMatchObject({ taskOutcomes: {}, completionOrder: [], maxConcurrentAttempts: 1 });
+  });
+
+  it("does not let an arbitrary scheduler caller pause a look-alike attempt", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "not-paused.jsonl");
+    await runSimulatedSchedule({
+      missionId: "not-paused",
+      missionSeed: 1,
+      totalBudget: 20,
+      historyPath,
+      completeMission: false,
+      subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
+      tasks: [{ taskId: "other-evidence", objective: "Look-alike task.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+      ...( { pauseAfterStartingTaskId: "other-evidence" } as object),
+    });
+    expect(replay(await new JsonlEventStore(historyPath).readAll())).toMatchObject({ attempts: { "other-evidence:a1": { status: "COMPLETED" } } });
   });
 
   it("records a malformed worker result as a normal transient failure before retrying", async () => {

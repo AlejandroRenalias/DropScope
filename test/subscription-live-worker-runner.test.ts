@@ -14,16 +14,20 @@ class FakeLiveAppServer extends EventEmitter implements AppServerProcess {
   readonly messages: Array<Record<string, unknown>> = [];
   readonly kill = vi.fn(() => { this.emit("exit"); return true; });
 
-  constructor(private readonly turn: (server: FakeLiveAppServer) => void) {
+  constructor(
+    private readonly turn: (server: FakeLiveAppServer) => void,
+    private readonly account: unknown = { account: { type: "chatgpt" } },
+  ) {
     super();
     this.stdin.on("data", (chunk: Buffer) => {
       for (const line of chunk.toString("utf8").split("\n").filter(Boolean)) {
         const message = JSON.parse(line) as Record<string, unknown>;
         this.messages.push(message);
         if (message.id === 1) this.respond(1, {});
-        if (message.id === 2) this.respond(2, { thread: { id: "private-thread-id" } });
-        if (message.id === 3) {
-          this.respond(3, { turn: { id: "private-turn-id", status: "inProgress", items: [] } });
+        if (message.id === 2) this.respond(2, this.account);
+        if (message.id === 3) this.respond(3, { thread: { id: "private-thread-id" } });
+        if (message.id === 4) {
+          this.respond(4, { turn: { id: "private-turn-id", status: "inProgress", items: [] } });
           this.turn(this);
         }
       }
@@ -60,6 +64,26 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
 
     await expect(new CodexSubscriptionLiveWorkerAdapter(() => process, () => now).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "APPROVAL_DECLINED", elapsedMs: 9 } satisfies Partial<SubscriptionLiveWorkerError>));
     expect(process.messages.some((message) => "result" in message && JSON.stringify(message).includes("accept"))).toBe(false);
+    expect(process.kill).toHaveBeenCalledOnce();
+  });
+
+  it("refuses a non-ChatGPT account in the same app-server session before a thread starts", async () => {
+    const process = new FakeLiveAppServer(
+      () => { throw new Error("a turn must not start"); },
+      { account: { type: "apiKey" } },
+    );
+
+    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "UNAVAILABLE" }));
+    expect(process.messages.some((message) => message.method === "thread/start" || message.method === "turn/start")).toBe(false);
+    expect(process.kill).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed when a non-passive tool item appears", async () => {
+    const process = new FakeLiveAppServer((server) => {
+      server.notify("item/started", { item: { type: "mcpToolCall", server: "private", tool: "side-effect" } });
+    });
+
+    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "TURN_FAILED" }));
     expect(process.kill).toHaveBeenCalledOnce();
   });
 

@@ -1,8 +1,7 @@
 import { createInterface } from "node:readline";
-import type { Readable, Writable } from "node:stream";
 
 import { buildSubscriptionLiveWorkerPlan, firstLiveSubscriptionWorkerGuard } from "./subscription-live-worker-contract.js";
-import { type AppServerProcess, type AppServerSpawner, spawnCodexAppServer } from "./subscription-runtime-preflight.js";
+import { mapAccountReadResponse, type AppServerProcess, type AppServerSpawner, spawnCodexAppServer } from "./subscription-runtime-preflight.js";
 import type { WorkerRequest } from "./worker-adapter.js";
 
 export type SubscriptionLiveWorkerTerminalOutcome = "TIMEOUT" | "UNAVAILABLE" | "APPROVAL_DECLINED" | "INTERRUPTED" | "INVALID_RESULT" | "TURN_FAILED";
@@ -63,12 +62,18 @@ export class CodexSubscriptionLiveWorkerAdapter implements SubscriptionLiveWorke
     rpc.notify("initialized", {});
     if (!isRecord(await initialization)) throw new SubscriptionLiveWorkerError("UNAVAILABLE", 0);
 
+    // The earlier UI preflight is only a hint. The process that will receive a
+    // turn must independently prove it is using ChatGPT subscription auth.
+    // This response remains process-local and is never projected or persisted.
+    const account = await rpc.request(2, "account/read", { refreshToken: false });
+    if (mapAccountReadResponse(account) !== "CHATGPT_AUTHENTICATED") throw new SubscriptionLiveWorkerError("UNAVAILABLE", 0);
+
     const plan = buildSubscriptionLiveWorkerPlan(request, sandboxCwd);
-    const thread = await rpc.request(2, plan.requests[0].method, plan.requests[0].params);
+    const thread = await rpc.request(3, plan.requests[0].method, plan.requests[0].params);
     const threadId = threadResultId(thread);
     if (!threadId) throw new SubscriptionLiveWorkerError("UNAVAILABLE", 0);
     const turnParams = { ...plan.requests[1].params, threadId };
-    await rpc.request(3, plan.requests[1].method, turnParams);
+    await rpc.request(4, plan.requests[1].method, turnParams);
 
     const completed = await rpc.waitForTurn();
     if (completed.status === "interrupted") throw new SubscriptionLiveWorkerError("INTERRUPTED", 0);
@@ -157,8 +162,15 @@ class LiveWorkerRpc {
       else pending.resolve(message.result);
       return;
     }
-    if (message.method === "item/completed") {
+    if (message.method === "item/started" || message.method === "item/completed") {
       const item = isRecord(message.params) ? message.params.item : undefined;
+      // The current app-server schema offers no per-turn tool allowlist. Keep
+      // the worker fail-closed by permitting only passive transcript items;
+      // any command, file, MCP, web, or dynamic-tool item terminates the run.
+      if (!isPassiveTranscriptItem(item)) {
+        this.abort(new SubscriptionLiveWorkerError("TURN_FAILED", 0));
+        return;
+      }
       if (isRecord(item) && item.type === "agentMessage" && typeof item.text === "string") this.latestAgentText = item.text;
       return;
     }
@@ -201,6 +213,15 @@ function threadResultId(value: unknown): string | undefined {
 
 function isApprovalRequest(method: string): boolean {
   return method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval" || method === "item/permissions/requestApproval";
+}
+
+function isPassiveTranscriptItem(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.type !== "string") return false;
+  return value.type === "userMessage"
+    || value.type === "agentMessage"
+    || value.type === "reasoning"
+    || value.type === "plan"
+    || value.type === "contextCompaction";
 }
 
 function agentTextFromItems(value: unknown): string | undefined {

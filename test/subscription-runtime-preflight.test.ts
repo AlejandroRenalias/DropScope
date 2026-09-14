@@ -48,4 +48,9 @@ describe("Codex app-server subscription preflight", () => {
     expect(mapAccountReadResponse({ account: { type: "chatgpt" }, requiresOpenaiAuth: true })).toBe("CHATGPT_AUTHENTICATED");
     await expect(new CodexAppServerPreflight(() => { throw new Error("missing"); }, 10).check()).resolves.toBe("UNAVAILABLE");
   });
+
+  it("uses a ten-second default window for a cold local app-server start", async () => {
+    const process = new FakeAppServer({ account: { type: "chatgpt" }, requiresOpenaiAuth: true });
+    await expect(new CodexAppServerPreflight(() => process).check()).resolves.toBe("CHATGPT_AUTHENTICATED");
+  });
 });

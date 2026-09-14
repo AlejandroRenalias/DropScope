@@ -42,7 +42,7 @@ const defaultSpawner: AppServerSpawner = () => spawn("codex", ["app-server"], {
 export class CodexAppServerPreflight implements SubscriptionRuntimePreflight {
   constructor(
     private readonly spawnAppServer: AppServerSpawner = defaultSpawner,
-    private readonly timeoutMs = 3_000,
+    private readonly timeoutMs = 10_000,
   ) {}
 
   async check(): Promise<SubscriptionPreflightStatus> {

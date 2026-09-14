@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSubscriptionLiveWorkerPlan, firstLiveSubscriptionWorkerGuard } from "../src/subscription-live-worker-contract.js";
+import { buildSubscriptionLiveWorkerPlan, firstLiveSubscriptionWorkerGuard, liveWorkerPilotEvidence } from "../src/subscription-live-worker-contract.js";
 import type { WorkerRequest } from "../src/worker-adapter.js";
 
 const request: WorkerRequest = {
@@ -19,8 +19,8 @@ describe("first subscription worker contract", () => {
     expect(plan.guard).toEqual(firstLiveSubscriptionWorkerGuard);
     expect(plan.guard).toEqual({ execution: "REQUIRES_FRESH_EXPLICIT_APPROVAL", maximumTurns: 1, timeoutMs: 90_000, retryPolicy: "NONE", filesystem: "READ_ONLY", network: "DISABLED_BY_HOST_POLICY", output: "STRICT_STRUCTURED_RESULT", confirmation: "ONE_TIME_IN_MEMORY", confirmationTtlMs: 60_000 });
     expect(plan.requests.map((item) => item.method)).toEqual(["thread/start", "turn/start"]);
-    expect(plan.requests[0].params).toMatchObject({ cwd: "C:/dropscope-fixture", approvalPolicy: "onRequest", sandbox: "readOnly", serviceName: "dropscope" });
-    expect(plan.requests[1].params).toMatchObject({ threadId: "$NEW_THREAD_ID", cwd: "C:/dropscope-fixture", approvalPolicy: "onRequest", sandboxPolicy: { type: "readOnly", access: { type: "restricted", includePlatformDefaults: false, readableRoots: ["C:/dropscope-fixture"] } } });
+    expect(plan.requests[0].params).toMatchObject({ cwd: "C:/dropscope-fixture", approvalPolicy: "on-request", sandbox: "read-only", ephemeral: true, serviceName: "dropscope" });
+    expect(plan.requests[1].params).toMatchObject({ threadId: "$NEW_THREAD_ID", cwd: "C:/dropscope-fixture", approvalPolicy: "on-request", sandboxPolicy: { type: "readOnly", networkAccess: false } });
   });
 
   it("uses the runtime result boundary and constrains the fixture-only instruction", () => {
@@ -28,7 +28,8 @@ describe("first subscription worker contract", () => {
     const text = (turn.input as Array<{ text: string }>)[0]!.text;
     const outputSchema = turn.outputSchema as { properties: Record<string, unknown>; required: string[]; additionalProperties: boolean };
 
-    expect(text).toContain("Do not perform web research");
+    expect(text).toContain("Do not use tools");
+    expect(text).toContain(liveWorkerPilotEvidence);
     expect(text).toContain("Task ID: task-1");
     expect(text).toContain("Attempt ID: attempt-1");
     expect(outputSchema.required).toEqual(["taskId", "attemptId", "status", "finding"]);

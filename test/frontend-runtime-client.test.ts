@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { confirmSubscriptionWorker, launchLocalMission, preflightSubscriptionRuntime, reloadLocalMission, RuntimeClientError } from "../src/frontend/runtime-client.js";
+import { confirmSubscriptionWorker, launchLocalMission, preflightSubscriptionRuntime, reloadLocalMission, runSubscriptionWorker, RuntimeClientError } from "../src/frontend/runtime-client.js";
 
 const valid = { schemaVersion: 1, sequenceNumber: 1, missionId: "mission-1", eventId: "event-1", timestamp: "2026-01-01T00:00:00.000Z", type: "MissionCreated", payload: { totalBudget: 10, missionSeed: 1 } };
 const dto = { missionId: "mission-1", fixtureId: "crosscurrent-workspace-market", events: [valid] };
@@ -39,6 +39,13 @@ describe("frontend runtime client", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(confirmation), { status: 200 }));
     await expect(confirmSubscriptionWorker("mission-1")).resolves.toEqual(confirmation);
     expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/api/missions/mission-1/subscription-confirmation", expect.objectContaining({ method: "POST" }));
+    fetchMock.mockRestore();
+  });
+
+  it("posts the final live-worker action only to the fixed loopback mission endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(dto), { status: 200 }));
+    await expect(runSubscriptionWorker("mission-1")).resolves.toEqual(dto);
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/api/missions/mission-1/subscription-run", expect.objectContaining({ method: "POST" }));
     fetchMock.mockRestore();
   });
 });

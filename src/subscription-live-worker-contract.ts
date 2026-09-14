@@ -1,8 +1,11 @@
 import { structuredWorkerResultSchema, workerRequestSchema, type WorkerRequest } from "./worker-adapter.js";
 
+/** The complete, fixed evidence supplied to the one-worker live pilot. */
+export const liveWorkerPilotEvidence = "The supplied local pilot concerns a workspace research task. It has no public sources, external data, or additional files. Record one concise finding that this fixed pilot evidence is sufficient only for the local test mission.";
+
 /**
- * The reviewable, non-executing plan for a first subscription-backed worker.
- * It deliberately contains no process, transport, credential, or retry code.
+ * The reviewable fixed request plan for a first subscription-backed worker.
+ * It deliberately contains no credential, usage, or retry behavior.
  */
 export const firstLiveSubscriptionWorkerGuard = {
   execution: "REQUIRES_FRESH_EXPLICIT_APPROVAL",
@@ -29,7 +32,7 @@ export interface SubscriptionLiveWorkerPlan {
 }
 
 /**
- * Builds the only request pair a later, separately approved implementation may use.
+ * Builds the only request pair the guarded adapter may use.
  * This function sends nothing: it is testable policy, not an app-server adapter.
  */
 export function buildSubscriptionLiveWorkerPlan(request: WorkerRequest, cwd: string): SubscriptionLiveWorkerPlan {
@@ -38,12 +41,13 @@ export function buildSubscriptionLiveWorkerPlan(request: WorkerRequest, cwd: str
 
   const resultSchema = structuredWorkerResultSchema.toJSONSchema();
   const instructions = [
-    "Analyze only the supplied fixture objective.",
-    "Do not perform web research, use public sources, modify files, or request broader permissions.",
+    "Analyze only the supplied fixture objective and the inline pilot evidence below.",
+    "Do not use tools, perform web research, use public sources, read files, modify files, or request permissions.",
     "Return only the strict structured result for this task and attempt.",
     `Task ID: ${parsedRequest.taskId}`,
     `Attempt ID: ${parsedRequest.attemptId}`,
     `Objective: ${parsedRequest.objective}`,
+    `Inline pilot evidence: ${liveWorkerPilotEvidence}`,
   ].join("\n");
 
   return {
@@ -53,8 +57,9 @@ export function buildSubscriptionLiveWorkerPlan(request: WorkerRequest, cwd: str
         method: "thread/start",
         params: {
           cwd,
-          approvalPolicy: "onRequest",
-          sandbox: "readOnly",
+          approvalPolicy: "on-request",
+          sandbox: "read-only",
+          ephemeral: true,
           serviceName: "dropscope",
         },
       },
@@ -64,15 +69,10 @@ export function buildSubscriptionLiveWorkerPlan(request: WorkerRequest, cwd: str
           threadId: "$NEW_THREAD_ID",
           input: [{ type: "text", text: instructions }],
           cwd,
-          approvalPolicy: "onRequest",
+          approvalPolicy: "on-request",
           sandboxPolicy: {
             type: "readOnly",
             networkAccess: false,
-            access: {
-              type: "restricted",
-              includePlatformDefaults: false,
-              readableRoots: [cwd],
-            },
           },
           outputSchema: resultSchema,
         },

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
 import { SubscriptionLiveWorkerAuthorization } from "../src/subscription-live-worker-authorization.js";
+import { SubscriptionLiveWorkerError } from "../src/subscription-live-worker-runner.js";
 
 describe("LocalMissionRuntime", () => {
   it("launches a fixture and reloads the persisted event history", async () => {
@@ -77,6 +78,48 @@ describe("LocalMissionRuntime", () => {
     now = 70_000;
     const replacement = await runtime.confirmSubscriptionWorker(checked.missionId);
     expect(replacement.expiresAtMs).toBe(130_000);
+  });
+
+  it("consumes one confirmation for the fixed pilot, then persists its closed success outcome and lifecycle", async () => {
+    const runner = vi.fn(async (request: { taskId: string; attemptId: string }, sandboxCwd: string) => ({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED" as const, finding: "One fixed inline-pilot finding." }));
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")),
+      createMissionId: () => "live-run-success",
+      subscriptionRuntimePreflight: { check: async () => ({ accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" }) },
+      subscriptionLiveWorkerRunner: { run: runner },
+    });
+    await runtime.launch("live-worker-pilot");
+    await runtime.preflightSubscriptionRuntime("live-run-success");
+    await runtime.confirmSubscriptionWorker("live-run-success");
+
+    const completed = await runtime.runSubscriptionWorker("live-run-success");
+
+    expect(runner).toHaveBeenCalledOnce();
+    expect(runner.mock.calls[0]![0]).toMatchObject({ missionId: "live-run-success", taskId: "pilot-evidence", attemptId: "pilot-evidence:a1", maxCost: 10 });
+    expect(runner.mock.calls[0]![1]).toContain("live-worker-pilot-sandbox");
+    expect(completed.events.slice(-3).map((event) => event.type)).toEqual(["SubscriptionWorkerExecutionOutcomeRecorded", "FindingSubmitted", "MissionCompleted"]);
+    expect(completed.events.at(-3)).toMatchObject({ payload: { attemptId: "pilot-evidence:a1", outcome: "COMPLETED", providerUsageStatus: "UNKNOWN" } });
+    expect(JSON.stringify(completed)).not.toContain("sandboxCwd");
+    await expect(runtime.runSubscriptionWorker("live-run-success")).rejects.toThrow("Exactly one running");
+  });
+
+  it("fails permanently without retry when the safe runner declines an approval", async () => {
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")),
+      createMissionId: () => "live-run-declined",
+      subscriptionRuntimePreflight: { check: async () => ({ accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" }) },
+      subscriptionLiveWorkerRunner: { run: async () => { throw new SubscriptionLiveWorkerError("APPROVAL_DECLINED", 12); } },
+    });
+    await runtime.launch("live-worker-pilot");
+    await runtime.preflightSubscriptionRuntime("live-run-declined");
+    await runtime.confirmSubscriptionWorker("live-run-declined");
+
+    const failed = await runtime.runSubscriptionWorker("live-run-declined");
+
+    expect(failed.events.slice(-3).map((event) => event.type)).toEqual(["SubscriptionWorkerExecutionOutcomeRecorded", "TaskFailedPermanent", "MissionTerminated"]);
+    expect(failed.events.at(-3)).toMatchObject({ payload: { outcome: "APPROVAL_DECLINED", elapsedMs: 12, providerUsageStatus: "UNKNOWN" } });
+    expect(failed.events.at(-1)).toMatchObject({ payload: { status: "FAILED_UNRECOVERABLE" } });
+    expect(JSON.stringify(failed)).not.toContain("private");
   });
 
   it("fails closed for non-pilot, unauthenticated, and non-running missions", async () => {

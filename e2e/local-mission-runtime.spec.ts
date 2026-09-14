@@ -15,7 +15,7 @@ let nextPreflightResult: SubscriptionPreflightResult = { accessStatus: "CHATGPT_
 
 test.beforeAll(async () => {
   runtimeServer = await listenLocalRuntimeServer(
-    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve(nextPreflightResult); }) } }),
+    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve(nextPreflightResult); }) }, subscriptionLiveWorkerRunner: { run: async (request) => ({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED" as const, finding: "Fixed browser pilot finding." }) } }),
     { port: 8791 },
   );
   process.env.VITE_LOCAL_RUNTIME_BASE_URL = "http://127.0.0.1:8791";
@@ -43,15 +43,13 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(agentDesk).toContainText("Recorded dry-run provider usage: not applicable · other attempt provenance: 4 not recorded");
   await expect(agentDesk).toContainText("Mission ledger: 140 total · 0 reserved · 0 committed · 130 spent · 10 available");
   await expect(agentDesk).toContainText("Recorded dry-run · no live worker or credits used");
-  await expect(agentDesk).toContainText("Subscription runtime · disabled");
+  await expect(agentDesk).toContainText("Subscription runtime · guarded pilot");
   await expect(agentDesk).toContainText("Local subscription access not checked.");
   await expect(agentDesk).toContainText("Subscription usage not itemized.");
   await expect(agentDesk).toContainText("First live worker · approval required");
-  await expect(agentDesk).toContainText("One fresh thread · one turn · 90-second maximum · read-only fixture access · network denied by host policy · no automatic retry.");
+  await expect(agentDesk).toContainText("One fresh thread · one turn · 90-second maximum · inline fixed pilot evidence · read-only mode · network denied · no retry.");
   await expect(agentDesk).toContainText("Confirmation is one-use, stays only in local runtime memory, and expires after 60 seconds.");
-  await expect(agentDesk).toContainText("Protocol preview · approvals: command, file change, permissions; terminal outcomes: completed, timed out, unavailable, approval declined, interrupted, invalid result, turn failed.");
-  await expect(agentDesk).toContainText("This disabled control has no execution path.");
-  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
+  await expect(agentDesk).toContainText("Any command, file-change, or permission request is automatically declined and ends the run.");
   expect(preflightChecks).toBe(0);
   await page.getByRole("button", { name: "Check subscription runtime" }).click();
   await expect.poll(() => preflightChecks).toBe(1);
@@ -81,7 +79,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByText(/Event 36 \/ 36/)).toBeVisible();
 });
 
-test("launches the isolated live-worker pilot without starting a worker", async ({ page }) => {
+test("runs the isolated live-worker pilot through the injected safe browser fake", async ({ page }) => {
   nextPreflightResult = { accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" };
   await page.goto("/");
   await page.locator("#fixture-select").selectOption("live-worker-pilot");
@@ -90,11 +88,10 @@ test("launches the isolated live-worker pilot without starting a worker", async 
 
   await page.getByRole("button", { name: "Agent Desk" }).click();
   const agentDesk = page.getByRole("region", { name: "Agent Desk" });
-  await expect(agentDesk).toContainText("Subscription runtime · disabled");
+  await expect(agentDesk).toContainText("Subscription runtime · guarded pilot");
   await expect(agentDesk).toContainText("First live worker · approval required");
-  await expect(agentDesk).toContainText("Protocol preview · approvals: command, file change, permissions; terminal outcomes: completed, timed out, unavailable, approval declined, interrupted, invalid result, turn failed.");
-  await expect(agentDesk).toContainText("This disabled control has no execution path.");
-  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
+  await expect(agentDesk).toContainText("Any command, file-change, or permission request is automatically declined and ends the run.");
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker now" })).toBeDisabled();
   expect(preflightChecks).toBe(1);
 
   await page.getByRole("button", { name: "Check subscription runtime" }).click();
@@ -105,13 +102,16 @@ test("launches the isolated live-worker pilot without starting a worker", async 
   await agentDesk.getByRole("button", { name: "Confirm one live worker" }).click();
   await expect(page.locator("span.runtime-message[role=status]")).toContainText("Local confirmation recorded in memory. No worker was started.");
   await expect(agentDesk).toContainText("Confirmation status: confirmed locally · expires at");
-  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker now" })).toBeEnabled();
+  await agentDesk.getByRole("button", { name: "Run one live worker now" }).click();
+  await expect(page.locator("span.runtime-message[role=status]")).toContainText("One live worker finished and its closed outcome was recorded.");
+  await expect(agentDesk).toContainText("Last subscription worker outcome: COMPLETED · provider usage unknown");
 
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
-  await expect(replay).toContainText("Event 7 / 7");
-  await expect(replay.getByText("TaskStarted", { exact: true })).toBeVisible();
-  await expect(replay.getByText("MissionCompleted", { exact: true })).toHaveCount(0);
+  await expect(replay).toContainText("Event 10 / 10");
+  await expect(replay.getByText("SubscriptionWorkerExecutionOutcomeRecorded", { exact: true })).toBeVisible();
+  await expect(replay.getByText("MissionCompleted", { exact: true })).toBeVisible();
 });
 
 test("replays a safe account-read timeout diagnostic without starting a worker", async ({ page }) => {
@@ -129,7 +129,7 @@ test("replays a safe account-read timeout diagnostic without starting a worker",
   await expect(page.getByRole("status")).toContainText("Subscription runtime check recorded. No worker was started.");
   await expect(agentDesk).toContainText("Codex app-server started, but did not return account status within 10 seconds. No worker was started.");
   await expect(agentDesk.getByRole("button", { name: "Confirm one live worker" })).toBeDisabled();
-  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker now" })).toBeDisabled();
 });
 
 test("replays an app-server initialization exit without starting a worker", async ({ page }) => {
@@ -146,5 +146,5 @@ test("replays an app-server initialization exit without starting a worker", asyn
 
   await expect(agentDesk).toContainText("Codex app-server exited before replying to DropScope's setup request. No worker was started.");
   await expect(agentDesk.getByRole("button", { name: "Confirm one live worker" })).toBeDisabled();
-  await expect(agentDesk.getByRole("button", { name: "Run one live worker" })).toBeDisabled();
+  await expect(agentDesk.getByRole("button", { name: "Run one live worker now" })).toBeDisabled();
 });

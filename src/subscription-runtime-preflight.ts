@@ -49,7 +49,11 @@ export function appServerTerminationSpec(platform: NodeJS.Platform, processId: n
     : undefined;
 }
 
-const defaultSpawner: AppServerSpawner = () => {
+/**
+ * Launches only the locally installed Codex app-server through a fixed command.
+ * Callers own its lifetime and must always terminate the returned process.
+ */
+export const spawnCodexAppServer: AppServerSpawner = () => {
   const platform = process.platform;
   const { command, args } = appServerSpawnSpec(process.platform);
   const appServerProcess = spawn(command, args, {
@@ -93,7 +97,7 @@ class WindowsShellAppServerProcess implements AppServerProcess {
  */
 export class CodexAppServerPreflight implements SubscriptionRuntimePreflight {
   constructor(
-    private readonly spawnAppServer: AppServerSpawner = defaultSpawner,
+    private readonly spawnAppServer: AppServerSpawner = spawnCodexAppServer,
     private readonly timeoutMs = 10_000,
   ) {}
 

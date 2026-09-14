@@ -68,3 +68,8 @@ export function preflightSubscriptionRuntime(missionId: string): Promise<LocalMi
 export function confirmSubscriptionWorker(missionId: string): Promise<SubscriptionConfirmationDto> {
   return requestSubscriptionConfirmation(`/api/missions/${encodeURIComponent(missionId)}/subscription-confirmation`);
 }
+
+/** Starts the already-confirmed, one-turn local subscription pilot. */
+export function runSubscriptionWorker(missionId: string): Promise<LocalMissionDto> {
+  return request(`/api/missions/${encodeURIComponent(missionId)}/subscription-run`, { method: "POST" });
+}

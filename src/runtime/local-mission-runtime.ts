@@ -10,6 +10,8 @@ import { missionEventSchema, type MissionEvent } from "../contracts.js";
 import { replay } from "../reducer.js";
 import { CodexAppServerPreflight, type SubscriptionRuntimePreflight } from "../subscription-runtime-preflight.js";
 import { SubscriptionLiveWorkerAuthorization, type SubscriptionLiveWorkerConfirmation } from "../subscription-live-worker-authorization.js";
+import { CodexSubscriptionLiveWorkerAdapter, SubscriptionLiveWorkerError, type SubscriptionLiveWorkerRunner } from "../subscription-live-worker-runner.js";
+import { WorkerResultError, WorkerResultGate } from "../worker-adapter.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const missionIdSchema = fixtureIdSchema.max(120);
@@ -34,6 +36,7 @@ export interface LocalMissionRuntimeOptions {
   createMissionId?: MissionIdFactory;
   subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
   subscriptionLiveWorkerAuthorization?: SubscriptionLiveWorkerAuthorization;
+  subscriptionLiveWorkerRunner?: SubscriptionLiveWorkerRunner;
 }
 
 export class MissionLaunchIncompleteError extends Error {
@@ -52,13 +55,19 @@ export class LocalMissionRuntime {
   private readonly createMissionId: MissionIdFactory;
   private readonly subscriptionRuntimePreflight: SubscriptionRuntimePreflight;
   private readonly subscriptionLiveWorkerAuthorization: SubscriptionLiveWorkerAuthorization;
+  private readonly subscriptionLiveWorkerRunner: SubscriptionLiveWorkerRunner;
+  private readonly liveWorkerSandboxRoot: string;
   private readonly preflightingMissionIds = new Set<string>();
+  private readonly executingMissionIds = new Set<string>();
+  private readonly subscriptionWorkerCapabilities = new Map<string, string>();
 
   constructor(options: LocalMissionRuntimeOptions) {
     this.missionsRoot = resolve(options.dataRoot, "missions");
     this.createMissionId = options.createMissionId ?? ((fixtureId) => `${fixtureId}-${randomUUID()}`);
     this.subscriptionRuntimePreflight = options.subscriptionRuntimePreflight ?? new CodexAppServerPreflight();
     this.subscriptionLiveWorkerAuthorization = options.subscriptionLiveWorkerAuthorization ?? new SubscriptionLiveWorkerAuthorization();
+    this.subscriptionLiveWorkerRunner = options.subscriptionLiveWorkerRunner ?? new CodexSubscriptionLiveWorkerAdapter();
+    this.liveWorkerSandboxRoot = resolve(options.dataRoot, "live-worker-pilot-sandbox");
   }
 
   async launch(fixtureId: string): Promise<MissionDto> {
@@ -156,6 +165,7 @@ export class LocalMissionRuntime {
    */
   async confirmSubscriptionWorker(missionId: string): Promise<SubscriptionConfirmationDto> {
     const validMissionId = this.validateMissionId(missionId);
+    if (this.executingMissionIds.has(validMissionId)) throw new Error("Subscription worker execution is already in progress.");
     const mission = await this.reload(validMissionId);
     if (mission.fixtureId !== liveWorkerPilotFixtureId) throw new Error("Subscription worker confirmation is available only for the live-worker pilot.");
     const state = replay(mission.events);
@@ -165,14 +175,111 @@ export class LocalMissionRuntime {
     if (state.subscriptionRuntimePreflight?.accessStatus !== "CHATGPT_AUTHENTICATED") {
       throw new Error("Authenticated subscription preflight is required before confirmation.");
     }
+    const attemptId = this.runningPilotAttemptId(state);
+    const confirmation: SubscriptionLiveWorkerConfirmation = this.subscriptionLiveWorkerAuthorization.confirm({ missionId: validMissionId, attemptId });
+    this.subscriptionWorkerCapabilities.set(validMissionId, confirmation.capability);
+    return subscriptionConfirmationDtoSchema.parse({ missionId: validMissionId, attemptId: confirmation.attemptId, status: "CONFIRMED", expiresAtMs: confirmation.expiresAtMs });
+  }
+
+  /**
+   * Consumes one local confirmation and executes only the fixed pilot once.
+   * Every result is reduced to a closed persisted outcome before the existing
+   * completion or permanent-failure lifecycle is applied.
+   */
+  async runSubscriptionWorker(missionId: string): Promise<MissionDto> {
+    const validMissionId = this.validateMissionId(missionId);
+    if (this.executingMissionIds.has(validMissionId)) throw new Error("Subscription worker execution is already in progress.");
+    this.executingMissionIds.add(validMissionId);
+    try {
+      const mission = await this.reload(validMissionId);
+      if (mission.fixtureId !== liveWorkerPilotFixtureId) throw new Error("Subscription worker execution is available only for the live-worker pilot.");
+      const state = replay(mission.events);
+      if (!state.subscriptionRuntimeDeclaration || state.subscriptionRuntimeDeclaration.executionEnabled !== false) {
+        throw new Error("A disabled subscription runtime declaration is required before execution.");
+      }
+      if (state.subscriptionRuntimePreflight?.accessStatus !== "CHATGPT_AUTHENTICATED") {
+        throw new Error("Authenticated subscription preflight is required before execution.");
+      }
+      const attemptId = this.runningPilotAttemptId(state);
+      const capability = this.subscriptionWorkerCapabilities.get(validMissionId);
+      if (!capability) throw new Error("A fresh local live-worker confirmation is required before execution.");
+      const sandboxCwd = await this.ensureLiveWorkerSandbox();
+
+      // Remove the private reference first, then let the authorization object
+      // consume its own capability before the external process can start.
+      this.subscriptionWorkerCapabilities.delete(validMissionId);
+      this.subscriptionLiveWorkerAuthorization.consume(capability, { missionId: validMissionId, attemptId });
+
+      const request = {
+        missionId: validMissionId,
+        taskId: liveWorkerPilotTask.id,
+        attemptId,
+        objective: liveWorkerPilotTask.objective,
+        workerRole: liveWorkerPilotTask.workerRole,
+        maxCost: liveWorkerPilotTask.cost,
+      };
+      const startedAt = Date.now();
+      let outcome: "COMPLETED" | "TIMEOUT" | "UNAVAILABLE" | "APPROVAL_DECLINED" | "INTERRUPTED" | "INVALID_RESULT" | "TURN_FAILED";
+      let finding: string | undefined;
+      let elapsedMs: number;
+      try {
+        finding = (await new WorkerResultGate().run({ run: (workerRequest) => this.subscriptionLiveWorkerRunner.run(workerRequest, sandboxCwd) }, request)).finding;
+        outcome = "COMPLETED";
+        elapsedMs = elapsedSince(startedAt);
+      } catch (error: unknown) {
+        outcome = error instanceof SubscriptionLiveWorkerError
+          ? error.outcome
+          : error instanceof WorkerResultError
+            ? "INVALID_RESULT"
+            : "UNAVAILABLE";
+        elapsedMs = error instanceof SubscriptionLiveWorkerError ? error.elapsedMs : elapsedSince(startedAt);
+      }
+
+      const store = new JsonlEventStore(this.historyPath(validMissionId));
+      const events = await store.readAll();
+      const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {
+        const sequenceNumber = events.length + 1;
+        const event = {
+          schemaVersion: 1 as const,
+          sequenceNumber,
+          missionId: validMissionId,
+          eventId: `${validMissionId}-${sequenceNumber}`,
+          timestamp: new Date().toISOString(),
+          type,
+          payload,
+        } as MissionEvent;
+        replay([...events, event]);
+        await store.append(event);
+        events.push(event);
+      };
+      await append("SubscriptionWorkerExecutionOutcomeRecorded", { attemptId, outcome, providerUsageStatus: "UNKNOWN", elapsedMs });
+      if (outcome === "COMPLETED" && finding) {
+        await append("FindingSubmitted", { attemptId, finding });
+        await append("MissionCompleted", {});
+      } else {
+        await append("TaskFailedPermanent", { attemptId, reason: `Subscription worker ended with ${outcome}.` });
+        await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: `Subscription worker ended with ${outcome}.` });
+      }
+      return this.readDto(validMissionId, mission.fixtureId);
+    } finally {
+      this.executingMissionIds.delete(validMissionId);
+    }
+  }
+
+  private runningPilotAttemptId(state: ReturnType<typeof replay>): string {
     const runningPilotAttempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
       const task = state.tasks[attempt.taskId];
       return attemptId.length > 0 && attempt.status === "RUNNING" && attempt.taskId === liveWorkerPilotTask.id && task?.status === "RUNNING";
     });
     if (runningPilotAttempts.length !== 1) throw new Error("Exactly one running live-worker pilot attempt is required before confirmation.");
-    const [attemptId] = runningPilotAttempts[0]!;
-    const confirmation: SubscriptionLiveWorkerConfirmation = this.subscriptionLiveWorkerAuthorization.confirm({ missionId: validMissionId, attemptId });
-    return subscriptionConfirmationDtoSchema.parse({ missionId: validMissionId, attemptId: confirmation.attemptId, status: "CONFIRMED", expiresAtMs: confirmation.expiresAtMs });
+    return runningPilotAttempts[0]![0];
+  }
+
+  private async ensureLiveWorkerSandbox(): Promise<string> {
+    await mkdir(this.liveWorkerSandboxRoot, { recursive: true });
+    const stats = await lstat(this.liveWorkerSandboxRoot);
+    if (!stats.isDirectory() || stats.isSymbolicLink()) throw new Error("Live worker sandbox must be a real directory.");
+    return this.liveWorkerSandboxRoot;
   }
 
   private async readDto(missionId: string, fixtureId: string): Promise<MissionDto> {
@@ -304,4 +411,8 @@ async function assertNotLink(path: string): Promise<void> {
 
 function isAlreadyExists(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "EEXIST";
+}
+
+function elapsedSince(startedAt: number): number {
+  return Math.min(90_000, Math.max(0, Date.now() - startedAt));
 }

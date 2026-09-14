@@ -63,6 +63,15 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
       sendJson(response, 200, subscriptionConfirmationDtoSchema.parse(await runtime.confirmSubscriptionWorker(missionId)), corsOrigin);
       return;
     }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/subscription-run")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/subscription-run".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      if (request.headers["content-length"] && Number(request.headers["content-length"]) > 0) throw httpError(400, "Subscription worker run requests must not include a body.");
+      sendJson(response, 200, localMissionDtoSchema.parse(await runtime.runSubscriptionWorker(missionId)), corsOrigin);
+      return;
+    }
     if (request.method === "GET" && url.pathname.startsWith("/api/missions/")) {
       const encodedMissionId = url.pathname.slice("/api/missions/".length);
       if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
@@ -73,7 +82,7 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
     }
     throw httpError(request.method === "POST" || request.method === "GET" ? 404 : 405, "Unknown route.");
   } catch (error: unknown) {
-    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) || isConfirmationConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
+    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) || isConfirmationConflict(error) || isExecutionConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
     sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin));
   }
 }
@@ -117,6 +126,9 @@ function isPreflightConflict(error: unknown): boolean {
 }
 function isConfirmationConflict(error: unknown): boolean {
   return error instanceof Error && (error.message.includes("only for the live-worker pilot") || error.message.includes("declaration is required before confirmation") || error.message.includes("Authenticated subscription preflight is required before confirmation") || error.message.includes("Exactly one running live-worker pilot attempt"));
+}
+function isExecutionConflict(error: unknown): boolean {
+  return error instanceof Error && (error.message.includes("only for the live-worker pilot") || error.message.includes("declaration is required before execution") || error.message.includes("Authenticated subscription preflight is required before execution") || error.message.includes("Exactly one running live-worker pilot attempt") || error.message.includes("fresh local live-worker confirmation") || error.message.includes("confirmation has expired") || error.message.includes("confirmation is missing") || error.message.includes("execution is already in progress"));
 }
 
 function loopbackOrigin(origin: string | undefined): string | undefined {

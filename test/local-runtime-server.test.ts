@@ -2,7 +2,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { listenLocalRuntimeServer } from "../src/local-runtime-server.js";
 import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
 
@@ -70,6 +70,32 @@ describe("local runtime HTTP bridge", () => {
     expect(body).toHaveProperty("expiresAtMs");
     expect(body).not.toHaveProperty("capability");
     expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST", body: "{}" })).status).toBe(400);
+  });
+
+  it("runs only a confirmed pilot through the fixed subscription endpoint and returns replayable events", async () => {
+    const runner = vi.fn(async (request: { taskId: string; attemptId: string }) => ({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED" as const, finding: "Fixed pilot finding." }));
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
+      createMissionId: () => "run-server-mission",
+      subscriptionRuntimePreflight: { check: async () => ({ accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" }) },
+      subscriptionLiveWorkerRunner: { run: runner },
+    });
+    const server = await listenLocalRuntimeServer(runtime);
+    servers.push(server);
+    const launch = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "live-worker-pilot" }) });
+    const mission = await launch.json() as { missionId: string };
+    const runUrl = await urlFor(server, `/api/missions/${mission.missionId}/subscription-run`);
+
+    expect((await fetch(runUrl, { method: "POST" })).status).toBe(409);
+    await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" });
+    await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST" });
+    const response = await fetch(runUrl, { method: "POST" });
+
+    expect(response.status).toBe(200);
+    expect((await response.json() as { events: Array<{ type: string }> }).events.slice(-3).map((event) => event.type)).toEqual(["SubscriptionWorkerExecutionOutcomeRecorded", "FindingSubmitted", "MissionCompleted"]);
+    expect(runner).toHaveBeenCalledOnce();
+    expect((await fetch(runUrl, { method: "POST" })).status).toBe(409);
+    expect((await fetch(runUrl, { method: "POST", body: "{}" })).status).toBe(400);
   });
 
   it("returns clean client errors and does not accept event-authoring requests", async () => {

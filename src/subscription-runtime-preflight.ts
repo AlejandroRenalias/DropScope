@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface } from "node:readline";
 import type { Readable, Writable } from "node:stream";
 import type { SubscriptionRuntimePreflightDiagnosticCode, SubscriptionRuntimePreflightStatus } from "./contracts.js";
@@ -26,6 +26,11 @@ export interface AppServerSpawnSpec {
   args: string[];
 }
 
+export interface AppServerTerminationSpec {
+  command: string;
+  args: string[];
+}
+
 interface RpcResponse {
   id?: number;
   result?: unknown;
@@ -38,13 +43,48 @@ export function appServerSpawnSpec(platform: NodeJS.Platform): AppServerSpawnSpe
     : { command: "codex", args: ["app-server"] };
 }
 
+export function appServerTerminationSpec(platform: NodeJS.Platform, processId: number | undefined): AppServerTerminationSpec | undefined {
+  return platform === "win32" && Number.isInteger(processId) && processId! > 0
+    ? { command: "taskkill.exe", args: ["/pid", String(processId), "/t", "/f"] }
+    : undefined;
+}
+
 const defaultSpawner: AppServerSpawner = () => {
+  const platform = process.platform;
   const { command, args } = appServerSpawnSpec(process.platform);
-  return spawn(command, args, {
+  const appServerProcess = spawn(command, args, {
     stdio: ["pipe", "pipe", "ignore"],
     windowsHide: true,
   });
+  return platform === "win32" ? new WindowsShellAppServerProcess(appServerProcess) : appServerProcess;
 };
+
+class WindowsShellAppServerProcess implements AppServerProcess {
+  constructor(private readonly process: ChildProcess) {}
+
+  get stdin(): Writable { return this.process.stdin as Writable; }
+  get stdout(): Readable { return this.process.stdout as Readable; }
+
+  kill(): boolean {
+    const termination = appServerTerminationSpec(process.platform, this.process.pid);
+    if (!termination) return this.process.kill();
+    try {
+      const cleanup = spawn(termination.command, termination.args, { stdio: "ignore", windowsHide: true });
+      cleanup.once("error", () => this.process.kill());
+      cleanup.unref();
+      return true;
+    } catch {
+      return this.process.kill();
+    }
+  }
+
+  once(event: "error", listener: (error: Error) => void): this;
+  once(event: "exit", listener: () => void): this;
+  once(event: "error" | "exit", listener: ((error: Error) => void) | (() => void)): this {
+    this.process.once(event, listener);
+    return this;
+  }
+}
 
 /**
  * Runs only Codex app-server initialization and account/read with refresh disabled.

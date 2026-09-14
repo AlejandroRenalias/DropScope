@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
-import { appServerSpawnSpec, CodexAppServerPreflight, mapAccountReadResponse, type AppServerProcess } from "../src/subscription-runtime-preflight.js";
+import { appServerSpawnSpec, appServerTerminationSpec, CodexAppServerPreflight, mapAccountReadResponse, type AppServerProcess } from "../src/subscription-runtime-preflight.js";
 
 class FakeAppServer extends EventEmitter implements AppServerProcess {
   readonly stdin = new PassThrough();
@@ -54,6 +54,9 @@ describe("Codex app-server subscription preflight", () => {
       args: ["/d", "/s", "/c", "codex.cmd app-server"],
     });
     expect(appServerSpawnSpec("linux")).toEqual({ command: "codex", args: ["app-server"] });
+    expect(appServerTerminationSpec("win32", 42)).toEqual({ command: "taskkill.exe", args: ["/pid", "42", "/t", "/f"] });
+    expect(appServerTerminationSpec("win32", undefined)).toBeUndefined();
+    expect(appServerTerminationSpec("linux", 42)).toBeUndefined();
   });
 
   it("initializes then reads only sanitized ChatGPT auth status without a thread or turn", async () => {

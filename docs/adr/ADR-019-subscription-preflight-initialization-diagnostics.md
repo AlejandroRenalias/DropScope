@@ -12,7 +12,7 @@ The mapper uses internal error classes rather than passing through an exit messa
 
 Phase 3.8k aligns the client-side order with the documented app-server handshake: after writing the sole `initialize` request, DropScope immediately writes the `initialized` notification before waiting for the initialization response. This changes neither the request payload nor the following read-only `account/read` check, which remains deferred until a valid initialization response arrives.
 
-Phase 3.8l makes the fixed Windows launcher explicit: it invokes `cmd.exe /d /s /c codex.cmd app-server` to run the locally installed `.cmd` shim, while non-Windows platforms retain direct `codex app-server` execution. Every Windows command fragment is a source-controlled constant; no user, mission, account, or event value becomes part of a shell command. The app-server arguments, piped JSONL transport, timeout, diagnostic vocabulary, and read-only preflight behavior are unchanged.
+Phase 3.8l makes the fixed Windows launcher explicit: it invokes `cmd.exe /d /s /c codex.cmd app-server` to run the locally installed `.cmd` shim, while non-Windows platforms retain direct `codex app-server` execution. Every Windows command fragment is a source-controlled constant; no user, mission, account, or event value becomes part of a shell command. Cleanup targets only that launcher's operating-system process tree via its child-process ID and fixed `taskkill.exe /pid <launcher-pid> /t /f` arguments, preventing a timed-out or completed preflight from leaving an app-server child behind. The app-server arguments, piped JSONL transport, timeout, diagnostic vocabulary, and read-only preflight behavior are unchanged.
 
 ## Non-goals
 

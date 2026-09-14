@@ -15,7 +15,7 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
 
   constructor(
     accountResponse: unknown,
-    private readonly options: { initializationResponseDelayMs?: number; accountResponseDelayMs?: number; rejectInitialization?: boolean; exitDuringInitialization?: boolean; invalidInitializationResponse?: boolean; failAccountRead?: boolean } = {},
+    private readonly options: { initializationResponseDelayMs?: number; accountResponseDelayMs?: number; rejectInitialization?: boolean; exitDuringInitialization?: boolean; invalidInitializationResponse?: boolean; requireInitializedBeforeInitializationResponse?: boolean; failAccountRead?: boolean } = {},
   ) {
     super();
     this.stdin.on("data", (chunk: Buffer) => {
@@ -28,7 +28,8 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
               this.emit("exit");
               return;
             }
-            const response = this.options.rejectInitialization
+            const initializedWasConfirmed = this.messages.some((candidate) => isInitializedNotification(candidate));
+            const response = this.options.rejectInitialization || (this.options.requireInitializedBeforeInitializationResponse && !initializedWasConfirmed)
               ? { id: 1, error: { message: "private initialization failure" } }
               : { id: 1, result: this.options.invalidInitializationResponse ? null : {} };
             this.stdout.write(JSON.stringify(response) + "\n");
@@ -40,6 +41,10 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
       }
     });
   }
+}
+
+function isInitializedNotification(message: unknown): boolean {
+  return typeof message === "object" && message !== null && "method" in message && message.method === "initialized";
 }
 
 describe("Codex app-server subscription preflight", () => {
@@ -55,6 +60,22 @@ describe("Codex app-server subscription preflight", () => {
     ]);
     expect(JSON.stringify(process.messages)).not.toContain("private@example.com");
     expect(process.kill).toHaveBeenCalledOnce();
+  });
+
+  it("confirms initialized before waiting for the initialization response", async () => {
+    const process = new FakeAppServer(
+      { account: { type: "chatgpt" }, requiresOpenaiAuth: true },
+      { requireInitializedBeforeInitializationResponse: true },
+    );
+
+    await expect(new CodexAppServerPreflight(() => process, 100).check()).resolves.toEqual({
+      accessStatus: "CHATGPT_AUTHENTICATED",
+      diagnosticCode: "NOT_APPLICABLE",
+    });
+    expect(process.messages.slice(0, 2)).toEqual([
+      expect.objectContaining({ id: 1, method: "initialize" }),
+      expect.objectContaining({ method: "initialized" }),
+    ]);
   });
 
   it("maps account responses and persists only closed failure diagnostics", async () => {

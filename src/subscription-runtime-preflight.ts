@@ -52,9 +52,10 @@ export class CodexAppServerPreflight implements SubscriptionRuntimePreflight {
     }
     try {
       const rpc = new AppServerRpc(process, this.timeoutMs);
-      const initializeResponse = await rpc.request(1, "initialize", { clientInfo: { name: "dropscope", title: "DropScope", version: "0.1" } });
-      if (!isRecord(initializeResponse)) return unavailable("INITIALIZATION_RESPONSE_INVALID");
+      const initializeResponse = rpc.request(1, "initialize", { clientInfo: { name: "dropscope", title: "DropScope", version: "0.1" } });
       rpc.notify("initialized", {});
+      const initializationResult = await initializeResponse;
+      if (!isRecord(initializationResult)) return unavailable("INITIALIZATION_RESPONSE_INVALID");
       let response: unknown;
       try {
         response = await rpc.request(2, "account/read", { refreshToken: false });

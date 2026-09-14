@@ -10,6 +10,8 @@ Phase 3.8i's closed preflight diagnostic vocabulary is extended only for the ini
 
 The mapper uses internal error classes rather than passing through an exit message, JSON-RPC message, stderr, account field, token, plan, usage value, or command detail. The browser projects only the closed code after replay; it never invokes the process or reads an account response.
 
+Phase 3.8k aligns the client-side order with the documented app-server handshake: after writing the sole `initialize` request, DropScope immediately writes the `initialized` notification before waiting for the initialization response. This changes neither the request payload nor the following read-only `account/read` check, which remains deferred until a valid initialization response arrives.
+
 ## Non-goals
 
 This does not start login, refresh a token, read usage or rate limits, change the app-server command, make retries, capture stderr, create a thread or turn, invoke a worker, or enable the disabled live-worker control.

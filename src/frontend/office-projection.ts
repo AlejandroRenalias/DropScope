@@ -18,7 +18,7 @@ export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSumma
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
 export interface ReplayEventRecord { sequence: number; type: string; category: ReplayEventCategory; detail: string; }
-export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; }
+export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; externalSignalContext: GoogleTrendsEvidence | null; }
 const missionId = "crosscurrent-workspace-market";
 const sourceLabel = "Static demo history replayed through the existing MissionState reducer. It is not live engine data.";
 const timestamp = (n: number) => `2026-01-01T00:00:${String(n).padStart(2, "0")}.000Z`;
@@ -121,7 +121,7 @@ export function replayEvents(events: MissionEvent[]): ReplayEventRecord[] {
   return events.map((item) => ({ sequence: item.sequenceNumber, type: item.type, category: eventCategory(item.type), detail: eventDetail(item) }));
 }
 
-export function projectFinalReport(): FinalReportProjection {
+export function projectFinalReport(events?: MissionEvent[]): FinalReportProjection {
   const fixture = loadFixture("crosscurrent-workspace-market");
   const riskDecisions = fixture.candidateEvaluations.map((candidate) => evaluateRiskGate(candidate.riskInput));
   const eligibilities = fixture.candidateEvaluations.map((candidate, index) => determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }));
@@ -137,6 +137,7 @@ export function projectFinalReport(): FinalReportProjection {
       ? `Next step: deepen validation for ${priorities[0]!.candidateId} before committing spend.`
       : "Insufficient evidence: no candidate cleared the recorded gates.";
   const representativeDecision = riskDecisions.find((decision) => decision.candidateId === representative.candidateId);
+  const externalSignalContext = events?.length ? projectOffice(events).decisionViews.googleTrendsEvidence : null;
   return {
     sourceLabel: "Static fixture crosscurrent-workspace-market evaluated by browser-safe pure helpers. This is not live market data.",
     fixtureId: fixture.fixtureId,
@@ -163,5 +164,6 @@ export function projectFinalReport(): FinalReportProjection {
       ],
     },
     nextStep,
+    externalSignalContext,
   };
 }

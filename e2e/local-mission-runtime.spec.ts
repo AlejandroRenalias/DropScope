@@ -131,6 +131,11 @@ test("captures Google Trends only after the explicit browser action, then reload
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 8 / 8");
   await expect(replay.getByText("GoogleTrendsEvidenceCaptured", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Final Report" }).click();
+  const finalReport = page.getByRole("region", { name: "Final Report" });
+  await expect(finalReport).toContainText("External signal context · not scored");
+  await expect(finalReport).toContainText("It does not change any score, ranking, gate, or recommendation");
+  await expect(finalReport).toContainText("Desk lamps · 20K+");
   await page.reload();
   await expect(page.getByRole("status")).toContainText("Reloaded the browser-saved local mission");
   await page.getByRole("button", { name: "Agent Desk" }).click();

@@ -149,14 +149,14 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "GoogleTrendsEvidenceCaptured": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-now" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
       if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
       return { ...state, googleTrendsEvidence: { ...state.googleTrendsEvidence, [event.payload.attemptId]: event.payload } };
     }
     case "GoogleTrendsCaptureFailed": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-now" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
       if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
       return { ...state, googleTrendsCaptureFailures: { ...state.googleTrendsCaptureFailures, [event.payload.attemptId]: event.payload } };
     }

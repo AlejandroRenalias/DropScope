@@ -12,7 +12,7 @@ import { CodexAppServerPreflight, type SubscriptionRuntimePreflight } from "../s
 import { SubscriptionLiveWorkerAuthorization, type SubscriptionLiveWorkerConfirmation } from "../subscription-live-worker-authorization.js";
 import { CodexSubscriptionLiveWorkerAdapter, SubscriptionLiveWorkerError, type SubscriptionLiveWorkerRunner } from "../subscription-live-worker-runner.js";
 import { WorkerResultError, WorkerResultGate } from "../worker-adapter.js";
-import { FixedGoogleTrendsSource, GoogleTrendsSourceError, type GoogleTrendsSource } from "../google-trends-source.js";
+import { FixedGoogleTrendsSource, GoogleTrendsSourceError, type GoogleTrendsCapture, type GoogleTrendsSource } from "../google-trends-source.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const missionIdSchema = fixtureIdSchema.max(120);
@@ -279,11 +279,15 @@ export class LocalMissionRuntime {
     try {
       const mission = await this.reload(validMissionId);
       if (mission.fixtureId !== googleTrendsPilotFixtureId) throw new Error("Google Trends capture is available only for the Google Trends pilot.");
-      const attemptId = this.runningGoogleTrendsAttemptId(replay(mission.events));
-      let capture: Awaited<ReturnType<GoogleTrendsSource["capture"]>> | undefined;
-      let failure: "UNAVAILABLE" | "TIMED_OUT" | "INVALID_RESPONSE" | "RESPONSE_TOO_LARGE" | undefined;
-      try { capture = await this.googleTrendsSource.capture(); }
-      catch (error) { failure = error instanceof GoogleTrendsSourceError ? error.outcome : "UNAVAILABLE"; }
+      const state = replay(mission.events);
+      const attemptId = this.googleTrendsPilotAttemptId(state);
+      const persistedEvidence = state.googleTrendsEvidence[attemptId];
+      let capture: GoogleTrendsCapture | undefined = persistedEvidence && { sourceUrl: persistedEvidence.sourceUrl, geo: persistedEvidence.geo, attribution: persistedEvidence.attribution, items: persistedEvidence.items };
+      let failure = state.googleTrendsCaptureFailures[attemptId]?.outcome;
+      if (!capture && !failure) {
+        try { capture = await this.googleTrendsSource.capture(); }
+        catch (error) { failure = error instanceof GoogleTrendsSourceError ? error.outcome : "UNAVAILABLE"; }
+      }
 
       const store = new JsonlEventStore(this.historyPath(validMissionId));
       const events = await store.readAll();
@@ -295,13 +299,15 @@ export class LocalMissionRuntime {
         events.push(event);
       };
       if (capture) {
-        await append("GoogleTrendsEvidenceCaptured", { attemptId, ...capture, retrievedAt: new Date().toISOString() });
-        await append("FindingSubmitted", { attemptId, finding: `Google Trends US trending-now sample captured: ${capture.items.map((item) => `${item.query} (${item.traffic})`).join("; ")}.` });
-        await append("MissionCompleted", {});
+        if (!persistedEvidence) await append("GoogleTrendsEvidenceCaptured", { attemptId, ...capture, retrievedAt: new Date().toISOString() });
+        const afterOutcome = replay(events);
+        if (afterOutcome.attempts[attemptId]?.status === "RUNNING") await append("FindingSubmitted", { attemptId, finding: `Google Trends US trending-now sample captured: ${capture.items.map((item) => `${item.query} (${item.traffic})`).join("; ")}.` });
+        if (replay(events).status === "RUNNING") await append("MissionCompleted", {});
       } else {
-        await append("GoogleTrendsCaptureFailed", { attemptId, outcome: failure! });
-        await append("TaskFailedPermanent", { attemptId, reason: `Google Trends capture ended with ${failure}.` });
-        await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: `Google Trends capture ended with ${failure}.` });
+        if (!state.googleTrendsCaptureFailures[attemptId]) await append("GoogleTrendsCaptureFailed", { attemptId, outcome: failure! });
+        const afterOutcome = replay(events);
+        if (afterOutcome.attempts[attemptId]?.status === "RUNNING") await append("TaskFailedPermanent", { attemptId, reason: `Google Trends capture ended with ${failure}.` });
+        if (replay(events).status === "RUNNING") await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: `Google Trends capture ended with ${failure}.` });
       }
       return this.readDto(validMissionId, mission.fixtureId);
     } finally {
@@ -318,12 +324,12 @@ export class LocalMissionRuntime {
     return runningPilotAttempts[0]![0];
   }
 
-  private runningGoogleTrendsAttemptId(state: ReturnType<typeof replay>): string {
+  private googleTrendsPilotAttemptId(state: ReturnType<typeof replay>): string {
     const attempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
       const task = state.tasks[attempt.taskId];
-      return attemptId.length > 0 && attempt.status === "RUNNING" && attempt.taskId === googleTrendsPilotTask.id && task?.status === "RUNNING";
+      return attemptId.length > 0 && ["RUNNING", "COMPLETED", "FAILED_PERMANENT"].includes(attempt.status) && attempt.taskId === googleTrendsPilotTask.id && task?.status === attempt.status;
     });
-    if (attempts.length !== 1) throw new Error("Exactly one running Google Trends pilot attempt is required before capture.");
+    if (attempts.length !== 1 || state.status !== "RUNNING") throw new Error("Exactly one resumable Google Trends pilot attempt is required before capture.");
     return attempts[0]![0];
   }
 

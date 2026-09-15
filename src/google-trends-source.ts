@@ -16,7 +16,8 @@ export interface GoogleTrendsCapture {
 }
 
 export interface GoogleTrendsSource { capture(): Promise<GoogleTrendsCapture>; }
-export type FetchLike = (input: string, init: { signal: AbortSignal; headers: Record<string, string> }) => Promise<{ ok: boolean; text(): Promise<string> }>;
+export type FetchResponse = { ok: boolean; body: ReadableStream<Uint8Array> | null };
+export type FetchLike = (input: string, init: { signal: AbortSignal; headers: Record<string, string> }) => Promise<FetchResponse>;
 
 /** Fixed, anonymous, read-only source adapter. It never accepts a URL or query. */
 export class FixedGoogleTrendsSource implements GoogleTrendsSource {
@@ -34,12 +35,37 @@ export class FixedGoogleTrendsSource implements GoogleTrendsSource {
         throw new GoogleTrendsSourceError("UNAVAILABLE");
       }
       if (!response.ok) throw new GoogleTrendsSourceError("UNAVAILABLE");
-      let xml: string;
-      try { xml = await response.text(); } catch { throw new GoogleTrendsSourceError("UNAVAILABLE"); }
-      if (Buffer.byteLength(xml, "utf8") > MAX_RESPONSE_BYTES) throw new GoogleTrendsSourceError("RESPONSE_TOO_LARGE");
+      const xml = await readBoundedBody(response.body, controller.signal);
       return { sourceUrl: GOOGLE_TRENDS_RSS_URL, geo: "US", attribution: "Google Trends", items: parseGoogleTrendsRss(xml) };
     } finally { clearTimeout(timer); }
   }
+}
+
+async function readBoundedBody(body: ReadableStream<Uint8Array> | null, signal: AbortSignal): Promise<string> {
+  if (!body) throw new GoogleTrendsSourceError("INVALID_RESPONSE");
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      bytes += next.value.byteLength;
+      if (bytes > MAX_RESPONSE_BYTES) {
+        await reader.cancel();
+        throw new GoogleTrendsSourceError("RESPONSE_TOO_LARGE");
+      }
+      chunks.push(next.value);
+    }
+  } catch (error) {
+    if (error instanceof GoogleTrendsSourceError) throw error;
+    if (signal.aborted) throw new GoogleTrendsSourceError("TIMED_OUT");
+    throw new GoogleTrendsSourceError("UNAVAILABLE");
+  } finally { reader.releaseLock(); }
+  const combined = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder("utf-8", { fatal: true }).decode(combined);
 }
 
 export function parseGoogleTrendsRss(xml: string): Array<{ query: string; traffic: string }> {

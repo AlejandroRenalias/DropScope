@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
 import { SubscriptionLiveWorkerAuthorization } from "../src/subscription-live-worker-authorization.js";
 import { SubscriptionLiveWorkerError } from "../src/subscription-live-worker-runner.js";
+import { JsonlEventStore } from "../src/event-store.js";
 
 describe("LocalMissionRuntime", () => {
   it("launches a fixture and reloads the persisted event history", async () => {
@@ -56,7 +57,7 @@ describe("LocalMissionRuntime", () => {
     expect(completed.events.slice(-3).map((event) => event.type)).toEqual(["GoogleTrendsEvidenceCaptured", "FindingSubmitted", "MissionCompleted"]);
     expect(completed.events.at(-3)).toMatchObject({ payload: { sourceUrl: "https://trends.google.com/trending/rss?geo=US", geo: "US", attribution: "Google Trends", items: [{ query: "Desk lamps", traffic: "20K+" }] } });
     expect(await runtime.reload(launched.missionId)).toEqual(completed);
-    await expect(runtime.captureGoogleTrends(launched.missionId)).rejects.toThrow("Exactly one running Google Trends");
+    await expect(runtime.captureGoogleTrends(launched.missionId)).rejects.toThrow("Exactly one resumable Google Trends");
   });
 
   it("persists a sanitized terminal Google Trends failure without a retry", async () => {
@@ -66,6 +67,20 @@ describe("LocalMissionRuntime", () => {
     expect(failed.events.slice(-3).map((event) => event.type)).toEqual(["GoogleTrendsCaptureFailed", "TaskFailedPermanent", "MissionTerminated"]);
     expect(failed.events.at(-3)).toMatchObject({ payload: { outcome: "UNAVAILABLE" } });
     expect(JSON.stringify(failed)).not.toContain("raw upstream");
+  });
+
+  it("resumes a capture lifecycle after an outcome-only durable prefix without repeating the source request", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
+    const capture = vi.fn(async () => ({ sourceUrl: "https://trends.google.com/trending/rss?geo=US" as const, geo: "US" as const, attribution: "Google Trends" as const, items: [{ query: "Desk lamps", traffic: "20K+" }] }));
+    const runtime = new LocalMissionRuntime({ dataRoot, createMissionId: () => "resumable-google-trends", googleTrendsSource: { capture } });
+    const launched = await runtime.launch("google-trends-pilot");
+    const store = new JsonlEventStore(join(dataRoot, "missions", "resumable-google-trends.jsonl"));
+    await store.append({ schemaVersion: 1, sequenceNumber: 6, missionId: launched.missionId, eventId: `${launched.missionId}-6`, timestamp: "2026-09-15T00:00:00.000Z", type: "GoogleTrendsEvidenceCaptured", payload: { attemptId: "google-trends-us-now:a1", sourceUrl: "https://trends.google.com/trending/rss?geo=US", geo: "US", attribution: "Google Trends", retrievedAt: "2026-09-15T00:00:00.000Z", items: [{ query: "Desk lamps", traffic: "20K+" }] } });
+
+    const resumed = await runtime.captureGoogleTrends(launched.missionId);
+
+    expect(capture).not.toHaveBeenCalled();
+    expect(resumed.events.slice(-2).map((event) => event.type)).toEqual(["FindingSubmitted", "MissionCompleted"]);
   });
 
   it("persists one user-triggered sanitized subscription preflight without starting a worker", async () => {

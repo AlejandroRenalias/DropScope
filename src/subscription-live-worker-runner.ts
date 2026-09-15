@@ -182,7 +182,7 @@ class LiveWorkerRpc {
       }
       // Notifications are not the authority for the final transcript: audit
       // the completed turn too, so a tool item cannot be hidden solely there.
-      if (!hasOnlyPassiveTranscriptItems(turn.items)) {
+      if ("items" in turn && !hasOnlyPassiveTranscriptItems(turn.items)) {
         this.abort(new SubscriptionLiveWorkerError("TURN_FAILED", 0));
         return;
       }

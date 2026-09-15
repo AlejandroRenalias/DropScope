@@ -44,7 +44,9 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
     const process = new FakeLiveAppServer((server) => {
       const result = JSON.stringify({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED", finding: "Inline pilot evidence only." });
       server.notify("item/completed", { item: { type: "agentMessage", text: result } });
-      server.notify("turn/completed", { turn: { status: "completed", items: [{ type: "agentMessage", text: result }] } });
+      // App-server may omit terminal items because the item notification above
+      // is the authoritative transcript event.
+      server.notify("turn/completed", { turn: { status: "completed" } });
     });
 
     const output = await new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot");
@@ -108,7 +110,7 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
   it("classifies malformed final output without exposing it", async () => {
     const process = new FakeLiveAppServer((server) => {
       server.notify("item/completed", { item: { type: "agentMessage", text: "not json: private details" } });
-      server.notify("turn/completed", { turn: { status: "completed", items: [{ type: "agentMessage", text: "not json: private details" }] } });
+      server.notify("turn/completed", { turn: { status: "completed" } });
     });
 
     await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "INVALID_RESULT" }));

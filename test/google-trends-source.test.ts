@@ -28,4 +28,9 @@ describe("fixed Google Trends source", () => {
     const source = new FixedGoogleTrendsSource(async () => ({ ok: true, body: new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(oversized); controller.close(); } }) }));
     await expect(source.capture()).rejects.toMatchObject({ outcome: "RESPONSE_TOO_LARGE" });
   });
+
+  it("classifies invalid UTF-8 bytes as an invalid response", async () => {
+    const source = new FixedGoogleTrendsSource(async () => ({ ok: true, body: new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new Uint8Array([0xc3, 0x28])); controller.close(); } }) }));
+    await expect(source.capture()).rejects.toMatchObject({ outcome: "INVALID_RESPONSE" });
+  });
 });

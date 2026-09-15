@@ -327,7 +327,21 @@ export class LocalMissionRuntime {
   private googleTrendsPilotAttemptId(state: ReturnType<typeof replay>): string {
     const attempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
       const task = state.tasks[attempt.taskId];
-      return attemptId.length > 0 && ["RUNNING", "COMPLETED", "FAILED_PERMANENT"].includes(attempt.status) && attempt.taskId === googleTrendsPilotTask.id && task?.status === attempt.status;
+      const authorization = state.authorizations[attempt.taskId];
+      return attemptId.length > 0
+        && ["RUNNING", "COMPLETED", "FAILED_PERMANENT"].includes(attempt.status)
+        && attempt.taskId === googleTrendsPilotTask.id
+        && attempt.workerRole === googleTrendsPilotTask.workerRole
+        && task?.status === attempt.status
+        && task.objective === googleTrendsPilotTask.objective
+        && task.cost === googleTrendsPilotTask.cost
+        && task.workClass === googleTrendsPilotTask.workClass
+        && task.researchKey === googleTrendsPilotTask.researchKey
+        && authorization?.objective === googleTrendsPilotTask.objective
+        && authorization.cost === googleTrendsPilotTask.cost
+        && authorization.workClass === googleTrendsPilotTask.workClass
+        && authorization.researchKey === googleTrendsPilotTask.researchKey
+        && authorization.dependencies.length === 0;
     });
     if (attempts.length !== 1 || state.status !== "RUNNING") throw new Error("Exactly one resumable Google Trends pilot attempt is required before capture.");
     return attempts[0]![0];

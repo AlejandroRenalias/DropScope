@@ -48,11 +48,10 @@ async function readBoundedBody(body: ReadableStream<Uint8Array> | null, signal: 
   let bytes = 0;
   try {
     while (true) {
-      const next = await reader.read();
+      const next = await readWithAbort(reader, signal);
       if (next.done) break;
       bytes += next.value.byteLength;
       if (bytes > MAX_RESPONSE_BYTES) {
-        await reader.cancel();
         throw new GoogleTrendsSourceError("RESPONSE_TOO_LARGE");
       }
       chunks.push(next.value);
@@ -61,11 +60,22 @@ async function readBoundedBody(body: ReadableStream<Uint8Array> | null, signal: 
     if (error instanceof GoogleTrendsSourceError) throw error;
     if (signal.aborted) throw new GoogleTrendsSourceError("TIMED_OUT");
     throw new GoogleTrendsSourceError("UNAVAILABLE");
-  } finally { reader.releaseLock(); }
+  } finally { void reader.cancel().catch(() => undefined); reader.releaseLock(); }
   const combined = new Uint8Array(bytes);
   let offset = 0;
   for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.byteLength; }
-  return new TextDecoder("utf-8", { fatal: true }).decode(combined);
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(combined); }
+  catch { throw new GoogleTrendsSourceError("INVALID_RESPONSE"); }
+}
+
+async function readWithAbort(reader: ReadableStreamDefaultReader<Uint8Array>, signal: AbortSignal): Promise<ReadableStreamReadResult<Uint8Array>> {
+  if (signal.aborted) throw new GoogleTrendsSourceError("TIMED_OUT");
+  let rejectAbort: ((reason: GoogleTrendsSourceError) => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => { rejectAbort = reject; });
+  const onAbort = () => rejectAbort?.(new GoogleTrendsSourceError("TIMED_OUT"));
+  signal.addEventListener("abort", onAbort, { once: true });
+  try { return await Promise.race([reader.read(), aborted]); }
+  finally { signal.removeEventListener("abort", onAbort); }
 }
 
 export function parseGoogleTrendsRss(xml: string): Array<{ query: string; traffic: string }> {

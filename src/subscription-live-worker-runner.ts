@@ -180,6 +180,12 @@ class LiveWorkerRpc {
         this.abort(new SubscriptionLiveWorkerError("TURN_FAILED", 0));
         return;
       }
+      // Notifications are not the authority for the final transcript: audit
+      // the completed turn too, so a tool item cannot be hidden solely there.
+      if (!hasOnlyPassiveTranscriptItems(turn.items)) {
+        this.abort(new SubscriptionLiveWorkerError("TURN_FAILED", 0));
+        return;
+      }
       this.turn.resolve({ status: turn.status, agentText: this.latestAgentText ?? agentTextFromItems(turn.items) });
     }
   }
@@ -222,6 +228,10 @@ function isPassiveTranscriptItem(value: unknown): boolean {
     || value.type === "reasoning"
     || value.type === "plan"
     || value.type === "contextCompaction";
+}
+
+function hasOnlyPassiveTranscriptItems(value: unknown): boolean {
+  return Array.isArray(value) && value.every((item) => isPassiveTranscriptItem(item));
 }
 
 function agentTextFromItems(value: unknown): string | undefined {

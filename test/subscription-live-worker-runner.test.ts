@@ -42,8 +42,9 @@ class FakeLiveAppServer extends EventEmitter implements AppServerProcess {
 describe("CodexSubscriptionLiveWorkerAdapter", () => {
   it("starts exactly one thread and turn, keeps identifiers private, and returns only final assistant JSON", async () => {
     const process = new FakeLiveAppServer((server) => {
-      server.notify("item/completed", { item: { type: "agentMessage", text: JSON.stringify({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED", finding: "Inline pilot evidence only." }) } });
-      server.notify("turn/completed", { turn: { status: "completed" } });
+      const result = JSON.stringify({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED", finding: "Inline pilot evidence only." });
+      server.notify("item/completed", { item: { type: "agentMessage", text: result } });
+      server.notify("turn/completed", { turn: { status: "completed", items: [{ type: "agentMessage", text: result }] } });
     });
 
     const output = await new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot");
@@ -87,10 +88,27 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
     expect(process.kill).toHaveBeenCalledOnce();
   });
 
+  it("fails closed when a tool item appears only in the final turn payload", async () => {
+    const process = new FakeLiveAppServer((server) => {
+      server.notify("turn/completed", {
+        turn: {
+          status: "completed",
+          items: [
+            { type: "agentMessage", text: JSON.stringify({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED", finding: "Must not be accepted." }) },
+            { type: "mcpToolCall", server: "private", tool: "side-effect" },
+          ],
+        },
+      });
+    });
+
+    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "TURN_FAILED" }));
+    expect(process.kill).toHaveBeenCalledOnce();
+  });
+
   it("classifies malformed final output without exposing it", async () => {
     const process = new FakeLiveAppServer((server) => {
       server.notify("item/completed", { item: { type: "agentMessage", text: "not json: private details" } });
-      server.notify("turn/completed", { turn: { status: "completed" } });
+      server.notify("turn/completed", { turn: { status: "completed", items: [{ type: "agentMessage", text: "not json: private details" }] } });
     });
 
     await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "INVALID_RESULT" }));

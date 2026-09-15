@@ -54,7 +54,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await page.getByRole("button", { name: "Check subscription runtime" }).click();
   await expect.poll(() => preflightChecks).toBe(1);
   await expect(page.getByRole("button", { name: "Launch local mission" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Reload latest" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Reload saved mission" })).toBeDisabled();
   resolvePreflight?.();
   await expect(page.getByRole("status")).toContainText("Subscription runtime check recorded. No worker was started.");
   await expect(agentDesk).toContainText("Local ChatGPT authentication detected. This does not authorize a worker run.");
@@ -73,7 +73,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByText("MissionCompleted", { exact: true })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByRole("status")).toContainText("Reloaded persisted local mission");
+  await expect(page.getByRole("status")).toContainText("Reloaded the browser-saved local mission");
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
   await expect(page.getByText(/Event 36 \/ 36/)).toBeVisible();

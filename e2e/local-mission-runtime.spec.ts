@@ -125,6 +125,8 @@ test("captures Google Trends only after the explicit browser action, then reload
   await agentDesk.getByRole("button", { name: "Capture Google Trends US now" }).click();
   await expect(page.getByRole("status")).toContainText("Google Trends capture outcome and evidence were recorded locally.");
   await expect(agentDesk).toContainText("Desk lamps (20K+)");
+  await expect(agentDesk).toContainText("https://trends.google.com/trending/rss?geo=US");
+  await expect(agentDesk).toContainText("attribution: Google Trends.");
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 8 / 8");
@@ -133,6 +135,7 @@ test("captures Google Trends only after the explicit browser action, then reload
   await expect(page.getByRole("status")).toContainText("Reloaded the browser-saved local mission");
   await page.getByRole("button", { name: "Agent Desk" }).click();
   await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("Desk lamps (20K+)");
+  await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("https://trends.google.com/trending/rss?geo=US");
 });
 
 test("replays a safe account-read timeout diagnostic without starting a worker", async ({ page }) => {

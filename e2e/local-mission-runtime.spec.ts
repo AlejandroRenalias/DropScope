@@ -15,7 +15,7 @@ let nextPreflightResult: SubscriptionPreflightResult = { accessStatus: "CHATGPT_
 
 test.beforeAll(async () => {
   runtimeServer = await listenLocalRuntimeServer(
-    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve(nextPreflightResult); }) }, subscriptionLiveWorkerRunner: { run: async (request) => ({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED" as const, finding: "Fixed browser pilot finding." }) } }),
+    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve(nextPreflightResult); }) }, subscriptionLiveWorkerRunner: { run: async (request) => ({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED" as const, finding: "Fixed browser pilot finding." }) }, googleTrendsSource: { capture: async () => ({ sourceUrl: "https://trends.google.com/trending/rss?geo=US" as const, geo: "US" as const, attribution: "Google Trends" as const, items: [{ query: "Desk lamps", traffic: "20K+" }] }) } }),
     { port: 8791 },
   );
   process.env.VITE_LOCAL_RUNTIME_BASE_URL = "http://127.0.0.1:8791";
@@ -112,6 +112,27 @@ test("runs the isolated live-worker pilot through the injected safe browser fake
   await expect(replay).toContainText("Event 10 / 10");
   await expect(replay.getByText("SubscriptionWorkerExecutionOutcomeRecorded", { exact: true })).toBeVisible();
   await expect(replay.getByText("MissionCompleted", { exact: true })).toBeVisible();
+});
+
+test("captures Google Trends only after the explicit browser action, then reloads its persisted evidence", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#fixture-select").selectOption("google-trends-pilot");
+  await page.getByRole("button", { name: "Launch local mission" }).click();
+  await page.getByRole("button", { name: "Agent Desk" }).click();
+  const agentDesk = page.getByRole("region", { name: "Agent Desk" });
+  await expect(agentDesk).toContainText("Google Trends · read-only public-source pilot");
+  await expect(agentDesk).toContainText("No login, worker, retry, or subscription usage.");
+  await agentDesk.getByRole("button", { name: "Capture Google Trends US now" }).click();
+  await expect(page.getByRole("status")).toContainText("Google Trends capture outcome and evidence were recorded locally.");
+  await expect(agentDesk).toContainText("Desk lamps (20K+)");
+  await page.getByRole("button", { name: "Mission Replay" }).click();
+  const replay = page.getByRole("region", { name: "Mission Replay" });
+  await expect(replay).toContainText("Event 8 / 8");
+  await expect(replay.getByText("GoogleTrendsEvidenceCaptured", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("status")).toContainText("Reloaded the browser-saved local mission");
+  await page.getByRole("button", { name: "Agent Desk" }).click();
+  await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("Desk lamps (20K+)");
 });
 
 test("replays a safe account-read timeout diagnostic without starting a worker", async ({ page }) => {

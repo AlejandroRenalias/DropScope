@@ -4,7 +4,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
 
 import { JsonlEventStore } from "../event-store.js";
-import { liveWorkerPilotFixtureId, liveWorkerPilotTask, loadFixture } from "../fixture-model.js";
+import { googleTrendsPilotFixtureId, googleTrendsPilotTask, liveWorkerPilotFixtureId, liveWorkerPilotTask, loadFixture } from "../fixture-model.js";
 import { runFixtureMission } from "../fixture-runner.js";
 import { missionEventSchema, type MissionEvent } from "../contracts.js";
 import { replay } from "../reducer.js";
@@ -12,6 +12,7 @@ import { CodexAppServerPreflight, type SubscriptionRuntimePreflight } from "../s
 import { SubscriptionLiveWorkerAuthorization, type SubscriptionLiveWorkerConfirmation } from "../subscription-live-worker-authorization.js";
 import { CodexSubscriptionLiveWorkerAdapter, SubscriptionLiveWorkerError, type SubscriptionLiveWorkerRunner } from "../subscription-live-worker-runner.js";
 import { WorkerResultError, WorkerResultGate } from "../worker-adapter.js";
+import { FixedGoogleTrendsSource, GoogleTrendsSourceError, type GoogleTrendsSource } from "../google-trends-source.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const missionIdSchema = fixtureIdSchema.max(120);
@@ -37,6 +38,7 @@ export interface LocalMissionRuntimeOptions {
   subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
   subscriptionLiveWorkerAuthorization?: SubscriptionLiveWorkerAuthorization;
   subscriptionLiveWorkerRunner?: SubscriptionLiveWorkerRunner;
+  googleTrendsSource?: GoogleTrendsSource;
 }
 
 export class MissionLaunchIncompleteError extends Error {
@@ -56,9 +58,11 @@ export class LocalMissionRuntime {
   private readonly subscriptionRuntimePreflight: SubscriptionRuntimePreflight;
   private readonly subscriptionLiveWorkerAuthorization: SubscriptionLiveWorkerAuthorization;
   private readonly subscriptionLiveWorkerRunner: SubscriptionLiveWorkerRunner;
+  private readonly googleTrendsSource: GoogleTrendsSource;
   private readonly liveWorkerSandboxRoot: string;
   private readonly preflightingMissionIds = new Set<string>();
   private readonly executingMissionIds = new Set<string>();
+  private readonly capturingGoogleTrendsMissionIds = new Set<string>();
   private readonly subscriptionWorkerCapabilities = new Map<string, string>();
 
   constructor(options: LocalMissionRuntimeOptions) {
@@ -67,6 +71,7 @@ export class LocalMissionRuntime {
     this.subscriptionRuntimePreflight = options.subscriptionRuntimePreflight ?? new CodexAppServerPreflight();
     this.subscriptionLiveWorkerAuthorization = options.subscriptionLiveWorkerAuthorization ?? new SubscriptionLiveWorkerAuthorization();
     this.subscriptionLiveWorkerRunner = options.subscriptionLiveWorkerRunner ?? new CodexSubscriptionLiveWorkerAdapter();
+    this.googleTrendsSource = options.googleTrendsSource ?? new FixedGoogleTrendsSource();
     this.liveWorkerSandboxRoot = resolve(options.dataRoot, "live-worker-pilot-sandbox");
   }
 
@@ -266,6 +271,44 @@ export class LocalMissionRuntime {
     }
   }
 
+  /** A user-triggered single public-source capture. No worker, login, or retry is involved. */
+  async captureGoogleTrends(missionId: string): Promise<MissionDto> {
+    const validMissionId = this.validateMissionId(missionId);
+    if (this.capturingGoogleTrendsMissionIds.has(validMissionId)) throw new Error("Google Trends capture is already in progress.");
+    this.capturingGoogleTrendsMissionIds.add(validMissionId);
+    try {
+      const mission = await this.reload(validMissionId);
+      if (mission.fixtureId !== googleTrendsPilotFixtureId) throw new Error("Google Trends capture is available only for the Google Trends pilot.");
+      const attemptId = this.runningGoogleTrendsAttemptId(replay(mission.events));
+      let capture: Awaited<ReturnType<GoogleTrendsSource["capture"]>> | undefined;
+      let failure: "UNAVAILABLE" | "TIMED_OUT" | "INVALID_RESPONSE" | "RESPONSE_TOO_LARGE" | undefined;
+      try { capture = await this.googleTrendsSource.capture(); }
+      catch (error) { failure = error instanceof GoogleTrendsSourceError ? error.outcome : "UNAVAILABLE"; }
+
+      const store = new JsonlEventStore(this.historyPath(validMissionId));
+      const events = await store.readAll();
+      const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {
+        const sequenceNumber = events.length + 1;
+        const event = { schemaVersion: 1 as const, sequenceNumber, missionId: validMissionId, eventId: `${validMissionId}-${sequenceNumber}`, timestamp: new Date().toISOString(), type, payload } as MissionEvent;
+        replay([...events, event]);
+        await store.append(event);
+        events.push(event);
+      };
+      if (capture) {
+        await append("GoogleTrendsEvidenceCaptured", { attemptId, ...capture, retrievedAt: new Date().toISOString() });
+        await append("FindingSubmitted", { attemptId, finding: `Google Trends US trending-now sample captured: ${capture.items.map((item) => `${item.query} (${item.traffic})`).join("; ")}.` });
+        await append("MissionCompleted", {});
+      } else {
+        await append("GoogleTrendsCaptureFailed", { attemptId, outcome: failure! });
+        await append("TaskFailedPermanent", { attemptId, reason: `Google Trends capture ended with ${failure}.` });
+        await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: `Google Trends capture ended with ${failure}.` });
+      }
+      return this.readDto(validMissionId, mission.fixtureId);
+    } finally {
+      this.capturingGoogleTrendsMissionIds.delete(validMissionId);
+    }
+  }
+
   private runningPilotAttemptId(state: ReturnType<typeof replay>): string {
     const runningPilotAttempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
       const task = state.tasks[attempt.taskId];
@@ -273,6 +316,15 @@ export class LocalMissionRuntime {
     });
     if (runningPilotAttempts.length !== 1) throw new Error("Exactly one running live-worker pilot attempt is required before confirmation.");
     return runningPilotAttempts[0]![0];
+  }
+
+  private runningGoogleTrendsAttemptId(state: ReturnType<typeof replay>): string {
+    const attempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
+      const task = state.tasks[attempt.taskId];
+      return attemptId.length > 0 && attempt.status === "RUNNING" && attempt.taskId === googleTrendsPilotTask.id && task?.status === "RUNNING";
+    });
+    if (attempts.length !== 1) throw new Error("Exactly one running Google Trends pilot attempt is required before capture.");
+    return attempts[0]![0];
   }
 
   private async ensureLiveWorkerSandbox(): Promise<string> {

@@ -72,6 +72,15 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
       sendJson(response, 200, localMissionDtoSchema.parse(await runtime.runSubscriptionWorker(missionId)), corsOrigin);
       return;
     }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/google-trends-capture")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/google-trends-capture".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      if (request.headers["content-length"] && Number(request.headers["content-length"]) > 0) throw httpError(400, "Google Trends capture requests must not include a body.");
+      sendJson(response, 200, localMissionDtoSchema.parse(await runtime.captureGoogleTrends(missionId)), corsOrigin);
+      return;
+    }
     if (request.method === "GET" && url.pathname.startsWith("/api/missions/")) {
       const encodedMissionId = url.pathname.slice("/api/missions/".length);
       if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
@@ -82,7 +91,7 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
     }
     throw httpError(request.method === "POST" || request.method === "GET" ? 404 : 405, "Unknown route.");
   } catch (error: unknown) {
-    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) || isConfirmationConflict(error) || isExecutionConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
+    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) || isConfirmationConflict(error) || isExecutionConflict(error) || isGoogleTrendsConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
     sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin));
   }
 }
@@ -129,6 +138,9 @@ function isConfirmationConflict(error: unknown): boolean {
 }
 function isExecutionConflict(error: unknown): boolean {
   return error instanceof Error && (error.message.includes("only for the live-worker pilot") || error.message.includes("declaration is required before execution") || error.message.includes("Authenticated subscription preflight is required before execution") || error.message.includes("Exactly one running live-worker pilot attempt") || error.message.includes("fresh local live-worker confirmation") || error.message.includes("confirmation has expired") || error.message.includes("confirmation is missing") || error.message.includes("execution is already in progress"));
+}
+function isGoogleTrendsConflict(error: unknown): boolean {
+  return error instanceof Error && (error.message.includes("available only for the Google Trends pilot") || error.message.includes("Exactly one running Google Trends pilot attempt") || error.message.includes("Google Trends capture is already"));
 }
 
 function loopbackOrigin(origin: string | undefined): string | undefined {

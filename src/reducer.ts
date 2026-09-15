@@ -1,4 +1,4 @@
-import type { AuthorizationReason, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
+import type { AuthorizationReason, GoogleTrendsCaptureFailure, GoogleTrendsEvidence, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -52,6 +52,8 @@ export interface MissionState {
   subscriptionRuntimeDeclaration?: SubscriptionRuntimeDeclaration;
   subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
   subscriptionWorkerExecutionOutcomes: Record<string, SubscriptionWorkerExecutionOutcome>;
+  googleTrendsEvidence: Record<string, GoogleTrendsEvidence>;
+  googleTrendsCaptureFailures: Record<string, GoogleTrendsCaptureFailure>;
   authorizations: Record<string, AuthorizationRecord>;
   gaps: Record<string, GapRecord>;
   policyVersions: { tribunal: string } | null;
@@ -74,6 +76,8 @@ export const initialMissionState = (): MissionState => ({
   attempts: {},
   workerExecutionProvenance: {},
   subscriptionWorkerExecutionOutcomes: {},
+  googleTrendsEvidence: {},
+  googleTrendsCaptureFailures: {},
   authorizations: {},
   gaps: {},
   policyVersions: null,
@@ -141,6 +145,20 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         throw new Error("Subscription worker outcome was already recorded for this attempt.");
       }
       return { ...state, subscriptionWorkerExecutionOutcomes: { ...state.subscriptionWorkerExecutionOutcomes, [event.payload.attemptId]: event.payload } };
+    }
+    case "GoogleTrendsEvidenceCaptured": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
+      if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
+      return { ...state, googleTrendsEvidence: { ...state.googleTrendsEvidence, [event.payload.attemptId]: event.payload } };
+    }
+    case "GoogleTrendsCaptureFailed": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
+      if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
+      return { ...state, googleTrendsCaptureFailures: { ...state.googleTrendsCaptureFailures, [event.payload.attemptId]: event.payload } };
     }
     case "AuditCompleted":
       if (state.status !== "RUNNING" || Object.hasOwn(state.auditResults, event.payload.auditId)) throw new Error("Audit result cannot be recorded.");

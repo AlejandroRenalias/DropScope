@@ -86,6 +86,7 @@ export type FixtureCandidateEvaluation = z.infer<typeof fixtureCandidateEvaluati
 export type Fixture = z.infer<typeof fixtureSchema>;
 
 export const liveWorkerPilotFixtureId = "live-worker-pilot";
+export const googleTrendsPilotFixtureId = "google-trends-pilot";
 export const liveWorkerPilotTask = {
   id: "pilot-evidence",
   objective: "Analyze the supplied local pilot fixture only.",
@@ -95,6 +96,16 @@ export const liveWorkerPilotTask = {
   researchKey: "pilot-evidence",
   dependencies: [],
   workerRole: "EVIDENCE_RESEARCHER",
+} as const satisfies FixtureTask;
+export const googleTrendsPilotTask = {
+  id: "google-trends-us-now",
+  objective: "Capture the current US Google Trends trending-now sample.",
+  cost: 10,
+  durationMs: 1,
+  workClass: "MANDATORY",
+  researchKey: "google-trends-us-trending-now",
+  dependencies: [],
+  workerRole: "SOURCE_RESEARCHER",
 } as const satisfies FixtureTask;
 
 const defaultRiskAttributes: z.infer<typeof riskGateInputSchema>["attributes"] = { intendedUser: "GENERAL", foodOrIngestion: "NO", bodyContact: "NONE", healthPositioning: "NONE", electricalPower: "NONE", thermalOrFireHazard: "NONE", physicalHazard: "NONE", protectiveFunction: "NONE", chemicalExposure: "NONE_DECLARED", regulatedCategorySignal: "NONE", brandOrCreativeSimilaritySignal: "NONE_OBSERVED", evidenceCompleteness: "SUFFICIENT" };
@@ -175,6 +186,15 @@ const definitions: readonly Fixture[] = [
       { candidateId: "pilot-workspace", riskInput: riskInput("pilot-workspace"), customerProblemEvidenceScore: 80, evidenceQualityScore: 80, trendDurabilityScore: 70, advertisingSaturationScore: 35, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
     ],
     tasks: [liveWorkerPilotTask],
+  },
+  {
+    fixtureId: googleTrendsPilotFixtureId,
+    seed: 1,
+    budget: 20,
+    candidateEvaluations: [
+      { candidateId: "trends-pilot", riskInput: riskInput("trends-pilot"), customerProblemEvidenceScore: 0, evidenceQualityScore: 0, trendDurabilityScore: 0, advertisingSaturationScore: 0, operationalRiskScore: 0, failureRiskScore: 0, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [googleTrendsPilotTask],
   },
 ];
 

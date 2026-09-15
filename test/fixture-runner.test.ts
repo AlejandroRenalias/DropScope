@@ -129,4 +129,10 @@ describe("fixture-driven simulated missions", () => {
     expect(result.events.some((event) => event.type === "WorkerExecutionRecorded" || event.type === "SubscriptionWorkerExecutionOutcomeRecorded")).toBe(false);
     expect(result.events.some((event) => event.type === "MissionCompleted" || event.type === "MissionTerminated")).toBe(false);
   });
+
+  it("keeps the Google Trends pilot running without any automatic source request", async () => {
+    const result = await runFixtureMission({ fixtureId: "google-trends-pilot", missionId: "google-trends-pilot-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+    expect(result.state).toMatchObject({ status: "RUNNING", attempts: { "google-trends-us-now:a1": { status: "RUNNING" } } });
+    expect(result.events.map((event) => event.type)).toEqual(["MissionCreated", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+  });
 });

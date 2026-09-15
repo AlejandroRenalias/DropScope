@@ -70,6 +70,20 @@ export const subscriptionWorkerExecutionOutcomeSchema = z.object({
   elapsedMs: z.number().int().nonnegative().max(90_000),
 }).strict();
 export type SubscriptionWorkerExecutionOutcome = z.infer<typeof subscriptionWorkerExecutionOutcomeSchema>;
+export const googleTrendsEvidenceSchema = z.object({
+  attemptId: z.string().min(1),
+  sourceUrl: z.literal("https://trends.google.com/trending/rss?geo=US"),
+  geo: z.literal("US"),
+  attribution: z.literal("Google Trends"),
+  retrievedAt: z.string().datetime(),
+  items: z.array(z.object({ query: z.string().min(1).max(160), traffic: z.string().min(1).max(80) }).strict()).min(1).max(10),
+}).strict();
+export type GoogleTrendsEvidence = z.infer<typeof googleTrendsEvidenceSchema>;
+export const googleTrendsCaptureFailureSchema = z.object({
+  attemptId: z.string().min(1),
+  outcome: z.enum(["UNAVAILABLE", "TIMED_OUT", "INVALID_RESPONSE", "RESPONSE_TOO_LARGE"]),
+}).strict();
+export type GoogleTrendsCaptureFailure = z.infer<typeof googleTrendsCaptureFailureSchema>;
 const missionCreatedPayloadSchema = z.union([
   z.object({
     totalBudget: z.number().int().positive(),
@@ -89,6 +103,8 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({ type: z.literal("SubscriptionRuntimeDeclared"), payload: subscriptionRuntimeDeclarationSchema }),
   eventBase.extend({ type: z.literal("SubscriptionRuntimePreflightCompleted"), payload: subscriptionRuntimePreflightSchema }),
   eventBase.extend({ type: z.literal("SubscriptionWorkerExecutionOutcomeRecorded"), payload: subscriptionWorkerExecutionOutcomeSchema }),
+  eventBase.extend({ type: z.literal("GoogleTrendsEvidenceCaptured"), payload: googleTrendsEvidenceSchema }),
+  eventBase.extend({ type: z.literal("GoogleTrendsCaptureFailed"), payload: googleTrendsCaptureFailureSchema }),
   eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
   eventBase.extend({ type: z.literal("AuditCompleted"), payload: evidenceAuditResultSchema }),
   eventBase.extend({ type: z.literal("BlindReviewCompleted"), payload: blindReviewResultSchema }),

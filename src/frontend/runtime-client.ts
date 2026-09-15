@@ -73,3 +73,8 @@ export function confirmSubscriptionWorker(missionId: string): Promise<Subscripti
 export function runSubscriptionWorker(missionId: string): Promise<LocalMissionDto> {
   return request(`/api/missions/${encodeURIComponent(missionId)}/subscription-run`, { method: "POST" });
 }
+
+/** Captures the fixed public Google Trends US RSS source once for the selected pilot. */
+export function captureGoogleTrends(missionId: string): Promise<LocalMissionDto> {
+  return request(`/api/missions/${encodeURIComponent(missionId)}/google-trends-capture`, { method: "POST" });
+}

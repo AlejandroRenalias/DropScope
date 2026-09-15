@@ -44,6 +44,30 @@ describe("LocalMissionRuntime", () => {
     expect(await runtime.reload("live-worker-pilot-mission")).toEqual(launched);
   });
 
+  it("captures the fixed Google Trends pilot only through its injected source and persists replayable evidence", async () => {
+    const capture = vi.fn(async () => ({ sourceUrl: "https://trends.google.com/trending/rss?geo=US" as const, geo: "US" as const, attribution: "Google Trends" as const, items: [{ query: "Desk lamps", traffic: "20K+" }] }));
+    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")), createMissionId: () => "google-trends-mission", googleTrendsSource: { capture } });
+    const launched = await runtime.launch("google-trends-pilot");
+
+    expect(launched.events.map((event) => event.type)).toEqual(["MissionCreated", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+    const completed = await runtime.captureGoogleTrends(launched.missionId);
+
+    expect(capture).toHaveBeenCalledOnce();
+    expect(completed.events.slice(-3).map((event) => event.type)).toEqual(["GoogleTrendsEvidenceCaptured", "FindingSubmitted", "MissionCompleted"]);
+    expect(completed.events.at(-3)).toMatchObject({ payload: { sourceUrl: "https://trends.google.com/trending/rss?geo=US", geo: "US", attribution: "Google Trends", items: [{ query: "Desk lamps", traffic: "20K+" }] } });
+    expect(await runtime.reload(launched.missionId)).toEqual(completed);
+    await expect(runtime.captureGoogleTrends(launched.missionId)).rejects.toThrow("Exactly one running Google Trends");
+  });
+
+  it("persists a sanitized terminal Google Trends failure without a retry", async () => {
+    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")), createMissionId: () => "google-trends-failure", googleTrendsSource: { capture: async () => { throw new Error("raw upstream response must not persist"); } } });
+    await runtime.launch("google-trends-pilot");
+    const failed = await runtime.captureGoogleTrends("google-trends-failure");
+    expect(failed.events.slice(-3).map((event) => event.type)).toEqual(["GoogleTrendsCaptureFailed", "TaskFailedPermanent", "MissionTerminated"]);
+    expect(failed.events.at(-3)).toMatchObject({ payload: { outcome: "UNAVAILABLE" } });
+    expect(JSON.stringify(failed)).not.toContain("raw upstream");
+  });
+
   it("persists one user-triggered sanitized subscription preflight without starting a worker", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "dropscope-runtime-"));
     const check = vi.fn(async () => ({ accessStatus: "CHATGPT_AUTHENTICATED" as const, diagnosticCode: "NOT_APPLICABLE" as const }));

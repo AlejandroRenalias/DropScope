@@ -155,6 +155,10 @@ test("imports one selected Google Trends comparison CSV as replayed unscored con
   await agentDesk.getByLabel("Choose Google Trends comparison CSV").setInputFiles({ name: "google-trends-comparison.csv", mimeType: "text/csv", buffer: Buffer.from(comparisonCsv) });
   await expect(page.getByRole("status")).toContainText("Google Trends comparison context was imported locally. The raw CSV was not stored.");
   await expect(agentDesk).toContainText("Imported week timeline: 2 periods · US · Google Trends");
+  await expect(agentDesk.getByRole("figure", { name: /Google Trends comparison timeline/ })).toBeVisible();
+  await expect(agentDesk).toContainText("desk cable organizer");
+  await expect(agentDesk).toContainText("under-desk cable tray");
+  await expect(agentDesk).toContainText("cable management box");
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 8 / 8");
@@ -164,6 +168,8 @@ test("imports one selected Google Trends comparison CSV as replayed unscored con
   await expect(finalReport).toContainText("Manual comparison context · not scored");
   await expect(finalReport).toContainText("It does not change any score, ranking, gate, or recommendation");
   await expect(finalReport).toContainText("desk cable organizer · 2 normalized points");
+  await expect(finalReport.getByRole("figure", { name: /Google Trends comparison timeline/ })).toBeVisible();
+  await expect(finalReport).toContainText("2 week periods · context only · not scored");
   await page.reload();
   await expect(page.getByRole("status")).toContainText("Reloaded the browser-saved local mission");
   await page.getByRole("button", { name: "Agent Desk" }).click();

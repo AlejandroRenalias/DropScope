@@ -1,4 +1,4 @@
-import type { AuthorizationReason, GoogleTrendsCaptureFailure, GoogleTrendsEvidence, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
+import type { AuthorizationReason, GoogleTrendsCaptureFailure, GoogleTrendsComparisonEvidence, GoogleTrendsEvidence, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -53,6 +53,7 @@ export interface MissionState {
   subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
   subscriptionWorkerExecutionOutcomes: Record<string, SubscriptionWorkerExecutionOutcome>;
   googleTrendsEvidence: Record<string, GoogleTrendsEvidence>;
+  googleTrendsComparisonEvidence: Record<string, GoogleTrendsComparisonEvidence>;
   googleTrendsCaptureFailures: Record<string, GoogleTrendsCaptureFailure>;
   authorizations: Record<string, AuthorizationRecord>;
   gaps: Record<string, GapRecord>;
@@ -77,6 +78,7 @@ export const initialMissionState = (): MissionState => ({
   workerExecutionProvenance: {},
   subscriptionWorkerExecutionOutcomes: {},
   googleTrendsEvidence: {},
+  googleTrendsComparisonEvidence: {},
   googleTrendsCaptureFailures: {},
   authorizations: {},
   gaps: {},
@@ -152,6 +154,13 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-now" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
       if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
       return { ...state, googleTrendsEvidence: { ...state.googleTrendsEvidence, [event.payload.attemptId]: event.payload } };
+    }
+    case "GoogleTrendsComparisonImported": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-comparison" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-desk-organization-comparison") throw new Error("Only the running Google Trends comparison pilot can record imported evidence.");
+      if (Object.hasOwn(state.googleTrendsComparisonEvidence, event.payload.attemptId)) throw new Error("Google Trends comparison import was already recorded for this attempt.");
+      return { ...state, googleTrendsComparisonEvidence: { ...state.googleTrendsComparisonEvidence, [event.payload.attemptId]: event.payload } };
     }
     case "GoogleTrendsCaptureFailed": {
       const attempt = state.attempts[event.payload.attemptId];

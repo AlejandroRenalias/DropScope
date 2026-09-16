@@ -87,6 +87,7 @@ export type Fixture = z.infer<typeof fixtureSchema>;
 
 export const liveWorkerPilotFixtureId = "live-worker-pilot";
 export const googleTrendsPilotFixtureId = "google-trends-pilot";
+export const googleTrendsComparisonPilotFixtureId = "google-trends-comparison-pilot";
 export const liveWorkerPilotTask = {
   id: "pilot-evidence",
   objective: "Analyze the supplied local pilot fixture only.",
@@ -104,6 +105,16 @@ export const googleTrendsPilotTask = {
   durationMs: 1,
   workClass: "MANDATORY",
   researchKey: "google-trends-us-trending-now",
+  dependencies: [],
+  workerRole: "SOURCE_RESEARCHER",
+} as const satisfies FixtureTask;
+export const googleTrendsComparisonPilotTask = {
+  id: "google-trends-us-comparison",
+  objective: "Import the approved US Google Trends desk-organization comparison.",
+  cost: 10,
+  durationMs: 1,
+  workClass: "MANDATORY",
+  researchKey: "google-trends-us-desk-organization-comparison",
   dependencies: [],
   workerRole: "SOURCE_RESEARCHER",
 } as const satisfies FixtureTask;
@@ -195,6 +206,15 @@ const definitions: readonly Fixture[] = [
       { candidateId: "trends-pilot", riskInput: riskInput("trends-pilot"), customerProblemEvidenceScore: 0, evidenceQualityScore: 0, trendDurabilityScore: 0, advertisingSaturationScore: 0, operationalRiskScore: 0, failureRiskScore: 0, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
     ],
     tasks: [googleTrendsPilotTask],
+  },
+  {
+    fixtureId: googleTrendsComparisonPilotFixtureId,
+    seed: 1,
+    budget: 20,
+    candidateEvaluations: [
+      { candidateId: "desk-organization-comparison", riskInput: riskInput("desk-organization-comparison"), customerProblemEvidenceScore: 0, evidenceQualityScore: 0, trendDurabilityScore: 0, advertisingSaturationScore: 0, operationalRiskScore: 0, failureRiskScore: 0, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [googleTrendsComparisonPilotTask],
   },
 ];
 

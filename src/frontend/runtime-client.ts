@@ -78,3 +78,12 @@ export function runSubscriptionWorker(missionId: string): Promise<LocalMissionDt
 export function captureGoogleTrends(missionId: string): Promise<LocalMissionDto> {
   return request(`/api/missions/${encodeURIComponent(missionId)}/google-trends-capture`, { method: "POST" });
 }
+
+/** Imports one user-selected CSV into the fixed local comparison pilot. */
+export function importGoogleTrendsComparison(missionId: string, csv: string): Promise<LocalMissionDto> {
+  return request(`/api/missions/${encodeURIComponent(missionId)}/google-trends-comparison-import`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ csv }),
+  });
+}

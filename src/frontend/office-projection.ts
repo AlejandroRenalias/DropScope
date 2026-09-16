@@ -1,4 +1,4 @@
-import type { GoogleTrendsEvidence, MissionEvent, SubscriptionWorkerExecutionOutcome } from "../contracts.js";
+import type { GoogleTrendsComparisonEvidence, GoogleTrendsEvidence, MissionEvent, SubscriptionWorkerExecutionOutcome } from "../contracts.js";
 import { replay, type MissionStatus, type TaskStatus } from "../reducer.js";
 import { evaluateTribunal, type TribunalResult } from "../tribunal-policy.js";
 import type { BlindReviewResult } from "../research-domain.js";
@@ -14,11 +14,11 @@ export interface AgentDeskRecord { id: string; attemptId: string; role: string; 
 export interface MissionUsageSummary { dryRunCount: number; unrecordedAttemptCount: number; recordedDryRunProviderUsageStatus: "NOT_APPLICABLE"; total: number; reserved: number; committed: number; spent: number; available: number; }
 export interface SubscriptionRuntimeProtocolFake { approvalCategories: readonly ["command", "file change", "permissions"]; terminalOutcomes: readonly ["completed", "timed out", "unavailable", "approval declined", "interrupted", "invalid result", "turn failed"]; }
 export interface SubscriptionRuntimeProjection { execution: "DISABLED"; access: "LOCAL_SUBSCRIPTION_NOT_CHECKED" | "LOCAL_CHATGPT_AUTHENTICATED" | "LOCAL_AUTHENTICATION_REQUIRED" | "LOCAL_UNSUPPORTED_AUTH_MODE" | "LOCAL_RUNTIME_UNAVAILABLE"; diagnosticCode: "NOT_RECORDED" | "NOT_APPLICABLE" | "APP_SERVER_START_FAILED" | "INITIALIZATION_FAILED" | "INITIALIZATION_TIMED_OUT" | "APP_SERVER_EXITED_DURING_INITIALIZATION" | "INITIALIZATION_REJECTED" | "INITIALIZATION_RESPONSE_INVALID" | "ACCOUNT_READ_FAILED" | "ACCOUNT_READ_TIMED_OUT" | "ACCOUNT_RESPONSE_INVALID"; usage: "SUBSCRIPTION_NOT_ITEMIZED"; firstLiveWorker: FirstLiveSubscriptionWorkerGuard; protocolFake: SubscriptionRuntimeProtocolFake; lastWorkerOutcome?: SubscriptionWorkerExecutionOutcome; }
-export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSummary: MissionUsageSummary | null; subscriptionRuntime: SubscriptionRuntimeProjection | null; googleTrendsEvidence: GoogleTrendsEvidence | null; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
+export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSummary: MissionUsageSummary | null; subscriptionRuntime: SubscriptionRuntimeProjection | null; googleTrendsEvidence: GoogleTrendsEvidence | null; googleTrendsComparisonEvidence: GoogleTrendsComparisonEvidence | null; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
 export interface ReplayEventRecord { sequence: number; type: string; category: ReplayEventCategory; detail: string; }
-export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; externalSignalContext: GoogleTrendsEvidence | null; }
+export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; externalSignalContext: GoogleTrendsEvidence | null; comparisonSignalContext: GoogleTrendsComparisonEvidence | null; }
 const missionId = "crosscurrent-workspace-market";
 const sourceLabel = "Static demo history replayed through the existing MissionState reducer. It is not live engine data.";
 const timestamp = (n: number) => `2026-01-01T00:00:${String(n).padStart(2, "0")}.000Z`;
@@ -67,7 +67,7 @@ for (const scenario of Object.keys(officeHistories) as OfficeScenario[]) officeH
 function taskState(status: TaskStatus): AgentState { if (status === "RUNNING") return "WORKING"; if (status === "COMPLETED") return "COMPLETED"; if (status === "INTERRUPTED" || status === "FAILED_PERMANENT" || status === "FAILED_TRANSIENT") return "BLOCKED"; return "WAITING"; }
 function roleLabel(role: string): string { return role.toLowerCase().split("_").map((word) => word[0]!.toUpperCase() + word.slice(1)).join(" "); }
 function workstationId(role: string): string { return role === "MARKET_RESEARCHER" ? "commander" : role === "EVIDENCE_RESEARCHER" ? "evidence" : role === "OPERATIONS_RESEARCHER" ? "operations" : role === "RISK_RESEARCHER" ? "risk" : "evidence"; }
-function eventDetail(item: MissionEvent): string { if (item.type === "GoogleTrendsEvidenceCaptured") return `${item.payload.attribution} ${item.payload.geo} source captured at ${item.payload.retrievedAt} from ${item.payload.sourceUrl}.`; const payload = item.payload as Record<string, unknown>; const detail = payload.reason ?? payload.finding ?? payload.objective ?? payload.status; return typeof detail === "string" ? detail : `${item.type} recorded in replay.`; }
+function eventDetail(item: MissionEvent): string { if (item.type === "GoogleTrendsEvidenceCaptured") return `${item.payload.attribution} ${item.payload.geo} source captured at ${item.payload.retrievedAt} from ${item.payload.sourceUrl}.`; if (item.type === "GoogleTrendsComparisonImported") return `${item.payload.attribution} ${item.payload.geo} manual comparison imported at ${item.payload.importedAt}: ${item.payload.series.map((series) => series.term).join(" · ")}.`; const payload = item.payload as Record<string, unknown>; const detail = payload.reason ?? payload.finding ?? payload.objective ?? payload.status; return typeof detail === "string" ? detail : `${item.type} recorded in replay.`; }
 function eventCategory(type: MissionEvent["type"]): ReplayEventCategory {
   if (type.includes("Budget")) return "budget";
   if (type.includes("Review") || type.includes("Tribunal") || type.includes("Divergence") || type.includes("Revision") || type.includes("Reaudit")) return "review";
@@ -113,7 +113,8 @@ export function projectOffice(events: MissionEvent[]): OfficeProjection {
   const diagnosticCode = preflightDiagnosticCode ?? "NOT_RECORDED" as const;
   const subscriptionRuntime = state.subscriptionRuntimeDeclaration ? { execution: "DISABLED" as const, access, diagnosticCode, usage: "SUBSCRIPTION_NOT_ITEMIZED" as const, firstLiveWorker: firstLiveSubscriptionWorkerGuard, protocolFake: { approvalCategories: ["command", "file change", "permissions"] as const, terminalOutcomes: ["completed", "timed out", "unavailable", "approval declined", "interrupted", "invalid result", "turn failed"] as const }, ...(lastSubscriptionWorkerOutcome ? { lastWorkerOutcome: lastSubscriptionWorkerOutcome.payload } : {}) } : null;
   const googleTrendsEvidence = Object.values(state.googleTrendsEvidence).at(-1) ?? null;
-  const decisionViews: DecisionViews = { agentDesk: agents, missionUsageSummary, subscriptionRuntime, googleTrendsEvidence, tribunalRoom: tribunalEvent ? { result: state.tribunalResults[tribunalEvent.payload.tribunalId]!, recordedAtSequence: tribunalEvent.sequenceNumber } : null, reviewOffice: reviewEvent ? { result: state.blindReviewResults[reviewEvent.payload.reviewId]!, recordedAtSequence: reviewEvent.sequenceNumber, blockingFeedback, divergences, revisionResponse } : null };
+  const googleTrendsComparisonEvidence = Object.values(state.googleTrendsComparisonEvidence).at(-1) ?? null;
+  const decisionViews: DecisionViews = { agentDesk: agents, missionUsageSummary, subscriptionRuntime, googleTrendsEvidence, googleTrendsComparisonEvidence, tribunalRoom: tribunalEvent ? { result: state.tribunalResults[tribunalEvent.payload.tribunalId]!, recordedAtSequence: tribunalEvent.sequenceNumber } : null, reviewOffice: reviewEvent ? { result: state.blindReviewResults[reviewEvent.payload.reviewId]!, recordedAtSequence: reviewEvent.sequenceNumber, blockingFeedback, divergences, revisionResponse } : null };
   return { sourceLabel, mission: { name: missionName(state.missionId), phase: phaseLabel(state.status), status }, ledger: { ...state.budget }, agents, tasks, events: events.slice(-3).map((item) => ({ sequence: item.sequenceNumber, type: item.type, detail: eventDetail(item) })), decisionViews };
 }
 
@@ -138,6 +139,7 @@ export function projectFinalReport(events?: MissionEvent[]): FinalReportProjecti
       : "Insufficient evidence: no candidate cleared the recorded gates.";
   const representativeDecision = riskDecisions.find((decision) => decision.candidateId === representative.candidateId);
   const externalSignalContext = events?.length ? projectOffice(events).decisionViews.googleTrendsEvidence : null;
+  const comparisonSignalContext = events?.length ? projectOffice(events).decisionViews.googleTrendsComparisonEvidence : null;
   return {
     sourceLabel: "Static fixture crosscurrent-workspace-market evaluated by browser-safe pure helpers. This is not live market data.",
     fixtureId: fixture.fixtureId,
@@ -165,5 +167,6 @@ export function projectFinalReport(events?: MissionEvent[]): FinalReportProjecti
     },
     nextStep,
     externalSignalContext,
+    comparisonSignalContext,
   };
 }

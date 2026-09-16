@@ -2,8 +2,10 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { AddressInfo } from "node:net";
 import { localMissionDtoSchema, LocalMissionRuntime, MissionLaunchIncompleteError, subscriptionConfirmationDtoSchema } from "./runtime/local-mission-runtime.js";
 import { z } from "zod";
+import { GoogleTrendsComparisonImportError } from "./google-trends-comparison-import.js";
 
 const launchRequestSchema = z.object({ fixtureId: z.string().min(1) }).strict();
+const googleTrendsComparisonImportRequestSchema = z.object({ csv: z.string().min(1).max(32 * 1024) }).strict();
 const MAX_BODY_BYTES = 64 * 1024;
 
 export interface LocalRuntimeServerOptions {
@@ -81,6 +83,15 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
       sendJson(response, 200, localMissionDtoSchema.parse(await runtime.captureGoogleTrends(missionId)), corsOrigin);
       return;
     }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/google-trends-comparison-import")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/google-trends-comparison-import".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      const body = googleTrendsComparisonImportRequestSchema.parse(JSON.parse(await readBody(request)));
+      sendJson(response, 200, localMissionDtoSchema.parse(await runtime.importGoogleTrendsComparison(missionId, body.csv)), corsOrigin);
+      return;
+    }
     if (request.method === "GET" && url.pathname.startsWith("/api/missions/")) {
       const encodedMissionId = url.pathname.slice("/api/missions/".length);
       if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
@@ -125,7 +136,7 @@ function sendJson(response: ServerResponse, status: number, body: unknown, corsO
 class HttpError extends Error { constructor(readonly status: number, message: string) { super(message); } }
 function httpError(status: number, message: string): HttpError { return new HttpError(status, message); }
 function isClientError(error: unknown): boolean {
-  return error instanceof z.ZodError || error instanceof SyntaxError || (error instanceof Error && (/Unknown fixture ID|Mission IDs must|already exists|history not found|belongs to a different mission/.test(error.message)));
+  return error instanceof z.ZodError || error instanceof SyntaxError || error instanceof GoogleTrendsComparisonImportError || (error instanceof Error && (/Unknown fixture ID|Mission IDs must|already exists|history not found|belongs to a different mission/.test(error.message)));
 }
 function isMissingHistory(error: unknown): boolean {
   return error instanceof Error && error.message.includes("Mission history not found");
@@ -140,7 +151,7 @@ function isExecutionConflict(error: unknown): boolean {
   return error instanceof Error && (error.message.includes("only for the live-worker pilot") || error.message.includes("declaration is required before execution") || error.message.includes("Authenticated subscription preflight is required before execution") || error.message.includes("Exactly one running live-worker pilot attempt") || error.message.includes("fresh local live-worker confirmation") || error.message.includes("confirmation has expired") || error.message.includes("confirmation is missing") || error.message.includes("execution is already in progress"));
 }
 function isGoogleTrendsConflict(error: unknown): boolean {
-  return error instanceof Error && (error.message.includes("available only for the Google Trends pilot") || error.message.includes("Exactly one running Google Trends pilot attempt") || error.message.includes("Google Trends capture is already"));
+  return error instanceof Error && (error.message.includes("available only for the Google Trends pilot") || error.message.includes("Exactly one running Google Trends pilot attempt") || error.message.includes("Google Trends capture is already") || error.message.includes("available only for the Google Trends comparison pilot") || error.message.includes("Exactly one resumable Google Trends comparison pilot attempt") || error.message.includes("Google Trends comparison import is already"));
 }
 
 function loopbackOrigin(origin: string | undefined): string | undefined {

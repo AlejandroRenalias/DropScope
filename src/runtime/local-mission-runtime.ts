@@ -4,7 +4,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
 
 import { JsonlEventStore } from "../event-store.js";
-import { googleTrendsPilotFixtureId, googleTrendsPilotTask, liveWorkerPilotFixtureId, liveWorkerPilotTask, loadFixture } from "../fixture-model.js";
+import { googleTrendsComparisonPilotFixtureId, googleTrendsComparisonPilotTask, googleTrendsPilotFixtureId, googleTrendsPilotTask, liveWorkerPilotFixtureId, liveWorkerPilotTask, loadFixture } from "../fixture-model.js";
 import { runFixtureMission } from "../fixture-runner.js";
 import { missionEventSchema, type MissionEvent } from "../contracts.js";
 import { replay } from "../reducer.js";
@@ -13,6 +13,7 @@ import { SubscriptionLiveWorkerAuthorization, type SubscriptionLiveWorkerConfirm
 import { CodexSubscriptionLiveWorkerAdapter, SubscriptionLiveWorkerError, type SubscriptionLiveWorkerRunner } from "../subscription-live-worker-runner.js";
 import { WorkerResultError, WorkerResultGate } from "../worker-adapter.js";
 import { FixedGoogleTrendsSource, GoogleTrendsSourceError, type GoogleTrendsCapture, type GoogleTrendsSource } from "../google-trends-source.js";
+import { parseGoogleTrendsComparisonCsv } from "../google-trends-comparison-import.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const missionIdSchema = fixtureIdSchema.max(120);
@@ -63,6 +64,7 @@ export class LocalMissionRuntime {
   private readonly preflightingMissionIds = new Set<string>();
   private readonly executingMissionIds = new Set<string>();
   private readonly capturingGoogleTrendsMissionIds = new Set<string>();
+  private readonly importingGoogleTrendsComparisonMissionIds = new Set<string>();
   private readonly subscriptionWorkerCapabilities = new Map<string, string>();
 
   constructor(options: LocalMissionRuntimeOptions) {
@@ -315,6 +317,39 @@ export class LocalMissionRuntime {
     }
   }
 
+  /** A user-selected local CSV import. This boundary never contacts Google or persists the raw file. */
+  async importGoogleTrendsComparison(missionId: string, csv: string): Promise<MissionDto> {
+    const validMissionId = this.validateMissionId(missionId);
+    if (this.importingGoogleTrendsComparisonMissionIds.has(validMissionId)) throw new Error("Google Trends comparison import is already in progress.");
+    this.importingGoogleTrendsComparisonMissionIds.add(validMissionId);
+    try {
+      const mission = await this.reload(validMissionId);
+      if (mission.fixtureId !== googleTrendsComparisonPilotFixtureId) throw new Error("Google Trends comparison import is available only for the Google Trends comparison pilot.");
+      const state = replay(mission.events);
+      const attemptId = this.googleTrendsComparisonPilotAttemptId(state);
+      const persistedEvidence = state.googleTrendsComparisonEvidence[attemptId];
+      const store = new JsonlEventStore(this.historyPath(validMissionId));
+      const events = await store.readAll();
+      const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {
+        const sequenceNumber = events.length + 1;
+        const event = { schemaVersion: 1 as const, sequenceNumber, missionId: validMissionId, eventId: `${validMissionId}-${sequenceNumber}`, timestamp: new Date().toISOString(), type, payload } as MissionEvent;
+        replay([...events, event]);
+        await store.append(event);
+        events.push(event);
+      };
+      if (!persistedEvidence) {
+        const comparison = parseGoogleTrendsComparisonCsv(csv);
+        await append("GoogleTrendsComparisonImported", { attemptId, ...comparison, importedAt: new Date().toISOString() });
+      }
+      const afterImport = replay(events);
+      if (afterImport.attempts[attemptId]?.status === "RUNNING") await append("FindingSubmitted", { attemptId, finding: "Google Trends US comparison import recorded as unscored context." });
+      if (replay(events).status === "RUNNING") await append("MissionCompleted", {});
+      return this.readDto(validMissionId, mission.fixtureId);
+    } finally {
+      this.importingGoogleTrendsComparisonMissionIds.delete(validMissionId);
+    }
+  }
+
   private runningPilotAttemptId(state: ReturnType<typeof replay>): string {
     const runningPilotAttempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
       const task = state.tasks[attempt.taskId];
@@ -344,6 +379,29 @@ export class LocalMissionRuntime {
         && authorization.dependencies.length === 0;
     });
     if (attempts.length !== 1 || state.status !== "RUNNING") throw new Error("Exactly one resumable Google Trends pilot attempt is required before capture.");
+    return attempts[0]![0];
+  }
+
+  private googleTrendsComparisonPilotAttemptId(state: ReturnType<typeof replay>): string {
+    const attempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
+      const task = state.tasks[attempt.taskId];
+      const authorization = state.authorizations[attempt.taskId];
+      return attemptId.length > 0
+        && ["RUNNING", "COMPLETED"].includes(attempt.status)
+        && attempt.taskId === googleTrendsComparisonPilotTask.id
+        && attempt.workerRole === googleTrendsComparisonPilotTask.workerRole
+        && task?.status === attempt.status
+        && task.objective === googleTrendsComparisonPilotTask.objective
+        && task.cost === googleTrendsComparisonPilotTask.cost
+        && task.workClass === googleTrendsComparisonPilotTask.workClass
+        && task.researchKey === googleTrendsComparisonPilotTask.researchKey
+        && authorization?.objective === googleTrendsComparisonPilotTask.objective
+        && authorization.cost === googleTrendsComparisonPilotTask.cost
+        && authorization.workClass === googleTrendsComparisonPilotTask.workClass
+        && authorization.researchKey === googleTrendsComparisonPilotTask.researchKey
+        && authorization.dependencies.length === 0;
+    });
+    if (attempts.length !== 1 || state.status !== "RUNNING") throw new Error("Exactly one resumable Google Trends comparison pilot attempt is required before import.");
     return attempts[0]![0];
   }
 

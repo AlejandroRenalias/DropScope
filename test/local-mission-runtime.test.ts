@@ -60,6 +60,21 @@ describe("LocalMissionRuntime", () => {
     await expect(runtime.captureGoogleTrends(launched.missionId)).rejects.toThrow("Exactly one resumable Google Trends");
   });
 
+  it("imports one explicit fixed comparison CSV without retaining its raw text or changing the scheduler lifecycle", async () => {
+    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")), createMissionId: () => "google-trends-comparison-mission" });
+    const csv = "Category: All categories\nWeek,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,12,24,36\n2026-01-11,18,30,42";
+    const launched = await runtime.launch("google-trends-comparison-pilot");
+
+    const completed = await runtime.importGoogleTrendsComparison(launched.missionId, csv);
+
+    expect(completed.events.slice(-3).map((event) => event.type)).toEqual(["GoogleTrendsComparisonImported", "FindingSubmitted", "MissionCompleted"]);
+    expect(completed.events.at(-3)).toMatchObject({ payload: { geo: "US", searchType: "WEB_SEARCH", timeframe: "PAST_12_MONTHS", granularity: "WEEK", periods: ["2026-01-04", "2026-01-11"], series: [{ term: "desk cable organizer", values: [12, 18] }, { term: "under-desk cable tray", values: [24, 30] }, { term: "cable management box", values: [36, 42] }] } });
+    expect(JSON.stringify(completed)).not.toContain("Category: All categories");
+    expect(JSON.stringify(completed)).not.toContain("average");
+    expect(await runtime.reload(launched.missionId)).toEqual(completed);
+    await expect(runtime.importGoogleTrendsComparison(launched.missionId, csv)).rejects.toThrow("Exactly one resumable Google Trends comparison");
+  });
+
   it("persists a sanitized terminal Google Trends failure without a retry", async () => {
     const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")), createMissionId: () => "google-trends-failure", googleTrendsSource: { capture: async () => { throw new Error("raw upstream response must not persist"); } } });
     await runtime.launch("google-trends-pilot");

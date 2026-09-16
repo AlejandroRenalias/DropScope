@@ -79,6 +79,42 @@ export const googleTrendsEvidenceSchema = z.object({
   items: z.array(z.object({ query: z.string().min(1).max(160), traffic: z.string().min(1).max(80) }).strict()).min(1).max(10),
 }).strict();
 export type GoogleTrendsEvidence = z.infer<typeof googleTrendsEvidenceSchema>;
+export const googleTrendsComparisonTerms = ["desk cable organizer", "under-desk cable tray", "cable management box"] as const;
+const googleTrendsComparisonTermSchema = z.enum(googleTrendsComparisonTerms);
+export function isGoogleTrendsComparisonPeriod(period: string, granularity: "WEEK" | "MONTH"): boolean {
+  if (granularity === "MONTH") {
+    const match = /^(\d{4})-(\d{2})$/.exec(period);
+    return match !== null && Number(match[2]) >= 1 && Number(match[2]) <= 12;
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(period);
+  if (match === null) return false;
+  const date = new Date(`${period}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.getUTCFullYear() === Number(match[1]) && date.getUTCMonth() + 1 === Number(match[2]) && date.getUTCDate() === Number(match[3]);
+}
+export const googleTrendsComparisonEvidenceSchema = z.object({
+  attemptId: z.string().min(1),
+  sourceUrl: z.literal("https://trends.google.com/trends/explore"),
+  geo: z.literal("US"),
+  searchType: z.literal("WEB_SEARCH"),
+  timeframe: z.literal("PAST_12_MONTHS"),
+  attribution: z.literal("Google Trends"),
+  importedAt: z.string().datetime(),
+  granularity: z.enum(["WEEK", "MONTH"]),
+  periods: z.array(z.string().min(1).max(16)).min(1).max(53),
+  series: z.array(z.object({ term: googleTrendsComparisonTermSchema, values: z.array(z.number().int().min(0).max(100)).min(1).max(53) }).strict()).length(3),
+}).strict().superRefine((evidence, context) => {
+  const maxPoints = evidence.granularity === "WEEK" ? 53 : 13;
+  if (evidence.periods.length > maxPoints || evidence.periods.some((period) => !isGoogleTrendsComparisonPeriod(period, evidence.granularity)) || new Set(evidence.periods).size !== evidence.periods.length) {
+    context.addIssue({ code: "custom", path: ["periods"], message: "Comparison periods must be unique and match the declared granularity." });
+  }
+  if (evidence.series.map((series) => series.term).join("|") !== googleTrendsComparisonTerms.join("|")) {
+    context.addIssue({ code: "custom", path: ["series"], message: "Comparison series must match the approved term order." });
+  }
+  if (evidence.series.some((series) => series.values.length !== evidence.periods.length)) {
+    context.addIssue({ code: "custom", path: ["series"], message: "Each comparison series must have one value for every period." });
+  }
+});
+export type GoogleTrendsComparisonEvidence = z.infer<typeof googleTrendsComparisonEvidenceSchema>;
 export const googleTrendsCaptureFailureSchema = z.object({
   attemptId: z.string().min(1),
   outcome: z.enum(["UNAVAILABLE", "TIMED_OUT", "INVALID_RESPONSE", "RESPONSE_TOO_LARGE"]),
@@ -104,6 +140,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
   eventBase.extend({ type: z.literal("SubscriptionRuntimePreflightCompleted"), payload: subscriptionRuntimePreflightSchema }),
   eventBase.extend({ type: z.literal("SubscriptionWorkerExecutionOutcomeRecorded"), payload: subscriptionWorkerExecutionOutcomeSchema }),
   eventBase.extend({ type: z.literal("GoogleTrendsEvidenceCaptured"), payload: googleTrendsEvidenceSchema }),
+  eventBase.extend({ type: z.literal("GoogleTrendsComparisonImported"), payload: googleTrendsComparisonEvidenceSchema }),
   eventBase.extend({ type: z.literal("GoogleTrendsCaptureFailed"), payload: googleTrendsCaptureFailureSchema }),
   eventBase.extend({ type: z.literal("TribunalCompleted"), payload: tribunalResultSchema }),
   eventBase.extend({ type: z.literal("AuditCompleted"), payload: evidenceAuditResultSchema }),

@@ -12,6 +12,7 @@ let viteServer: ViteDevServer;
 let preflightChecks = 0;
 let resolvePreflight: (() => void) | undefined;
 let nextPreflightResult: SubscriptionPreflightResult = { accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" };
+const comparisonCsv = "Category: All categories\nWeek,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,12,24,36\n2026-01-11,18,30,42";
 
 test.beforeAll(async () => {
   runtimeServer = await listenLocalRuntimeServer(
@@ -141,6 +142,32 @@ test("captures Google Trends only after the explicit browser action, then reload
   await page.getByRole("button", { name: "Agent Desk" }).click();
   await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("Desk lamps (20K+)");
   await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("https://trends.google.com/trending/rss?geo=US");
+});
+
+test("imports one selected Google Trends comparison CSV as replayed unscored context", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#fixture-select").selectOption("google-trends-comparison-pilot");
+  await page.getByRole("button", { name: "Launch local mission" }).click();
+  await page.getByRole("button", { name: "Agent Desk" }).click();
+  const agentDesk = page.getByRole("region", { name: "Agent Desk" });
+  await expect(agentDesk).toContainText("Google Trends · manual comparison context");
+  await expect(agentDesk).toContainText("DropScope never contacts Google, stores the raw CSV, runs a worker, retries, polls, or uses a subscription.");
+  await agentDesk.getByLabel("Choose Google Trends comparison CSV").setInputFiles({ name: "google-trends-comparison.csv", mimeType: "text/csv", buffer: Buffer.from(comparisonCsv) });
+  await expect(page.getByRole("status")).toContainText("Google Trends comparison context was imported locally. The raw CSV was not stored.");
+  await expect(agentDesk).toContainText("Imported week timeline: 2 periods · US · Google Trends");
+  await page.getByRole("button", { name: "Mission Replay" }).click();
+  const replay = page.getByRole("region", { name: "Mission Replay" });
+  await expect(replay).toContainText("Event 8 / 8");
+  await expect(replay.getByText("GoogleTrendsComparisonImported", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Final Report" }).click();
+  const finalReport = page.getByRole("region", { name: "Final Report" });
+  await expect(finalReport).toContainText("Manual comparison context · not scored");
+  await expect(finalReport).toContainText("It does not change any score, ranking, gate, or recommendation");
+  await expect(finalReport).toContainText("desk cable organizer · 2 normalized points");
+  await page.reload();
+  await expect(page.getByRole("status")).toContainText("Reloaded the browser-saved local mission");
+  await page.getByRole("button", { name: "Agent Desk" }).click();
+  await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("Imported week timeline: 2 periods · US · Google Trends");
 });
 
 test("replays a safe account-read timeout diagnostic without starting a worker", async ({ page }) => {

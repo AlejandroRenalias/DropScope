@@ -1,7 +1,7 @@
 import { JsonlEventStore } from "./event-store.js";
-import { googleTrendsPilotFixtureId, liveWorkerPilotFixtureId, loadFixture } from "./fixture-model.js";
+import { googleTrendsComparisonPilotFixtureId, googleTrendsPilotFixtureId, liveWorkerPilotFixtureId, loadFixture } from "./fixture-model.js";
 import { replay, type MissionState } from "./reducer.js";
-import { prepareGoogleTrendsPilotSchedule, prepareLiveWorkerPilotSchedule, runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
+import { prepareGoogleTrendsComparisonPilotSchedule, prepareGoogleTrendsPilotSchedule, prepareLiveWorkerPilotSchedule, runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
 import type { MissionEvent } from "./contracts.js";
 import { determineCandidateEligibility, type CandidateEligibility } from "./candidate-eligibility.js";
 import { evaluateRiskGate } from "./risk-policy.js";
@@ -46,7 +46,9 @@ export async function runFixtureMission(options: {
     ? await prepareLiveWorkerPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
     : fixture.fixtureId === googleTrendsPilotFixtureId
       ? await prepareGoogleTrendsPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
-    : await runSimulatedSchedule({
+      : fixture.fixtureId === googleTrendsComparisonPilotFixtureId
+        ? await prepareGoogleTrendsComparisonPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
+      : await runSimulatedSchedule({
     missionId: options.missionId,
     missionSeed: options.missionSeed ?? fixture.seed,
     totalBudget: fixture.budget,
@@ -76,7 +78,7 @@ export async function runFixtureMission(options: {
   if (scheduledState.status !== "RUNNING") {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
-  if (fixture.fixtureId === liveWorkerPilotFixtureId || fixture.fixtureId === googleTrendsPilotFixtureId) {
+  if (fixture.fixtureId === liveWorkerPilotFixtureId || fixture.fixtureId === googleTrendsPilotFixtureId || fixture.fixtureId === googleTrendsComparisonPilotFixtureId) {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
   if (fixture.fixtureId === "crosscurrent-workspace-market") {

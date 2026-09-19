@@ -193,6 +193,20 @@ test("replays the fixed Failure Autopsy through the shared local mission runtime
   await expect(finalReport).toContainText("STOP: the fixed concept does not clear evidence or safety gates.");
 });
 
+test("replays Product Investigation with automatic Failure Autopsy pressure", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#fixture-select").selectOption("product-investigation-pilot");
+  await page.getByRole("button", { name: "Launch local mission" }).click();
+  await page.getByRole("button", { name: "Tribunal Room" }).click();
+  await expect(page.getByRole("region", { name: "Tribunal Room" })).toContainText("CAUTION");
+  await page.getByRole("button", { name: "Final Report" }).click();
+  const finalReport = page.getByRole("region", { name: "Final Report" });
+  await expect(finalReport).toContainText("Product Investigation");
+  await expect(finalReport).toContainText("modular-desk-organizer");
+  await expect(finalReport).toContainText("Automatic failure-autopsy pressure");
+  await expect(finalReport).toContainText("CAUTION: the fixed priority remains eligible");
+});
+
 test("replays a safe account-read timeout diagnostic without starting a worker", async ({ page }) => {
   nextPreflightResult = { accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_TIMED_OUT" };
   await page.goto("/");

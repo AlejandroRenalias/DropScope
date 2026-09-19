@@ -14,5 +14,6 @@ describe("Failure Autopsy mission mode", () => {
 
   it("does not admit an explicit Learn-a-Market declaration", () => {
     expect(missionEventSchema.safeParse({ ...autopsyMode, payload: { mode: "LEARN_A_MARKET" } }).success).toBe(false);
+    expect(missionEventSchema.safeParse({ ...autopsyMode, payload: { mode: "PRODUCT_INVESTIGATION" } }).success).toBe(true);
   });
 });

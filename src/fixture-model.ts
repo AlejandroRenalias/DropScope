@@ -37,6 +37,7 @@ const fixtureShape = z.object({
   tasks: z.array(fixtureTaskSchema).min(1),
   candidateEvaluations: z.array(fixtureCandidateEvaluationSchema),
   autopsy: z.object({ conclusion: z.string().min(1), evidenceThatCouldChangeConclusion: z.array(z.string().min(1)).min(1).max(5) }).strict().optional(),
+  investigation: z.object({ autopsyConclusion: z.string().min(1), opposingEvidence: z.array(z.string().min(1)).min(1).max(5) }).strict().optional(),
 }).strict();
 
 export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
@@ -90,6 +91,7 @@ export const liveWorkerPilotFixtureId = "live-worker-pilot";
 export const googleTrendsPilotFixtureId = "google-trends-pilot";
 export const googleTrendsComparisonPilotFixtureId = "google-trends-comparison-pilot";
 export const failureAutopsyPilotFixtureId = "failure-autopsy-pilot";
+export const productInvestigationPilotFixtureId = "product-investigation-pilot";
 export const liveWorkerPilotTask = {
   id: "pilot-evidence",
   objective: "Analyze the supplied local pilot fixture only.",
@@ -233,6 +235,23 @@ const definitions: readonly Fixture[] = [
       { id: "problem-evidence-challenge", objective: "Challenge whether the fixed concept solves a durable customer problem.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "autopsy-problem-evidence", dependencies: [], workerRole: "EVIDENCE_RESEARCHER" },
       { id: "market-crowding-challenge", objective: "Challenge crowding and supplier differentiation for the fixed concept.", cost: 20, durationMs: 15, workClass: "MANDATORY", researchKey: "autopsy-market-crowding", dependencies: ["problem-evidence-challenge"], workerRole: "MARKET_RESEARCHER" },
       { id: "safety-economics-challenge", objective: "Challenge safety, returns, and operating assumptions for the fixed concept.", cost: 20, durationMs: 10, workClass: "MANDATORY", researchKey: "autopsy-safety-economics", dependencies: ["market-crowding-challenge"], workerRole: "RISK_RESEARCHER" },
+    ],
+  },
+  {
+    fixtureId: productInvestigationPilotFixtureId,
+    seed: 1,
+    budget: 80,
+    investigation: {
+      autopsyConclusion: "CAUTION: the fixed priority remains eligible, but its autopsy records material operational pressure before any spend decision.",
+      opposingEvidence: ["Return-rate evidence for the fixed form factor.", "Evidence that supplier differentiation survives direct comparison.", "A bounded operating-cost test that confirms the claimed margin."],
+    },
+    candidateEvaluations: [
+      { candidateId: "modular-desk-organizer", riskInput: riskInput("modular-desk-organizer"), customerProblemEvidenceScore: 82, evidenceQualityScore: 78, trendDurabilityScore: 74, advertisingSaturationScore: 48, operationalRiskScore: 38, failureRiskScore: 42, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [
+      { id: "investigate-problem", objective: "Validate the fixed customer problem for the investigation candidate.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "investigation-problem", dependencies: [], workerRole: "EVIDENCE_RESEARCHER" },
+      { id: "investigate-differentiation", objective: "Test the fixed candidate's differentiation and crowding pressure.", cost: 20, durationMs: 15, workClass: "MANDATORY", researchKey: "investigation-differentiation", dependencies: ["investigate-problem"], workerRole: "MARKET_RESEARCHER" },
+      { id: "investigate-operations", objective: "Challenge operations and return assumptions for the fixed candidate.", cost: 20, durationMs: 10, workClass: "MANDATORY", researchKey: "investigation-operations", dependencies: ["investigate-differentiation"], workerRole: "OPERATIONS_RESEARCHER" },
     ],
   },
 ];

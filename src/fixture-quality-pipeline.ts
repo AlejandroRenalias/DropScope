@@ -88,6 +88,35 @@ export function buildFixtureQualityPipeline({ missionId, startingSequence, repor
   return events;
 }
 
+/** A fixed Product Investigation keeps its ranked priority while automatically recording opposing autopsy pressure. */
+export function buildProductInvestigationQualityPipeline({ missionId, startingSequence, report, riskDecisions }: FixtureQualityPipelineInput): MissionEvent[] {
+  const candidate = report.ranking[0];
+  if (!candidate) throw new Error("A product investigation requires one ranked candidate.");
+  const riskDecision = riskDecisions.find((decision) => decision.candidateId === candidate.candidateId);
+  if (!riskDecision) throw new Error(`Missing risk decision for ${candidate.candidateId}.`);
+  const claimId = `${candidate.candidateId}-investigation-claim`;
+  const tribunal = evaluateTribunal({
+    tribunalId: `${candidate.candidateId}-investigation-tribunal-1`, candidateId: candidate.candidateId, policyVersion: "1",
+    riskDecision: { decisionId: riskDecision.decisionId, candidateId: riskDecision.candidateId, outcome: riskDecision.outcome, reasons: riskDecision.reasons.map(({ code, evidenceIds }) => ({ code, evidenceIds })) },
+    claims: [{ claimId, candidateId: candidate.candidateId, decisive: true, tentative: false }],
+    evidence: [
+      { evidenceId: `${candidate.candidateId}-investigation-support`, candidateId: candidate.candidateId, claimId, independenceGroupId: "investigation-support", direction: "SUPPORTS", reliabilityClass: "HIGH", strength: 4 },
+      { evidenceId: `${candidate.candidateId}-investigation-opposes`, candidateId: candidate.candidateId, claimId, independenceGroupId: "investigation-opposes", direction: "OPPOSES", reliabilityClass: "HIGH", strength: -4 },
+    ],
+  });
+  const review = reviewResult(candidate.candidateId, `${candidate.candidateId}-investigation-review-1`, "REVISE", 62, ["material_operational_pressure"], ["investigation-operations"]);
+  const rereview = reviewResult(candidate.candidateId, `${candidate.candidateId}-investigation-review-2`, "ACCEPT", 88, [], []);
+  const revisionId = `${candidate.candidateId}-investigation-revision-1`;
+  return [
+    qualityEvent(missionId, startingSequence + 1, "TribunalCompleted", tribunal),
+    qualityEvent(missionId, startingSequence + 2, "AuditCompleted", { auditId: `${candidate.candidateId}-investigation-audit-1`, findings: [{ code: "AUDIT_MATERIAL_CONTRADICTION", severity: "HIGH", claimIds: [claimId], evidenceIds: [`${candidate.candidateId}-investigation-support`, `${candidate.candidateId}-investigation-opposes`], sourceIds: [], factIds: [], explanation: "The automatic autopsy retains material operational pressure." }] }),
+    qualityEvent(missionId, startingSequence + 3, "BlindReviewCompleted", review),
+    qualityEvent(missionId, startingSequence + 4, "RevisionRequested", { revisionId, reviewId: review.reviewId, affectedClaimIds: [claimId], blockingDefectCodes: review.candidateAssessments[0]!.blockingDefects }),
+    qualityEvent(missionId, startingSequence + 5, "FocusedReauditCompleted", { revisionId, auditId: `${candidate.candidateId}-investigation-audit-2`, changedClaimIds: [claimId], findings: [] }),
+    qualityEvent(missionId, startingSequence + 6, "FocusedRereviewCompleted", { revisionId, result: rereview }),
+  ];
+}
+
 /** A fixed autopsy records why a held-out candidate must stop without a revision loop. */
 export function buildFailureAutopsyQualityPipeline({ missionId, startingSequence, report, riskDecisions }: FixtureQualityPipelineInput): MissionEvent[] {
   const candidate = report.heldOut[0];

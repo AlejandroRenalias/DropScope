@@ -149,4 +149,16 @@ describe("fixture-driven simulated missions", () => {
     expect(report).toMatchObject({ fixtureId: "failure-autopsy-pilot", outcome: "INSUFFICIENT_EVIDENCE", reviewerVerdict: "REJECT", autopsy: { conclusion: expect.stringContaining("STOP") } });
     expect(report.autopsy?.evidenceThatCouldChangeConclusion).toHaveLength(3);
   });
+
+  it("runs Product Investigation through the shared scheduler with automatic autopsy pressure", async () => {
+    const result = await runFixtureMission({ fixtureId: "product-investigation-pilot", missionId: "investigation-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+    const report = projectFinalReport(result.events, result.fixtureId);
+
+    expect(result.events.slice(0, 3).map((event) => event.type)).toEqual(["MissionCreated", "MissionModeDeclared", "SubscriptionRuntimeDeclared"]);
+    expect(result.state).toMatchObject({ missionMode: "PRODUCT_INVESTIGATION", status: "COMPLETED" });
+    expect(result.report.ranking.map(({ candidateId }) => candidateId)).toEqual(["modular-desk-organizer"]);
+    expect(result.events.find((event) => event.type === "TribunalCompleted")?.payload).toMatchObject({ recommendation: "CAUTION" });
+    expect(report).toMatchObject({ fixtureId: "product-investigation-pilot", outcome: "RANKED", reviewerVerdict: "REVISE", investigation: { autopsyConclusion: expect.stringContaining("CAUTION") } });
+    expect(report.investigation?.opposingEvidence).toHaveLength(3);
+  });
 });

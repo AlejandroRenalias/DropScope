@@ -120,7 +120,7 @@ export async function runSimulatedSchedule(options: {
     if (store) await store.append(event);
   };
   await append("MissionCreated", { totalBudget: options.totalBudget, missionSeed: options.missionSeed, policyVersions: { tribunal: "1" } });
-  if (options.missionMode === "FAILURE_AUTOPSY") await append("MissionModeDeclared", { mode: options.missionMode });
+  if (options.missionMode && options.missionMode !== "LEARN_A_MARKET") await append("MissionModeDeclared", { mode: options.missionMode });
   if (options.subscriptionRuntimeDeclaration) await append("SubscriptionRuntimeDeclared", options.subscriptionRuntimeDeclaration);
 
   const pending = new Map(options.tasks.map((task) => [task.taskId, task]));

@@ -1,5 +1,5 @@
 import { JsonlEventStore } from "./event-store.js";
-import { failureAutopsyPilotFixtureId, googleTrendsComparisonPilotFixtureId, googleTrendsPilotFixtureId, liveWorkerPilotFixtureId, loadFixture } from "./fixture-model.js";
+import { failureAutopsyPilotFixtureId, googleTrendsComparisonPilotFixtureId, googleTrendsPilotFixtureId, liveWorkerPilotFixtureId, productInvestigationPilotFixtureId, loadFixture } from "./fixture-model.js";
 import { replay, type MissionState } from "./reducer.js";
 import { prepareGoogleTrendsComparisonPilotSchedule, prepareGoogleTrendsPilotSchedule, prepareLiveWorkerPilotSchedule, runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
 import type { MissionEvent } from "./contracts.js";
@@ -7,7 +7,7 @@ import { determineCandidateEligibility, type CandidateEligibility } from "./cand
 import { evaluateRiskGate } from "./risk-policy.js";
 import type { RiskGateDecision } from "./research-domain.js";
 import { buildCandidateReport, type CandidateReport } from "./report.js";
-import { buildFailureAutopsyQualityPipeline, buildFixtureQualityPipeline } from "./fixture-quality-pipeline.js";
+import { buildFailureAutopsyQualityPipeline, buildFixtureQualityPipeline, buildProductInvestigationQualityPipeline } from "./fixture-quality-pipeline.js";
 import { RecordedWorkerAdapter } from "./worker-adapter.js";
 
 export interface FixtureRunResult {
@@ -58,7 +58,7 @@ export async function runFixtureMission(options: {
     completeMission: false,
     recordedWorkerAssignment,
     subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
-    missionMode: fixture.fixtureId === failureAutopsyPilotFixtureId ? "FAILURE_AUTOPSY" : undefined,
+    missionMode: fixture.fixtureId === failureAutopsyPilotFixtureId ? "FAILURE_AUTOPSY" : fixture.fixtureId === productInvestigationPilotFixtureId ? "PRODUCT_INVESTIGATION" : undefined,
     tasks: fixture.tasks.map((task) => ({
       taskId: task.id,
       objective: task.objective,
@@ -88,6 +88,10 @@ export async function runFixtureMission(options: {
   }
   if (fixture.fixtureId === failureAutopsyPilotFixtureId) {
     const qualityEvents = buildFailureAutopsyQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
+    for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
+  }
+  if (fixture.fixtureId === productInvestigationPilotFixtureId) {
+    const qualityEvents = buildProductInvestigationQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
     for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
   }
   const sequenceNumber = (await store.readAll()).length + 1;

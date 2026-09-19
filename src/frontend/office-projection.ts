@@ -2,7 +2,7 @@ import type { GoogleTrendsComparisonEvidence, GoogleTrendsEvidence, MissionEvent
 import { replay, type MissionStatus, type TaskStatus } from "../reducer.js";
 import { evaluateTribunal, type TribunalResult } from "../tribunal-policy.js";
 import type { BlindReviewResult } from "../research-domain.js";
-import { failureAutopsyPilotFixtureId, loadFixture, type FixtureCandidateEvaluation } from "../fixture-model.js";
+import { failureAutopsyPilotFixtureId, loadFixture, productInvestigationPilotFixtureId, type FixtureCandidateEvaluation } from "../fixture-model.js";
 import { evaluateRiskGate } from "../risk-policy.js";
 import { determineCandidateEligibility } from "../candidate-eligibility.js";
 import { buildCandidateReport, type CandidateReport } from "../report.js";
@@ -18,7 +18,7 @@ export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSumma
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
 export interface ReplayEventRecord { sequence: number; type: string; category: ReplayEventCategory; detail: string; }
-export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; autopsy: { conclusion: string; evidenceThatCouldChangeConclusion: string[] } | null; externalSignalContext: GoogleTrendsEvidence | null; comparisonSignalContext: GoogleTrendsComparisonEvidence | null; }
+export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; autopsy: { conclusion: string; evidenceThatCouldChangeConclusion: string[] } | null; investigation: { autopsyConclusion: string; opposingEvidence: string[] } | null; externalSignalContext: GoogleTrendsEvidence | null; comparisonSignalContext: GoogleTrendsComparisonEvidence | null; }
 const missionId = "crosscurrent-workspace-market";
 const sourceLabel = "Static demo history replayed through the existing MissionState reducer. It is not live engine data.";
 const timestamp = (n: number) => `2026-01-01T00:00:${String(n).padStart(2, "0")}.000Z`;
@@ -130,12 +130,13 @@ export function projectFinalReport(events?: MissionEvent[], fixtureId = "crosscu
   const heldOutIds = new Set(report.heldOut.map((candidate) => candidate.candidateId));
   const priorities = report.ranking.map((ranked) => ({ ...fixture.candidateEvaluations.find((candidate) => candidate.candidateId === ranked.candidateId)!, researchPriorityScore: ranked.researchPriorityScore }));
   const representative = priorities[0] ?? fixture.candidateEvaluations[0]!;
-  const review = fixture.fixtureId === failureAutopsyPilotFixtureId && events?.length
+  const review = (fixture.fixtureId === failureAutopsyPilotFixtureId || fixture.fixtureId === productInvestigationPilotFixtureId) && events?.length
     ? projectOffice(events).decisionViews.reviewOffice
     : projectOffice(officeHistories.COMPLETED).decisionViews.reviewOffice;
   const heldOut = report.heldOut.filter((candidate) => heldOutIds.has(candidate.candidateId));
   const autopsy = fixture.fixtureId === failureAutopsyPilotFixtureId && fixture.autopsy ? fixture.autopsy : null;
-  const nextStep = autopsy ? autopsy.conclusion : report.outcome === "INSUFFICIENT_EVIDENCE"
+  const investigation = fixture.fixtureId === productInvestigationPilotFixtureId && fixture.investigation ? fixture.investigation : null;
+  const nextStep = autopsy ? autopsy.conclusion : investigation ? investigation.autopsyConclusion : report.outcome === "INSUFFICIENT_EVIDENCE"
     ? "Insufficient evidence: resolve held-out blockers before selecting a candidate."
     : priorities.length > 0
       ? `Next step: deepen validation for ${priorities[0]!.candidateId} before committing spend.`
@@ -170,6 +171,7 @@ export function projectFinalReport(events?: MissionEvent[], fixtureId = "crosscu
     },
     nextStep,
     autopsy,
+    investigation,
     externalSignalContext,
     comparisonSignalContext,
   };

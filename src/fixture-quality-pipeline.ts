@@ -87,3 +87,27 @@ export function buildFixtureQualityPipeline({ missionId, startingSequence, repor
   ];
   return events;
 }
+
+/** A fixed autopsy records why a held-out candidate must stop without a revision loop. */
+export function buildFailureAutopsyQualityPipeline({ missionId, startingSequence, report, riskDecisions }: FixtureQualityPipelineInput): MissionEvent[] {
+  const candidate = report.heldOut[0];
+  if (!candidate) throw new Error("A failure autopsy requires one held-out candidate.");
+  const riskDecision = riskDecisions.find((decision) => decision.candidateId === candidate.candidateId);
+  if (!riskDecision) throw new Error(`Missing risk decision for ${candidate.candidateId}.`);
+  const claimId = `${candidate.candidateId}-autopsy-claim`;
+  const tribunal = evaluateTribunal({
+    tribunalId: `${candidate.candidateId}-autopsy-tribunal-1`, candidateId: candidate.candidateId, policyVersion: "1",
+    riskDecision: { decisionId: riskDecision.decisionId, candidateId: riskDecision.candidateId, outcome: riskDecision.outcome, reasons: riskDecision.reasons.map(({ code, evidenceIds }) => ({ code, evidenceIds })) },
+    claims: [{ claimId, candidateId: candidate.candidateId, decisive: true, tentative: false }],
+    evidence: [
+      { evidenceId: `${candidate.candidateId}-autopsy-support`, candidateId: candidate.candidateId, claimId, independenceGroupId: "autopsy-support", direction: "SUPPORTS", reliabilityClass: "LOW", strength: 1 },
+      { evidenceId: `${candidate.candidateId}-autopsy-risk`, candidateId: candidate.candidateId, claimId, independenceGroupId: "autopsy-risk", direction: "OPPOSES", reliabilityClass: "HIGH", strength: -5 },
+    ],
+  });
+  const review = reviewResult(candidate.candidateId, `${candidate.candidateId}-autopsy-review-1`, "REJECT", 35, ["risk_gate_rejected", "decision_critical_evidence_missing"], ["autopsy-problem-evidence"]);
+  return [
+    qualityEvent(missionId, startingSequence + 1, "TribunalCompleted", tribunal),
+    qualityEvent(missionId, startingSequence + 2, "AuditCompleted", { auditId: `${candidate.candidateId}-autopsy-audit-1`, findings: [{ code: "AUDIT_DECISIVE_CLAIM_NO_VALID_EVIDENCE", severity: "HIGH", claimIds: [claimId], evidenceIds: [], sourceIds: [], factIds: [], explanation: "The fixed autopsy lacks decision-critical support for the concept." }] }),
+    qualityEvent(missionId, startingSequence + 3, "BlindReviewCompleted", review),
+  ];
+}

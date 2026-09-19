@@ -176,6 +176,23 @@ test("imports one selected Google Trends comparison CSV as replayed unscored con
   await expect(page.getByRole("region", { name: "Agent Desk" })).toContainText("Imported week timeline: 2 periods · US · Google Trends");
 });
 
+test("replays the fixed Failure Autopsy through the shared local mission runtime", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#fixture-select").selectOption("failure-autopsy-pilot");
+  await page.getByRole("button", { name: "Launch local mission" }).click();
+  await page.getByRole("button", { name: "Mission Replay" }).click();
+  const replay = page.getByRole("region", { name: "Mission Replay" });
+  await expect(replay).toContainText("MissionModeDeclared");
+  await expect(replay).toContainText("MissionTerminated");
+  await page.getByRole("button", { name: "Tribunal Room" }).click();
+  await expect(page.getByRole("region", { name: "Tribunal Room" })).toContainText("STOP");
+  await page.getByRole("button", { name: "Final Report" }).click();
+  const finalReport = page.getByRole("region", { name: "Final Report" });
+  await expect(finalReport).toContainText("Failure Autopsy");
+  await expect(finalReport).toContainText("What would change this conclusion");
+  await expect(finalReport).toContainText("STOP: the fixed concept does not clear evidence or safety gates.");
+});
+
 test("replays a safe account-read timeout diagnostic without starting a worker", async ({ page }) => {
   nextPreflightResult = { accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_TIMED_OUT" };
   await page.goto("/");

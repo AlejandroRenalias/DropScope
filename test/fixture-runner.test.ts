@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { runFixtureMission } from "../src/fixture-runner.js";
 import { deriveAttemptDecision } from "../src/scheduler.js";
 import { JsonlEventStore } from "../src/event-store.js";
+import { projectFinalReport } from "../src/frontend/office-projection.js";
 
 describe("fixture-driven simulated missions", () => {
   it("can append a mission through an already-reserved writer handle", async () => {
@@ -134,5 +135,18 @@ describe("fixture-driven simulated missions", () => {
     const result = await runFixtureMission({ fixtureId: "google-trends-pilot", missionId: "google-trends-pilot-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
     expect(result.state).toMatchObject({ status: "RUNNING", attempts: { "google-trends-us-now:a1": { status: "RUNNING" } } });
     expect(result.events.map((event) => event.type)).toEqual(["MissionCreated", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+  });
+
+  it("runs the fixed Failure Autopsy through the shared scheduler and replayed quality records", async () => {
+    const result = await runFixtureMission({ fixtureId: "failure-autopsy-pilot", missionId: "autopsy-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+    const report = projectFinalReport(result.events, result.fixtureId);
+
+    expect(result.events.slice(0, 3).map((event) => event.type)).toEqual(["MissionCreated", "MissionModeDeclared", "SubscriptionRuntimeDeclared"]);
+    expect(result.state).toMatchObject({ missionMode: "FAILURE_AUTOPSY", status: "COMPLETED_INSUFFICIENT_EVIDENCE" });
+    expect(result.events.slice(-4).map((event) => event.type)).toEqual(["TribunalCompleted", "AuditCompleted", "BlindReviewCompleted", "MissionTerminated"]);
+    expect(result.report).toMatchObject({ outcome: "INSUFFICIENT_EVIDENCE", ranking: [] });
+    expect(result.events.find((event) => event.type === "TribunalCompleted")?.payload).toMatchObject({ recommendation: "STOP" });
+    expect(report).toMatchObject({ fixtureId: "failure-autopsy-pilot", outcome: "INSUFFICIENT_EVIDENCE", reviewerVerdict: "REJECT", autopsy: { conclusion: expect.stringContaining("STOP") } });
+    expect(report.autopsy?.evidenceThatCouldChangeConclusion).toHaveLength(3);
   });
 });

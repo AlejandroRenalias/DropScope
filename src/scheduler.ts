@@ -70,6 +70,7 @@ export async function runSimulatedSchedule(options: {
   // scheduler. It always records RECORDED_DRY_RUN provenance before invocation.
   recordedWorkerAssignment?: { workerRole: string; adapter: RecordedWorkerAdapter };
   subscriptionRuntimeDeclaration?: import("./contracts.js").SubscriptionRuntimeDeclaration;
+  missionMode?: import("./contracts.js").MissionMode;
   [pilotPause]?: true;
   [sourcePilotPause]?: true;
   [comparisonPilotPause]?: true;
@@ -119,6 +120,7 @@ export async function runSimulatedSchedule(options: {
     if (store) await store.append(event);
   };
   await append("MissionCreated", { totalBudget: options.totalBudget, missionSeed: options.missionSeed, policyVersions: { tribunal: "1" } });
+  if (options.missionMode === "FAILURE_AUTOPSY") await append("MissionModeDeclared", { mode: options.missionMode });
   if (options.subscriptionRuntimeDeclaration) await append("SubscriptionRuntimeDeclared", options.subscriptionRuntimeDeclaration);
 
   const pending = new Map(options.tasks.map((task) => [task.taskId, task]));

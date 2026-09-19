@@ -1,4 +1,4 @@
-import type { AuthorizationReason, GoogleTrendsCaptureFailure, GoogleTrendsComparisonEvidence, GoogleTrendsEvidence, MissionEvent, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
+import type { AuthorizationReason, GoogleTrendsCaptureFailure, GoogleTrendsComparisonEvidence, GoogleTrendsEvidence, MissionEvent, MissionMode, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -45,6 +45,7 @@ export interface MissionState {
   missionId: string | null;
   lastSequenceNumber: number;
   status: MissionStatus;
+  missionMode: MissionMode | null;
   budget: { total: number; reserved: number; committed: number; spent: number; available: number };
   tasks: Record<string, TaskRecord>;
   attempts: Record<string, AttemptRecord>;
@@ -72,6 +73,7 @@ export const initialMissionState = (): MissionState => ({
   missionId: null,
   lastSequenceNumber: 0,
   status: "NOT_STARTED",
+  missionMode: null,
   budget: { total: 0, reserved: 0, committed: 0, spent: 0, available: 0 },
   tasks: {},
   attempts: {},
@@ -121,6 +123,9 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         policyVersions: "policyVersions" in event.payload ? event.payload.policyVersions : null,
         budget: { total: event.payload.totalBudget, reserved: 0, committed: 0, spent: 0, available: event.payload.totalBudget },
       };
+    case "MissionModeDeclared":
+      if (state.status !== "RUNNING" || state.missionMode !== null || state.lastSequenceNumber !== 1) throw new Error("Mission mode must be declared exactly once immediately after mission creation.");
+      return { ...state, missionMode: event.payload.mode };
     case "TribunalCompleted":
       if (state.status !== "RUNNING" || state.policyVersions === null) throw new Error("A running mission is required to record tribunal output.");
       if (event.payload.decidedByPolicyVersion !== state.policyVersions.tribunal) throw new Error("Tribunal result policy version does not match the mission.");

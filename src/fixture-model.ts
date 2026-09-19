@@ -36,6 +36,7 @@ const fixtureShape = z.object({
   budget: z.number().int().positive(),
   tasks: z.array(fixtureTaskSchema).min(1),
   candidateEvaluations: z.array(fixtureCandidateEvaluationSchema),
+  autopsy: z.object({ conclusion: z.string().min(1), evidenceThatCouldChangeConclusion: z.array(z.string().min(1)).min(1).max(5) }).strict().optional(),
 }).strict();
 
 export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
@@ -88,6 +89,7 @@ export type Fixture = z.infer<typeof fixtureSchema>;
 export const liveWorkerPilotFixtureId = "live-worker-pilot";
 export const googleTrendsPilotFixtureId = "google-trends-pilot";
 export const googleTrendsComparisonPilotFixtureId = "google-trends-comparison-pilot";
+export const failureAutopsyPilotFixtureId = "failure-autopsy-pilot";
 export const liveWorkerPilotTask = {
   id: "pilot-evidence",
   objective: "Analyze the supplied local pilot fixture only.",
@@ -215,6 +217,23 @@ const definitions: readonly Fixture[] = [
       { candidateId: "desk-organization-comparison", riskInput: riskInput("desk-organization-comparison"), customerProblemEvidenceScore: 0, evidenceQualityScore: 0, trendDurabilityScore: 0, advertisingSaturationScore: 0, operationalRiskScore: 0, failureRiskScore: 0, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
     ],
     tasks: [googleTrendsComparisonPilotTask],
+  },
+  {
+    fixtureId: failureAutopsyPilotFixtureId,
+    seed: 1,
+    budget: 75,
+    autopsy: {
+      conclusion: "STOP: the fixed concept does not clear evidence or safety gates.",
+      evidenceThatCouldChangeConclusion: ["Independent customer-problem evidence above the required threshold.", "A non-medical positioning and safety assessment that clears the risk gate.", "Credible evidence of differentiated supply and workable return economics."],
+    },
+    candidateEvaluations: [
+      { candidateId: "heated-wellness-wrap", riskInput: riskInput("heated-wellness-wrap", { healthPositioning: "MEDICAL_CLAIM_OR_DEVICE", electricalPower: "MAINS_OR_HIGH_POWER" }), customerProblemEvidenceScore: 42, evidenceQualityScore: 40, trendDurabilityScore: 44, advertisingSaturationScore: 86, operationalRiskScore: 72, failureRiskScore: 78, hasUnresolvedBlockingContradiction: true, hasBlockingDecisionCriticalMissingEvidence: true },
+    ],
+    tasks: [
+      { id: "problem-evidence-challenge", objective: "Challenge whether the fixed concept solves a durable customer problem.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "autopsy-problem-evidence", dependencies: [], workerRole: "EVIDENCE_RESEARCHER" },
+      { id: "market-crowding-challenge", objective: "Challenge crowding and supplier differentiation for the fixed concept.", cost: 20, durationMs: 15, workClass: "MANDATORY", researchKey: "autopsy-market-crowding", dependencies: ["problem-evidence-challenge"], workerRole: "MARKET_RESEARCHER" },
+      { id: "safety-economics-challenge", objective: "Challenge safety, returns, and operating assumptions for the fixed concept.", cost: 20, durationMs: 10, workClass: "MANDATORY", researchKey: "autopsy-safety-economics", dependencies: ["market-crowding-challenge"], workerRole: "RISK_RESEARCHER" },
+    ],
   },
 ];
 

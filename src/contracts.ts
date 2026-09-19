@@ -15,6 +15,8 @@ export const workClassSchema = z.enum(["MANDATORY", "OPTIONAL"]);
 export type WorkClass = z.infer<typeof workClassSchema>;
 export const authorizationReasonSchema = z.enum(["MANDATORY_BASELINE", "GAP_RESOLUTION"]);
 export type AuthorizationReason = z.infer<typeof authorizationReasonSchema>;
+export const missionModeSchema = z.enum(["LEARN_A_MARKET", "FAILURE_AUTOPSY"]);
+export type MissionMode = z.infer<typeof missionModeSchema>;
 export const gapDecisionTypeSchema = z.enum(["ELIGIBILITY", "RANKING", "CONFIDENCE", "SAFETY_OR_RISK", "BLOCKING_REVIEW", "CONTRADICTION"]);
 export const terminalGapStatusSchema = z.enum(["RESOLVED", "EXHAUSTED", "DECLINED"]);
 export type TerminalGapStatus = z.infer<typeof terminalGapStatusSchema>;
@@ -136,6 +138,7 @@ export const missionEventSchema = z.discriminatedUnion("type", [
     type: z.literal("MissionCreated"),
     payload: missionCreatedPayloadSchema,
   }),
+  eventBase.extend({ type: z.literal("MissionModeDeclared"), payload: z.object({ mode: missionModeSchema.exclude(["LEARN_A_MARKET"]) }).strict() }),
   eventBase.extend({ type: z.literal("SubscriptionRuntimeDeclared"), payload: subscriptionRuntimeDeclarationSchema }),
   eventBase.extend({ type: z.literal("SubscriptionRuntimePreflightCompleted"), payload: subscriptionRuntimePreflightSchema }),
   eventBase.extend({ type: z.literal("SubscriptionWorkerExecutionOutcomeRecorded"), payload: subscriptionWorkerExecutionOutcomeSchema }),

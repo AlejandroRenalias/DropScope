@@ -130,7 +130,9 @@ export function projectFinalReport(events?: MissionEvent[], fixtureId = "crosscu
   const heldOutIds = new Set(report.heldOut.map((candidate) => candidate.candidateId));
   const priorities = report.ranking.map((ranked) => ({ ...fixture.candidateEvaluations.find((candidate) => candidate.candidateId === ranked.candidateId)!, researchPriorityScore: ranked.researchPriorityScore }));
   const representative = priorities[0] ?? fixture.candidateEvaluations[0]!;
-  const review = events?.length ? projectOffice(events).decisionViews.reviewOffice : projectOffice(officeHistories.COMPLETED).decisionViews.reviewOffice;
+  const review = fixture.fixtureId === failureAutopsyPilotFixtureId && events?.length
+    ? projectOffice(events).decisionViews.reviewOffice
+    : projectOffice(officeHistories.COMPLETED).decisionViews.reviewOffice;
   const heldOut = report.heldOut.filter((candidate) => heldOutIds.has(candidate.candidateId));
   const autopsy = fixture.fixtureId === failureAutopsyPilotFixtureId && fixture.autopsy ? fixture.autopsy : null;
   const nextStep = autopsy ? autopsy.conclusion : report.outcome === "INSUFFICIENT_EVIDENCE"

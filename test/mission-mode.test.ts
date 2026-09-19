@@ -9,6 +9,7 @@ describe("Failure Autopsy mission mode", () => {
   it("is a strict one-time declaration immediately after mission creation", () => {
     expect(replay([created, autopsyMode]).missionMode).toBe("FAILURE_AUTOPSY");
     expect(() => replay([created, { ...created, sequenceNumber: 2, eventId: "autopsy-task", type: "TaskAuthorized" as const, payload: { taskId: "task", objective: "task", cost: 1, workClass: "MANDATORY" as const, researchKey: "task", authorizationReason: "MANDATORY_BASELINE" as const, dependencies: [] } }, { ...autopsyMode, sequenceNumber: 3, eventId: "autopsy-mode-late" }])).toThrow("immediately after mission creation");
+    expect(() => replay([created, autopsyMode, { ...autopsyMode, sequenceNumber: 3, eventId: "autopsy-mode-duplicate" }])).toThrow("exactly once");
   });
 
   it("does not admit an explicit Learn-a-Market declaration", () => {

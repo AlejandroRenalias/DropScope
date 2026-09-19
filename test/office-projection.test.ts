@@ -68,6 +68,9 @@ describe("Research Office event projection", () => {
     expect(report.reviewerVerdict).toBe("REVISE");
     expect(report.nextStep).toContain("Next step");
   });
+  it("keeps the legacy static review label when a replay has no recorded review", () => {
+    expect(projectFinalReport(officeHistories.RUNNING).reviewerVerdict).toBe(projectFinalReport().reviewerVerdict);
+  });
   it("labels replay event categories and projects valid prefixes without mutation", () => {
     const history = officeHistories.BLOCKED;
     const records = replayEvents(history);

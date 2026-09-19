@@ -6,6 +6,23 @@ import { LocalMissionRuntime } from "../src/runtime/local-mission-runtime.js";
 import { SubscriptionLiveWorkerAuthorization } from "../src/subscription-live-worker-authorization.js";
 import { SubscriptionLiveWorkerError } from "../src/subscription-live-worker-runner.js";
 import { JsonlEventStore } from "../src/event-store.js";
+import { projectFinalReport } from "../src/frontend/office-projection.js";
+
+const decisionSnapshot = (report: ReturnType<typeof projectFinalReport>) => ({
+  fixtureId: report.fixtureId,
+  outcome: report.outcome,
+  priorities: report.priorities,
+  heldOut: report.heldOut,
+  reviewerVerdict: report.reviewerVerdict,
+  customerProblemEvidence: report.customerProblemEvidence,
+  evidenceQuality: report.evidenceQuality,
+  advertisingSaturation: report.advertisingSaturation,
+  operationalRisk: report.operationalRisk,
+  failureRisk: report.failureRisk,
+  safetyGate: report.safetyGate,
+  evidenceSummary: report.evidenceSummary,
+  nextStep: report.nextStep,
+});
 
 describe("LocalMissionRuntime", () => {
   it("launches a fixture and reloads the persisted event history", async () => {
@@ -73,6 +90,26 @@ describe("LocalMissionRuntime", () => {
     expect(JSON.stringify(completed)).not.toContain("average");
     expect(await runtime.reload(launched.missionId)).toEqual(completed);
     await expect(runtime.importGoogleTrendsComparison(launched.missionId, csv)).rejects.toThrow("Exactly one resumable Google Trends comparison");
+  });
+
+  it("keeps final-report decisions invariant when manual comparison context is imported", async () => {
+    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-runtime-")), createMissionId: () => "comparison-decision-invariance" });
+    const csv = "Category: All categories\nWeek,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,12,24,36\n2026-01-11,18,30,42";
+    const launched = await runtime.launch("google-trends-comparison-pilot");
+    const beforeImport = projectFinalReport(launched.events);
+
+    const completed = await runtime.importGoogleTrendsComparison(launched.missionId, csv);
+    const afterImport = projectFinalReport(completed.events);
+
+    expect(decisionSnapshot(afterImport)).toEqual(decisionSnapshot(beforeImport));
+    expect(afterImport.comparisonSignalContext).toMatchObject({
+      geo: "US",
+      series: [
+        { term: "desk cable organizer", values: [12, 18] },
+        { term: "under-desk cable tray", values: [24, 30] },
+        { term: "cable management box", values: [36, 42] },
+      ],
+    });
   });
 
   it("persists a sanitized terminal Google Trends failure without a retry", async () => {

@@ -15,7 +15,7 @@ This is a planning and verification checklist. It does not publish DropScope, ch
 - [x] Add a [holdout-result document](HOLDOUT_RESULT.md) that clearly separates fixed evaluation output from real-world evidence.
 - [x] Add [limitations and responsible-use guidance](LIMITATIONS_AND_RESPONSIBLE_USE.md): DropScope is a local learning project, not commercial advice, an ecommerce automation system, or an unattended research bot.
 - [x] Add the [MIT License](../LICENSE) with the owner-approved copyright-holder line.
-- [ ] Decide whether the reachable Git author identity is acceptable to make public. The privacy audit found a non-placeholder author identity in reachable history. Leave history unchanged unless the repository owner explicitly chooses a separate, carefully reviewed rewrite plan.
+- [x] Owner approved the currently reachable Git author identity for a future public release. No history rewrite is authorized or needed for this decision.
 
 ## Final User-Controlled Release Gate
 

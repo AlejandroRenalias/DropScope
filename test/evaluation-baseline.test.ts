@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluationConcurrencies, evaluationFixtureIds, runEvaluationBaseline, summarizeCapacityExperiment } from "../src/evaluation-baseline.js";
+import { evaluationConcurrencies, evaluationFixtureIds, recommendDefaultTaskCapacity, runEvaluationBaseline, summarizeCapacityExperiment } from "../src/evaluation-baseline.js";
 
 describe("repeatable evaluation baseline", () => {
   it("compares every fixed mission mode at each approved concurrency", async () => {
@@ -25,6 +25,7 @@ describe("repeatable evaluation baseline", () => {
         capacityThreeLatencyMs: 52,
         latencySavedAtCapacityTwoMs: 16,
         latencySavedAtCapacityThreeMs: 30,
+        ledgerSpent: 130,
         terminalOutcomeStable: true,
         qualityOutcomeStable: true,
         spentStable: true,
@@ -38,6 +39,7 @@ describe("repeatable evaluation baseline", () => {
         capacityThreeLatencyMs: 58,
         latencySavedAtCapacityTwoMs: 0,
         latencySavedAtCapacityThreeMs: 0,
+        ledgerSpent: 60,
         terminalOutcomeStable: true,
         qualityOutcomeStable: true,
         spentStable: true,
@@ -51,6 +53,7 @@ describe("repeatable evaluation baseline", () => {
         capacityThreeLatencyMs: 59,
         latencySavedAtCapacityTwoMs: 15,
         latencySavedAtCapacityThreeMs: 15,
+        ledgerSpent: 80,
         terminalOutcomeStable: true,
         qualityOutcomeStable: true,
         spentStable: true,
@@ -65,5 +68,22 @@ describe("repeatable evaluation baseline", () => {
 
     expect(() => summarizeCapacityExperiment(summaries.filter((summary) => !(summary.fixtureId === "product-investigation-pilot" && summary.maxConcurrency === 3)))).toThrow("Capacity experiment requires every configured capacity for product-investigation-pilot.");
     expect(() => summarizeCapacityExperiment(summaries.map((summary) => summary.fixtureId === "product-investigation-pilot" && summary.maxConcurrency === 3 ? { ...summary, maxConcurrency: 2 } : summary))).toThrow("Capacity experiment is missing a configured capacity for product-investigation-pilot.");
+  });
+
+  it("recommends the smallest capacity that reaches every fixture minimum without changing quality or usage", async () => {
+    const comparison = summarizeCapacityExperiment(await runEvaluationBaseline());
+
+    expect(recommendDefaultTaskCapacity(comparison)).toEqual({
+      recommendationStatus: "SUPPORTED",
+      suggestedTaskCapacity: 3,
+      qualityAndUsageStable: true,
+      rationale: "Capacity 3 reaches every fixed fixture's minimum logical latency without changing terminal outcome, quality signals, ledger spend, or event count.",
+    });
+    expect(recommendDefaultTaskCapacity(comparison.map((summary, index) => index === 0 ? { ...summary, qualityOutcomeStable: false } : summary))).toMatchObject({
+      recommendationStatus: "INCONCLUSIVE",
+      suggestedTaskCapacity: null,
+      qualityAndUsageStable: false,
+    });
+    expect(() => recommendDefaultTaskCapacity([])).toThrow("A default-capacity recommendation requires at least one fixture comparison.");
   });
 });

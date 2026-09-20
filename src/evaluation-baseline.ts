@@ -15,11 +15,19 @@ export interface CapacityExperimentSummary {
   capacityThreeLatencyMs: number;
   latencySavedAtCapacityTwoMs: number;
   latencySavedAtCapacityThreeMs: number;
+  ledgerSpent: number;
   terminalOutcomeStable: boolean;
   qualityOutcomeStable: boolean;
   spentStable: boolean;
   eventCountStable: boolean;
   smallestCapacityAtMinimumLatency: number;
+}
+
+export interface DefaultCapacityRecommendation {
+  recommendationStatus: "SUPPORTED" | "INCONCLUSIVE";
+  suggestedTaskCapacity: number | null;
+  qualityAndUsageStable: boolean;
+  rationale: string;
 }
 
 function replaySimulatedLatency(events: MissionEvent[], maxConcurrency: number): number {
@@ -74,6 +82,7 @@ export function summarizeCapacityExperiment(summaries: EvaluationSummary[]): Cap
       capacityThreeLatencyMs: three.simulatedLatencyMs,
       latencySavedAtCapacityTwoMs: one.simulatedLatencyMs - two.simulatedLatencyMs,
       latencySavedAtCapacityThreeMs: one.simulatedLatencyMs - three.simulatedLatencyMs,
+      ledgerSpent: one.spent,
       terminalOutcomeStable: new Set(fixtureSummaries.map((summary) => summary.terminalStatus)).size === 1,
       qualityOutcomeStable: new Set(qualityOutcomes).size === 1,
       spentStable: new Set(fixtureSummaries.map((summary) => summary.spent)).size === 1,
@@ -81,4 +90,24 @@ export function summarizeCapacityExperiment(summaries: EvaluationSummary[]): Cap
       smallestCapacityAtMinimumLatency: fixtureSummaries.find((summary) => summary.simulatedLatencyMs === minimumLatency)!.maxConcurrency,
     };
   });
+}
+
+export function recommendDefaultTaskCapacity(comparison: CapacityExperimentSummary[]): DefaultCapacityRecommendation {
+  if (comparison.length === 0) throw new Error("A default-capacity recommendation requires at least one fixture comparison.");
+  const qualityAndUsageStable = comparison.every((summary) => summary.terminalOutcomeStable && summary.qualityOutcomeStable && summary.spentStable && summary.eventCountStable);
+  if (!qualityAndUsageStable) {
+    return {
+      recommendationStatus: "INCONCLUSIVE",
+      suggestedTaskCapacity: null,
+      qualityAndUsageStable,
+      rationale: "At least one capacity changed a terminal, quality, ledger, or event-count signal; retain the current configuration pending investigation.",
+    };
+  }
+  const suggestedTaskCapacity = Math.max(...comparison.map((summary) => summary.smallestCapacityAtMinimumLatency));
+  return {
+    recommendationStatus: "SUPPORTED",
+    suggestedTaskCapacity,
+    qualityAndUsageStable,
+    rationale: `Capacity ${suggestedTaskCapacity} reaches every fixed fixture's minimum logical latency without changing terminal outcome, quality signals, ledger spend, or event count.`,
+  };
 }

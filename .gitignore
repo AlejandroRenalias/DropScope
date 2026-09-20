@@ -5,3 +5,15 @@ coverage/
 dist/
 test-results/
 playwright-report/
+.env
+.env.*
+!.env.example
+.npmrc
+.netrc
+.pypirc
+credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx

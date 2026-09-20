@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "demo": "tsx src/cli.ts",
     "demo:recovery": "tsx src/recovery-demo.ts",
+    "evaluate": "tsx src/evaluation-cli.ts",
     "runtime:dev": "tsx src/local-runtime-cli.ts"
   },
   "devDependencies": {

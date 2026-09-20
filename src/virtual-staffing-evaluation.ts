@@ -16,11 +16,13 @@ export interface VirtualStaffingPlan {
   agents: readonly VirtualStaffingAgent[];
 }
 
+export const virtualStaffingRoles = ["EVIDENCE_RESEARCHER", "MARKET_RESEARCHER", "OPERATIONS_RESEARCHER", "RISK_RESEARCHER"] as const;
+
 export const virtualStaffingPlans = [
   {
     planId: "generalist",
     label: "One generalist",
-    agents: [{ agentId: "generalist-1", supportedRoles: ["*"] }],
+    agents: [{ agentId: "generalist-1", supportedRoles: virtualStaffingRoles }],
   },
   {
     planId: "research-operations-pair",
@@ -90,7 +92,7 @@ export function replayVirtualStaffingLatency(events: MissionEvent[], plan: Virtu
   const taskFinishes = new Map<string, number>();
   let lastFinish = 0;
   for (const attempt of recordedAttempts(events)) {
-    const eligibleAgents = plan.agents.filter((agent) => agent.supportedRoles.includes("*") || agent.supportedRoles.includes(attempt.workerRole));
+    const eligibleAgents = plan.agents.filter((agent) => agent.supportedRoles.includes(attempt.workerRole));
     if (eligibleAgents.length === 0) throw new Error(`Virtual staffing plan ${plan.planId} has no agent for ${attempt.workerRole}.`);
     const agent = [...eligibleAgents].sort((left, right) => (availability.get(left.agentId)! - availability.get(right.agentId)!) || left.agentId.localeCompare(right.agentId))[0]!;
     const start = Math.max(taskFinishes.get(attempt.taskId) ?? 0, availability.get(agent.agentId)!, ...(attempt.dependencies.map((dependency) => taskFinishes.get(dependency) ?? 0)));

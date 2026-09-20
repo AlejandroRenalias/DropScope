@@ -36,8 +36,12 @@ describe("virtual role-based staffing evaluation", () => {
   it("rejects a plan that cannot staff a recorded role", async () => {
     const root = await mkdtemp(join(tmpdir(), "dropscope-uncovered-role-"));
     const mission = await runFixtureMission({ fixtureId: "failure-autopsy-pilot", missionId: "uncovered-role", historyPath: join(root, "mission.jsonl"), maxConcurrency: 3 });
+    const unknownRoleEvents = mission.events.map((event) => event.type === "TaskScheduled" && event.payload.attemptId === "problem-evidence-challenge:a1"
+      ? { ...event, payload: { ...event.payload, workerRole: "UNKNOWN_RESEARCHER" } }
+      : event) as typeof mission.events;
 
     expect(() => replayVirtualStaffingLatency(mission.events, { planId: "evidence-only", label: "Evidence only", agents: [{ agentId: "evidence-1", supportedRoles: ["EVIDENCE_RESEARCHER"] }] })).toThrow("Virtual staffing plan evidence-only has no agent for MARKET_RESEARCHER.");
+    expect(() => replayVirtualStaffingLatency(unknownRoleEvents, virtualStaffingPlans[0])).toThrow("Virtual staffing plan generalist has no agent for UNKNOWN_RESEARCHER.");
     expect(virtualStaffingPlans).toHaveLength(3);
   });
 });

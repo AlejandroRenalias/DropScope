@@ -8,6 +8,20 @@ export const evaluationFixtureIds = ["crosscurrent-workspace-market", "failure-a
 export const evaluationConcurrencies = [1, 2, 3] as const;
 export interface EvaluationSummary { fixtureId: typeof evaluationFixtureIds[number]; maxConcurrency: number; terminalStatus: string; spent: number; eventCount: number; simulatedLatencyMs: number; ranking: string[]; reviewerVerdict: string | null; }
 
+export interface CapacityExperimentSummary {
+  fixtureId: typeof evaluationFixtureIds[number];
+  capacityOneLatencyMs: number;
+  capacityTwoLatencyMs: number;
+  capacityThreeLatencyMs: number;
+  latencySavedAtCapacityTwoMs: number;
+  latencySavedAtCapacityThreeMs: number;
+  terminalOutcomeStable: boolean;
+  qualityOutcomeStable: boolean;
+  spentStable: boolean;
+  eventCountStable: boolean;
+  smallestCapacityAtMinimumLatency: number;
+}
+
 function replaySimulatedLatency(events: MissionEvent[], maxConcurrency: number): number {
   const dependencies = new Map<string, string[]>();
   const taskFinishes = new Map<string, number>();
@@ -40,4 +54,31 @@ export async function runEvaluationBaseline(): Promise<EvaluationSummary[]> {
     summaries.push({ fixtureId, maxConcurrency, terminalStatus: result.state.status, spent: result.state.budget.spent, eventCount: result.events.length, simulatedLatencyMs, ranking: result.report.ranking.map(({ candidateId }) => candidateId), reviewerVerdict: review?.type === "BlindReviewCompleted" ? review.payload.verdict : null });
   }
   return summaries;
+}
+
+export function summarizeCapacityExperiment(summaries: EvaluationSummary[]): CapacityExperimentSummary[] {
+  return evaluationFixtureIds.map((fixtureId) => {
+    const fixtureSummaries = summaries.filter((summary) => summary.fixtureId === fixtureId);
+    if (fixtureSummaries.length !== evaluationConcurrencies.length) throw new Error(`Capacity experiment requires every configured capacity for ${fixtureId}.`);
+    const byCapacity = new Map(fixtureSummaries.map((summary) => [summary.maxConcurrency, summary]));
+    if (evaluationConcurrencies.some((capacity) => !byCapacity.has(capacity))) throw new Error(`Capacity experiment is missing a configured capacity for ${fixtureId}.`);
+    const one = byCapacity.get(1)!;
+    const two = byCapacity.get(2)!;
+    const three = byCapacity.get(3)!;
+    const qualityOutcomes = fixtureSummaries.map((summary) => JSON.stringify({ ranking: summary.ranking, reviewerVerdict: summary.reviewerVerdict }));
+    const minimumLatency = Math.min(...fixtureSummaries.map((summary) => summary.simulatedLatencyMs));
+    return {
+      fixtureId,
+      capacityOneLatencyMs: one.simulatedLatencyMs,
+      capacityTwoLatencyMs: two.simulatedLatencyMs,
+      capacityThreeLatencyMs: three.simulatedLatencyMs,
+      latencySavedAtCapacityTwoMs: one.simulatedLatencyMs - two.simulatedLatencyMs,
+      latencySavedAtCapacityThreeMs: one.simulatedLatencyMs - three.simulatedLatencyMs,
+      terminalOutcomeStable: new Set(fixtureSummaries.map((summary) => summary.terminalStatus)).size === 1,
+      qualityOutcomeStable: new Set(qualityOutcomes).size === 1,
+      spentStable: new Set(fixtureSummaries.map((summary) => summary.spent)).size === 1,
+      eventCountStable: new Set(fixtureSummaries.map((summary) => summary.eventCount)).size === 1,
+      smallestCapacityAtMinimumLatency: fixtureSummaries.find((summary) => summary.simulatedLatencyMs === minimumLatency)!.maxConcurrency,
+    };
+  });
 }

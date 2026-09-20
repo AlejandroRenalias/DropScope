@@ -12,8 +12,8 @@ This is a planning and verification checklist. It does not publish DropScope, ch
 
 ## Work Still Needed Before a Public Release
 
-- [ ] Add a holdout-result document that clearly separates fixed evaluation output from real-world evidence.
-- [ ] Add limitations and responsible-use guidance: DropScope is a local learning project, not commercial advice, an ecommerce automation system, or an unattended research bot.
+- [x] Add a [holdout-result document](HOLDOUT_RESULT.md) that clearly separates fixed evaluation output from real-world evidence.
+- [x] Add [limitations and responsible-use guidance](LIMITATIONS_AND_RESPONSIBLE_USE.md): DropScope is a local learning project, not commercial advice, an ecommerce automation system, or an unattended research bot.
 - [ ] Choose and add an open-source license. Until then, do not imply that the repository is licensed for reuse.
 - [ ] Decide whether the reachable Git author identity is acceptable to make public. The privacy audit found a non-placeholder author identity in reachable history. Leave history unchanged unless the repository owner explicitly chooses a separate, carefully reviewed rewrite plan.
 

@@ -21,16 +21,16 @@ describe("repeatable evaluation baseline", () => {
       {
         fixtureId: "crosscurrent-workspace-market",
         capacityOneLatencyMs: 82,
-        capacityTwoLatencyMs: 66,
-        capacityThreeLatencyMs: 52,
-        latencySavedAtCapacityTwoMs: 16,
-        latencySavedAtCapacityThreeMs: 30,
+        capacityTwoLatencyMs: 68,
+        capacityThreeLatencyMs: 68,
+        latencySavedAtCapacityTwoMs: 14,
+        latencySavedAtCapacityThreeMs: 14,
         ledgerSpent: 130,
         terminalOutcomeStable: true,
         qualityOutcomeStable: true,
         spentStable: true,
         eventCountStable: true,
-        smallestCapacityAtMinimumLatency: 3,
+        smallestCapacityAtMinimumLatency: 2,
       },
       {
         fixtureId: "failure-autopsy-pilot",
@@ -49,16 +49,16 @@ describe("repeatable evaluation baseline", () => {
       {
         fixtureId: "product-investigation-pilot",
         capacityOneLatencyMs: 74,
-        capacityTwoLatencyMs: 59,
-        capacityThreeLatencyMs: 59,
-        latencySavedAtCapacityTwoMs: 15,
-        latencySavedAtCapacityThreeMs: 15,
+        capacityTwoLatencyMs: 74,
+        capacityThreeLatencyMs: 74,
+        latencySavedAtCapacityTwoMs: 0,
+        latencySavedAtCapacityThreeMs: 0,
         ledgerSpent: 80,
         terminalOutcomeStable: true,
         qualityOutcomeStable: true,
         spentStable: true,
         eventCountStable: true,
-        smallestCapacityAtMinimumLatency: 2,
+        smallestCapacityAtMinimumLatency: 1,
       },
     ]);
   });
@@ -75,9 +75,9 @@ describe("repeatable evaluation baseline", () => {
 
     expect(recommendDefaultTaskCapacity(comparison)).toEqual({
       recommendationStatus: "SUPPORTED",
-      suggestedTaskCapacity: 3,
+      suggestedTaskCapacity: 2,
       qualityAndUsageStable: true,
-      rationale: "Capacity 3 reaches every fixed fixture's minimum logical latency without changing terminal outcome, quality signals, ledger spend, or event count.",
+      rationale: "Capacity 2 reaches every fixed fixture's minimum logical latency without changing terminal outcome, quality signals, ledger spend, or event count.",
     });
     expect(recommendDefaultTaskCapacity(comparison.map((summary, index) => index === 0 ? { ...summary, qualityOutcomeStable: false } : summary))).toMatchObject({
       recommendationStatus: "INCONCLUSIVE",

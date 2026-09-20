@@ -39,7 +39,10 @@ function replaySimulatedLatency(events: MissionEvent[], maxConcurrency: number):
     if (event.type === "TaskScheduled") dependencies.set(event.payload.attemptId, event.payload.dependencies);
     if (event.type !== "TaskStarted") continue;
     const taskId = event.payload.attemptId.split(":")[0]!;
-    let start = Math.max(0, ...(dependencies.get(event.payload.attemptId) ?? []).map((dependency) => taskFinishes.get(dependency) ?? 0));
+    // A retry cannot overlap its own failed attempt, even when another global
+    // scheduler slot is available. taskFinishes holds that earlier attempt's
+    // logical finish until a later retry replaces it.
+    let start = Math.max(0, taskFinishes.get(taskId) ?? 0, ...(dependencies.get(event.payload.attemptId) ?? []).map((dependency) => taskFinishes.get(dependency) ?? 0));
     while (activeFinishes.length >= maxConcurrency) {
       start = Math.max(start, Math.min(...activeFinishes));
       activeFinishes = activeFinishes.filter((finish) => finish > start);

@@ -65,7 +65,7 @@ It prints the fixed-mission baseline, task-capacity comparison, quality-versus-u
 
 ## Troubleshooting
 
-- **“Local runtime is unavailable”** — start `npm.cmd run runtime:dev` in the first terminal and keep it running.
+- **“Local runtime is unavailable”** — start `npm.cmd run runtime:dev` in the second terminal and keep it running.
 - **The page opens but shows synthetic fallback** — launch one of the fixed local fixtures from the runtime control strip.
 - **“Reload saved mission” cannot restore a mission** — verify the runtime is still running and that browser local storage is available.
-- **Vite chose a different browser port** — use the URL Vite prints. The mission runtime remains on `127.0.0.1:8787`.
+- **Vite chose a different browser port** — use the URL Vite prints, set `DROPSCOPE_TRUSTED_UI_ORIGIN` to that slash-free origin, then restart `npm.cmd run runtime:dev`. The mission runtime remains on `127.0.0.1:8787`.

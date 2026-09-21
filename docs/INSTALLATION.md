@@ -44,7 +44,7 @@ In the second window, start the browser interface:
 npm.cmd run dev
 ```
 
-Open the local URL that Vite prints in that window (normally `http://localhost:5173`). Choose a fixed fixture in the **Local runtime** control strip and select **Launch local mission**. The browser stores the active mission ID locally so **Reload saved mission** can restore it after a refresh.
+Open the local URL that Vite prints in that window (normally `http://localhost:5173`). If Vite selects a different port, start the runtime with `DROPSCOPE_TRUSTED_UI_ORIGIN` set to that exact printed origin (for example, `$env:DROPSCOPE_TRUSTED_UI_ORIGIN = "http://localhost:5174"`) before running the local-runtime command. Choose a fixed fixture in the **Local runtime** control strip and select **Launch local mission**. The browser stores the active mission ID locally so **Reload saved mission** can restore it after a refresh.
 
 The initial synthetic fallback is expected if you have not launched a local mission yet.
 

@@ -10,6 +10,7 @@ const MAX_BODY_BYTES = 64 * 1024;
 
 export interface LocalRuntimeServerOptions {
   port?: number;
+  trustedUiOrigin?: string;
 }
 
 export interface LocalRuntimeServerHandle {
@@ -18,7 +19,8 @@ export interface LocalRuntimeServerHandle {
 }
 
 export async function listenLocalRuntimeServer(runtime: LocalMissionRuntime, options: LocalRuntimeServerOptions = {}): Promise<LocalRuntimeServerHandle> {
-  const server = createServer((request, response) => { void handleRequest(runtime, request, response); });
+  const trustedUiOrigin = options.trustedUiOrigin ?? "http://localhost:5173";
+  const server = createServer((request, response) => { void handleRequest(runtime, request, response, trustedUiOrigin); });
   const host = "127.0.0.1";
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -33,10 +35,10 @@ export async function listenLocalRuntimeServer(runtime: LocalMissionRuntime, opt
   };
 }
 
-async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMessage, response: ServerResponse): Promise<void> {
+async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMessage, response: ServerResponse, trustedUiOrigin: string): Promise<void> {
   try {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
-    const corsOrigin = loopbackOrigin(request.headers.origin);
+    const corsOrigin = loopbackOrigin(request.headers.origin, trustedUiOrigin);
     if (request.headers.origin && !corsOrigin) throw httpError(403, "Cross-origin requests must use a loopback origin.");
     if (request.method === "OPTIONS") {
       if (!url.pathname.startsWith("/api/")) throw httpError(404, "Unknown route.");
@@ -103,7 +105,7 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
     throw httpError(request.method === "POST" || request.method === "GET" ? 404 : 405, "Unknown route.");
   } catch (error: unknown) {
     const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) || isConfirmationConflict(error) || isExecutionConflict(error) || isGoogleTrendsConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
-    sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin));
+    sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin, trustedUiOrigin));
   }
 }
 
@@ -154,13 +156,12 @@ function isGoogleTrendsConflict(error: unknown): boolean {
   return error instanceof Error && (error.message.includes("available only for the Google Trends pilot") || error.message.includes("Exactly one running Google Trends pilot attempt") || error.message.includes("Google Trends capture is already") || error.message.includes("available only for the Google Trends comparison pilot") || error.message.includes("Exactly one resumable Google Trends comparison pilot attempt") || error.message.includes("Google Trends comparison import is already"));
 }
 
-function loopbackOrigin(origin: string | undefined): string | undefined {
+function loopbackOrigin(origin: string | undefined, trustedUiOrigin: string): string | undefined {
   if (!origin) return undefined;
   try {
     const parsed = new URL(origin);
     const isLoopbackHost = parsed.protocol === "http:" && (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost");
-    const isTrustedUiPort = parsed.port === "5173" || parsed.port === "5177";
-    return isLoopbackHost && isTrustedUiPort && parsed.pathname === "/" && !parsed.search && !parsed.hash ? parsed.origin : undefined;
+    return isLoopbackHost && parsed.origin === trustedUiOrigin ? parsed.origin : undefined;
   } catch {
     return undefined;
   }

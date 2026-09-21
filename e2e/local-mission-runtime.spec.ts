@@ -17,7 +17,7 @@ const comparisonCsv = "Category: All categories\nWeek,desk cable organizer: (Uni
 test.beforeAll(async () => {
   runtimeServer = await listenLocalRuntimeServer(
     new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve(nextPreflightResult); }) }, subscriptionLiveWorkerRunner: { run: async (request) => ({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED" as const, finding: "Fixed browser pilot finding." }) }, googleTrendsSource: { capture: async () => ({ sourceUrl: "https://trends.google.com/trending/rss?geo=US" as const, geo: "US" as const, attribution: "Google Trends" as const, items: [{ query: "Desk lamps", traffic: "20K+" }] }) } }),
-    { port: 8791 },
+    { port: 8791, trustedUiOrigin: "http://127.0.0.1:5177" },
   );
   process.env.VITE_LOCAL_RUNTIME_BASE_URL = "http://127.0.0.1:8791";
   viteServer = await createServer({ server: { host: "127.0.0.1", port: 5177 } });

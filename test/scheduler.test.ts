@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { JsonlEventStore } from "../src/event-store.js";
 import { replay } from "../src/reducer.js";
-import { deriveAttemptDecision, runSimulatedSchedule } from "../src/scheduler.js";
+import { deriveAttemptDecision, prepareLiveWorkerPilotSchedule, runSimulatedSchedule } from "../src/scheduler.js";
+import { RecordedWorkerAdapter } from "../src/worker-adapter.js";
 
 describe("dependency-aware asynchronous scheduler", () => {
   it("derives decisions with explicit attempt identity", () => {
@@ -185,5 +186,126 @@ describe("dependency-aware asynchronous scheduler", () => {
         { taskId: "second", researchKey: "same-question", objective: "Second answer", cost: 10, durationMs: 1 },
       ],
     })).rejects.toThrow("An active or completed task already covers this research key.");
+  });
+
+  it("persists one validated dry-run specialist finding through the runtime-owned event path", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "worker-adapter.jsonl");
+    const seed = Array.from({ length: 500 }, (_, value) => value).find((value) => deriveAttemptDecision(value, "evidence", 1, 1).outcome === "COMPLETED");
+    expect(seed).toBeDefined();
+
+    await runSimulatedSchedule({
+      missionId: "worker-adapter-demo",
+      missionSeed: seed!,
+      totalBudget: 20,
+      historyPath,
+      recordedWorkerAssignment: {
+        workerRole: "EVIDENCE_RESEARCHER",
+        adapter: new RecordedWorkerAdapter({
+          "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Recorded evidence supports the workflow problem." },
+        }),
+      },
+      tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    });
+    const events = await new JsonlEventStore(historyPath).readAll();
+
+    expect(events.find((event) => event.type === "WorkerExecutionRecorded")).toMatchObject({ payload: { attemptId: "evidence:a1", mode: "RECORDED_DRY_RUN", providerUsageStatus: "NOT_APPLICABLE" } });
+    expect(events.findIndex((event) => event.type === "WorkerExecutionRecorded")).toBeLessThan(events.findIndex((event) => event.type === "FindingSubmitted"));
+    expect(events.find((event) => event.type === "FindingSubmitted")).toMatchObject({ payload: { attemptId: "evidence:a1", finding: "Recorded evidence supports the workflow problem." } });
+    expect(replay(events).tasks.evidence.status).toBe("COMPLETED");
+  });
+
+  it("persists an explicit disabled subscription declaration immediately after mission creation", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "subscription-declaration.jsonl");
+    await runSimulatedSchedule({ missionId: "subscription-declaration-demo", missionSeed: 1, totalBudget: 20, historyPath,
+      subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
+      tasks: [{ taskId: "evidence", objective: "Check evidence.", cost: 10, durationMs: 1 }] });
+    const events = await new JsonlEventStore(historyPath).readAll();
+    expect(events.slice(0, 2).map((event) => event.type)).toEqual(["MissionCreated", "SubscriptionRuntimeDeclared"]);
+    expect(replay(events).subscriptionRuntimeDeclaration).toEqual({ executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" });
+  });
+
+  it("can leave one explicit fixture-only attempt running without invoking a worker", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "paused-pilot.jsonl");
+    const result = await prepareLiveWorkerPilotSchedule({ missionId: "paused-pilot", historyPath });
+    const events = await new JsonlEventStore(historyPath).readAll();
+
+    expect(events.map((event) => event.type)).toEqual(["MissionCreated", "SubscriptionRuntimeDeclared", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+    expect(replay(events)).toMatchObject({ status: "RUNNING", attempts: { "pilot-evidence:a1": { status: "RUNNING" } } });
+    expect(result).toMatchObject({ taskOutcomes: {}, completionOrder: [], maxConcurrentAttempts: 1 });
+  });
+
+  it("does not let an arbitrary scheduler caller pause a look-alike attempt", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "not-paused.jsonl");
+    await runSimulatedSchedule({
+      missionId: "not-paused",
+      missionSeed: 1,
+      totalBudget: 20,
+      historyPath,
+      completeMission: false,
+      subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
+      tasks: [{ taskId: "other-evidence", objective: "Look-alike task.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+      ...( { pauseAfterStartingTaskId: "other-evidence" } as object),
+    });
+    expect(replay(await new JsonlEventStore(historyPath).readAll())).toMatchObject({ attempts: { "other-evidence:a1": { status: "COMPLETED" } } });
+  });
+
+  it("records a malformed worker result as a normal transient failure before retrying", async () => {
+    const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "worker-adapter-retry.jsonl");
+    const seed = Array.from({ length: 500 }, (_, value) => value).find((value) => deriveAttemptDecision(value, "evidence", 1, 1).outcome === "COMPLETED" && deriveAttemptDecision(value, "evidence", 2, 1).outcome === "COMPLETED");
+    expect(seed).toBeDefined();
+
+    await runSimulatedSchedule({
+      missionId: "worker-adapter-retry-demo",
+      missionSeed: seed!,
+      totalBudget: 20,
+      historyPath,
+      recordedWorkerAssignment: {
+        workerRole: "EVIDENCE_RESEARCHER",
+        adapter: new RecordedWorkerAdapter({
+          "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Invalid because this extra field is not accepted.", extra: true },
+          "evidence:a2": { taskId: "evidence", attemptId: "evidence:a2", status: "COMPLETED", finding: "Recorded retry result passed validation." },
+        }),
+      },
+      tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    });
+    const events = await new JsonlEventStore(historyPath).readAll();
+
+    expect(events.find((event) => event.type === "TaskFailedTransient")).toMatchObject({ payload: { attemptId: "evidence:a1", reason: expect.stringContaining("Worker result rejected") } });
+    expect(events.find((event) => event.type === "FindingSubmitted")).toMatchObject({ payload: { attemptId: "evidence:a2", finding: "Recorded retry result passed validation." } });
+    expect(replay(events).tasks.evidence.status).toBe("COMPLETED");
+  });
+
+  it("refuses unaffordable work before a dry-run adapter can run", async () => {
+    const adapter = new RecordedWorkerAdapter({
+      "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Should never run." },
+    });
+    const run = vi.spyOn(adapter, "run");
+
+    await expect(runSimulatedSchedule({
+      missionId: "worker-adapter-budget-demo",
+      missionSeed: 1,
+      totalBudget: 5,
+      recordedWorkerAssignment: { workerRole: "EVIDENCE_RESEARCHER", adapter },
+      tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    })).rejects.toThrow("Insufficient mission budget for scheduled task attempts.");
+
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("refuses a recorded worker when its provenance cannot be persisted", async () => {
+    const adapter = new RecordedWorkerAdapter({
+      "evidence:a1": { taskId: "evidence", attemptId: "evidence:a1", status: "COMPLETED", finding: "Should never run." },
+    });
+    const run = vi.spyOn(adapter, "run");
+
+    await expect(runSimulatedSchedule({
+      missionId: "worker-adapter-unpersisted-demo",
+      missionSeed: 1,
+      totalBudget: 20,
+      recordedWorkerAssignment: { workerRole: "EVIDENCE_RESEARCHER", adapter },
+      tasks: [{ taskId: "evidence", objective: "Check recorded evidence.", cost: 10, durationMs: 1, workerRole: "EVIDENCE_RESEARCHER" }],
+    })).rejects.toThrow("requires a persisted event store");
+
+    expect(run).not.toHaveBeenCalled();
   });
 });

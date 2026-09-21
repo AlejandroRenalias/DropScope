@@ -965,3 +965,13 @@ button:active { transform: translateY(1px); }
 .runtime-controls button:disabled { cursor: wait; opacity: .55; }
 .runtime-message { flex-basis: 100%; color: #9fd8c0; font-size: 13px; }
 .runtime-message.error { color: #f0a6a0; }
+
+.comparison-timeline { display: grid; gap: 9px; margin: 4px 0 0; padding-top: 8px; border-top: 1px solid #27383a; }
+.comparison-timeline-heading { display: flex; justify-content: space-between; gap: 10px; color: #a9c0bd; font-size: 11px; }
+.comparison-timeline-heading span { color: #8a9b9a; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; text-align: right; }
+.comparison-timeline-svg { display: block; width: 100%; height: auto; min-height: 105px; overflow: visible; }
+.comparison-timeline-gridline { stroke: #294044; stroke-width: 1; stroke-dasharray: 3 5; }
+.comparison-timeline-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.comparison-timeline-legend { display: flex; flex-wrap: wrap; gap: 9px 14px; color: #a9b9b7; font-size: 10px; }
+.comparison-timeline-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.comparison-timeline-legend i { width: 7px; height: 7px; border-radius: 50%; }

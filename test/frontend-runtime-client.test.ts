@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { launchLocalMission, reloadLocalMission, RuntimeClientError } from "../src/frontend/runtime-client.js";
+import { captureGoogleTrends, confirmSubscriptionWorker, importGoogleTrendsComparison, launchLocalMission, preflightSubscriptionRuntime, reloadLocalMission, runSubscriptionWorker, RuntimeClientError } from "../src/frontend/runtime-client.js";
 
 const valid = { schemaVersion: 1, sequenceNumber: 1, missionId: "mission-1", eventId: "event-1", timestamp: "2026-01-01T00:00:00.000Z", type: "MissionCreated", payload: { totalBudget: 10, missionSeed: 1 } };
 const dto = { missionId: "mission-1", fixtureId: "crosscurrent-workspace-market", events: [valid] };
@@ -24,6 +24,43 @@ describe("frontend runtime client", () => {
   it("reports an unavailable local runtime clearly", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
     await expect(reloadLocalMission("mission-1")).rejects.toThrow("Start it with npm run runtime:dev");
+    fetchMock.mockRestore();
+  });
+
+  it("posts a subscription preflight only to the fixed loopback mission endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(dto), { status: 200 }));
+    await expect(preflightSubscriptionRuntime("mission-1")).resolves.toEqual(dto);
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/api/missions/mission-1/subscription-preflight", expect.objectContaining({ method: "POST" }));
+    fetchMock.mockRestore();
+  });
+
+  it("posts a confirmation request and accepts only its sanitized DTO", async () => {
+    const confirmation = { missionId: "mission-1", attemptId: "pilot-evidence:a1", status: "CONFIRMED", expiresAtMs: 70_000 };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(confirmation), { status: 200 }));
+    await expect(confirmSubscriptionWorker("mission-1")).resolves.toEqual(confirmation);
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/api/missions/mission-1/subscription-confirmation", expect.objectContaining({ method: "POST" }));
+    fetchMock.mockRestore();
+  });
+
+  it("posts the final live-worker action only to the fixed loopback mission endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(dto), { status: 200 }));
+    await expect(runSubscriptionWorker("mission-1")).resolves.toEqual(dto);
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/api/missions/mission-1/subscription-run", expect.objectContaining({ method: "POST" }));
+    fetchMock.mockRestore();
+  });
+
+  it("posts the Google Trends capture only to its fixed loopback mission endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(dto), { status: 200 }));
+    await expect(captureGoogleTrends("mission-1")).resolves.toEqual(dto);
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/api/missions/mission-1/google-trends-capture", expect.objectContaining({ method: "POST" }));
+    fetchMock.mockRestore();
+  });
+
+  it("posts a selected comparison CSV only to the fixed loopback import endpoint", async () => {
+    const csv = "Week,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,1,2,3";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(dto), { status: 200 }));
+    await expect(importGoogleTrendsComparison("mission-1", csv)).resolves.toEqual(dto);
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/api/missions/mission-1/google-trends-comparison-import", expect.objectContaining({ method: "POST", body: JSON.stringify({ csv }) }));
     fetchMock.mockRestore();
   });
 });

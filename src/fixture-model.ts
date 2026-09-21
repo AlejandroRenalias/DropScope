@@ -36,6 +36,8 @@ const fixtureShape = z.object({
   budget: z.number().int().positive(),
   tasks: z.array(fixtureTaskSchema).min(1),
   candidateEvaluations: z.array(fixtureCandidateEvaluationSchema),
+  autopsy: z.object({ conclusion: z.string().min(1), evidenceThatCouldChangeConclusion: z.array(z.string().min(1)).min(1).max(5) }).strict().optional(),
+  investigation: z.object({ autopsyConclusion: z.string().min(1), opposingEvidence: z.array(z.string().min(1)).min(1).max(5) }).strict().optional(),
 }).strict();
 
 export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
@@ -84,6 +86,42 @@ export const fixtureSchema = fixtureShape.superRefine((fixture, context) => {
 export type FixtureTask = z.infer<typeof fixtureTaskSchema>;
 export type FixtureCandidateEvaluation = z.infer<typeof fixtureCandidateEvaluationSchema>;
 export type Fixture = z.infer<typeof fixtureSchema>;
+
+export const liveWorkerPilotFixtureId = "live-worker-pilot";
+export const googleTrendsPilotFixtureId = "google-trends-pilot";
+export const googleTrendsComparisonPilotFixtureId = "google-trends-comparison-pilot";
+export const failureAutopsyPilotFixtureId = "failure-autopsy-pilot";
+export const productInvestigationPilotFixtureId = "product-investigation-pilot";
+export const liveWorkerPilotTask = {
+  id: "pilot-evidence",
+  objective: "Analyze the supplied local pilot fixture only.",
+  cost: 10,
+  durationMs: 1,
+  workClass: "MANDATORY",
+  researchKey: "pilot-evidence",
+  dependencies: [],
+  workerRole: "EVIDENCE_RESEARCHER",
+} as const satisfies FixtureTask;
+export const googleTrendsPilotTask = {
+  id: "google-trends-us-now",
+  objective: "Capture the current US Google Trends trending-now sample.",
+  cost: 10,
+  durationMs: 1,
+  workClass: "MANDATORY",
+  researchKey: "google-trends-us-trending-now",
+  dependencies: [],
+  workerRole: "SOURCE_RESEARCHER",
+} as const satisfies FixtureTask;
+export const googleTrendsComparisonPilotTask = {
+  id: "google-trends-us-comparison",
+  objective: "Import the approved US Google Trends desk-organization comparison.",
+  cost: 10,
+  durationMs: 1,
+  workClass: "MANDATORY",
+  researchKey: "google-trends-us-desk-organization-comparison",
+  dependencies: [],
+  workerRole: "SOURCE_RESEARCHER",
+} as const satisfies FixtureTask;
 
 const defaultRiskAttributes: z.infer<typeof riskGateInputSchema>["attributes"] = { intendedUser: "GENERAL", foodOrIngestion: "NO", bodyContact: "NONE", healthPositioning: "NONE", electricalPower: "NONE", thermalOrFireHazard: "NONE", physicalHazard: "NONE", protectiveFunction: "NONE", chemicalExposure: "NONE_DECLARED", regulatedCategorySignal: "NONE", brandOrCreativeSimilaritySignal: "NONE_OBSERVED", evidenceCompleteness: "SUFFICIENT" };
 const riskInput = (candidateId: string, attributes: Partial<z.infer<typeof riskGateInputSchema>["attributes"]> = {}): z.infer<typeof riskGateInputSchema> => ({
@@ -153,6 +191,67 @@ const definitions: readonly Fixture[] = [
       { id: "workflow-interviews", objective: "Compare recurring workflow problems.", cost: 30, durationMs: 15, workClass: "MANDATORY", researchKey: "workflow-evidence", dependencies: ["workspace-scan"], workerRole: "EVIDENCE_RESEARCHER" },
       { id: "supplier-check", objective: "Check operational feasibility.", cost: 20, durationMs: 12, workClass: "MANDATORY", researchKey: "supplier-feasibility", dependencies: ["workspace-scan"], workerRole: "OPERATIONS_RESEARCHER" },
       { id: "crosscurrent-risk-review", objective: "Review conflicting risk signals.", cost: 25, durationMs: 10, workClass: "MANDATORY", researchKey: "crosscurrent-risk", dependencies: ["workflow-interviews", "supplier-check"], workerRole: "RISK_RESEARCHER" },
+    ],
+  },
+  {
+    fixtureId: liveWorkerPilotFixtureId,
+    seed: 1,
+    budget: 20,
+    candidateEvaluations: [
+      { candidateId: "pilot-workspace", riskInput: riskInput("pilot-workspace"), customerProblemEvidenceScore: 80, evidenceQualityScore: 80, trendDurabilityScore: 70, advertisingSaturationScore: 35, operationalRiskScore: 20, failureRiskScore: 20, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [liveWorkerPilotTask],
+  },
+  {
+    fixtureId: googleTrendsPilotFixtureId,
+    seed: 1,
+    budget: 20,
+    candidateEvaluations: [
+      { candidateId: "trends-pilot", riskInput: riskInput("trends-pilot"), customerProblemEvidenceScore: 0, evidenceQualityScore: 0, trendDurabilityScore: 0, advertisingSaturationScore: 0, operationalRiskScore: 0, failureRiskScore: 0, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [googleTrendsPilotTask],
+  },
+  {
+    fixtureId: googleTrendsComparisonPilotFixtureId,
+    seed: 1,
+    budget: 20,
+    candidateEvaluations: [
+      { candidateId: "desk-organization-comparison", riskInput: riskInput("desk-organization-comparison"), customerProblemEvidenceScore: 0, evidenceQualityScore: 0, trendDurabilityScore: 0, advertisingSaturationScore: 0, operationalRiskScore: 0, failureRiskScore: 0, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [googleTrendsComparisonPilotTask],
+  },
+  {
+    fixtureId: failureAutopsyPilotFixtureId,
+    seed: 1,
+    budget: 75,
+    autopsy: {
+      conclusion: "STOP: the fixed concept does not clear evidence or safety gates.",
+      evidenceThatCouldChangeConclusion: ["Independent customer-problem evidence above the required threshold.", "A non-medical positioning and safety assessment that clears the risk gate.", "Credible evidence of differentiated supply and workable return economics."],
+    },
+    candidateEvaluations: [
+      { candidateId: "heated-wellness-wrap", riskInput: riskInput("heated-wellness-wrap", { healthPositioning: "MEDICAL_CLAIM_OR_DEVICE", electricalPower: "MAINS_OR_HIGH_POWER" }), customerProblemEvidenceScore: 42, evidenceQualityScore: 40, trendDurabilityScore: 44, advertisingSaturationScore: 86, operationalRiskScore: 72, failureRiskScore: 78, hasUnresolvedBlockingContradiction: true, hasBlockingDecisionCriticalMissingEvidence: true },
+    ],
+    tasks: [
+      { id: "problem-evidence-challenge", objective: "Challenge whether the fixed concept solves a durable customer problem.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "autopsy-problem-evidence", dependencies: [], workerRole: "EVIDENCE_RESEARCHER" },
+      { id: "market-crowding-challenge", objective: "Challenge crowding and supplier differentiation for the fixed concept.", cost: 20, durationMs: 15, workClass: "MANDATORY", researchKey: "autopsy-market-crowding", dependencies: ["problem-evidence-challenge"], workerRole: "MARKET_RESEARCHER" },
+      { id: "safety-economics-challenge", objective: "Challenge safety, returns, and operating assumptions for the fixed concept.", cost: 20, durationMs: 10, workClass: "MANDATORY", researchKey: "autopsy-safety-economics", dependencies: ["market-crowding-challenge"], workerRole: "RISK_RESEARCHER" },
+    ],
+  },
+  {
+    fixtureId: productInvestigationPilotFixtureId,
+    seed: 1,
+    budget: 80,
+    investigation: {
+      autopsyConclusion: "CAUTION: the fixed priority remains eligible, but its autopsy records material operational pressure before any spend decision.",
+      opposingEvidence: ["Return-rate evidence for the fixed form factor.", "Evidence that supplier differentiation survives direct comparison.", "A bounded operating-cost test that confirms the claimed margin."],
+    },
+    candidateEvaluations: [
+      { candidateId: "modular-desk-organizer", riskInput: riskInput("modular-desk-organizer"), customerProblemEvidenceScore: 82, evidenceQualityScore: 78, trendDurabilityScore: 74, advertisingSaturationScore: 48, operationalRiskScore: 38, failureRiskScore: 42, hasUnresolvedBlockingContradiction: false, hasBlockingDecisionCriticalMissingEvidence: false },
+    ],
+    tasks: [
+      { id: "investigate-problem", objective: "Validate the fixed customer problem for the investigation candidate.", cost: 20, durationMs: 20, workClass: "MANDATORY", researchKey: "investigation-problem", dependencies: [], workerRole: "EVIDENCE_RESEARCHER" },
+      { id: "investigate-differentiation", objective: "Test the fixed candidate's differentiation and crowding pressure.", cost: 20, durationMs: 15, workClass: "MANDATORY", researchKey: "investigation-differentiation", dependencies: ["investigate-problem"], workerRole: "MARKET_RESEARCHER" },
+      { id: "investigate-operations", objective: "Challenge operations and return assumptions for the fixed candidate.", cost: 20, durationMs: 10, workClass: "MANDATORY", researchKey: "investigation-operations", dependencies: ["investigate-differentiation"], workerRole: "OPERATIONS_RESEARCHER" },
     ],
   },
 ];

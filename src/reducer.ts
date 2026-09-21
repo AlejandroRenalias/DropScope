@@ -1,4 +1,4 @@
-import type { AuthorizationReason, MissionEvent, TerminalMissionStatus, TerminalGapStatus, WorkClass } from "./contracts.js";
+import type { AuthorizationReason, GoogleTrendsCaptureFailure, GoogleTrendsComparisonEvidence, GoogleTrendsEvidence, MissionEvent, MissionMode, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -24,6 +24,11 @@ interface AttemptRecord {
   finding?: string;
 }
 
+export interface WorkerExecutionProvenance {
+  mode: WorkerExecutionMode;
+  providerUsageStatus: ProviderUsageStatus;
+}
+
 interface AuthorizationRecord {
   objective: string;
   cost: number;
@@ -40,9 +45,17 @@ export interface MissionState {
   missionId: string | null;
   lastSequenceNumber: number;
   status: MissionStatus;
+  missionMode: MissionMode | null;
   budget: { total: number; reserved: number; committed: number; spent: number; available: number };
   tasks: Record<string, TaskRecord>;
   attempts: Record<string, AttemptRecord>;
+  workerExecutionProvenance: Record<string, WorkerExecutionProvenance>;
+  subscriptionRuntimeDeclaration?: SubscriptionRuntimeDeclaration;
+  subscriptionRuntimePreflight?: SubscriptionRuntimePreflight;
+  subscriptionWorkerExecutionOutcomes: Record<string, SubscriptionWorkerExecutionOutcome>;
+  googleTrendsEvidence: Record<string, GoogleTrendsEvidence>;
+  googleTrendsComparisonEvidence: Record<string, GoogleTrendsComparisonEvidence>;
+  googleTrendsCaptureFailures: Record<string, GoogleTrendsCaptureFailure>;
   authorizations: Record<string, AuthorizationRecord>;
   gaps: Record<string, GapRecord>;
   policyVersions: { tribunal: string } | null;
@@ -60,9 +73,15 @@ export const initialMissionState = (): MissionState => ({
   missionId: null,
   lastSequenceNumber: 0,
   status: "NOT_STARTED",
+  missionMode: null,
   budget: { total: 0, reserved: 0, committed: 0, spent: 0, available: 0 },
   tasks: {},
   attempts: {},
+  workerExecutionProvenance: {},
+  subscriptionWorkerExecutionOutcomes: {},
+  googleTrendsEvidence: {},
+  googleTrendsComparisonEvidence: {},
+  googleTrendsCaptureFailures: {},
   authorizations: {},
   gaps: {},
   policyVersions: null,
@@ -104,11 +123,57 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         policyVersions: "policyVersions" in event.payload ? event.payload.policyVersions : null,
         budget: { total: event.payload.totalBudget, reserved: 0, committed: 0, spent: 0, available: event.payload.totalBudget },
       };
+    case "MissionModeDeclared":
+      if (state.status !== "RUNNING" || state.missionMode !== null || state.lastSequenceNumber !== 1) throw new Error("Mission mode must be declared exactly once immediately after mission creation.");
+      return { ...state, missionMode: event.payload.mode };
     case "TribunalCompleted":
       if (state.status !== "RUNNING" || state.policyVersions === null) throw new Error("A running mission is required to record tribunal output.");
       if (event.payload.decidedByPolicyVersion !== state.policyVersions.tribunal) throw new Error("Tribunal result policy version does not match the mission.");
       if (Object.hasOwn(state.tribunalResults, event.payload.tribunalId)) throw new Error("Tribunal result is already recorded.");
       return { ...state, tribunalResults: { ...state.tribunalResults, [event.payload.tribunalId]: event.payload } };
+    case "SubscriptionRuntimeDeclared":
+      if (state.status !== "RUNNING") throw new Error("A running mission is required to declare subscription runtime status.");
+      if (state.subscriptionRuntimeDeclaration) throw new Error("Subscription runtime declaration is already recorded.");
+      return { ...state, subscriptionRuntimeDeclaration: event.payload };
+    case "SubscriptionRuntimePreflightCompleted":
+      if (!state.subscriptionRuntimeDeclaration) throw new Error("Subscription runtime must be declared before a preflight.");
+      if (state.subscriptionRuntimePreflight) throw new Error("Subscription runtime preflight is already recorded.");
+      return { ...state, subscriptionRuntimePreflight: event.payload };
+    case "SubscriptionWorkerExecutionOutcomeRecorded": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (!state.subscriptionRuntimeDeclaration || state.subscriptionRuntimePreflight?.accessStatus !== "CHATGPT_AUTHENTICATED") {
+        throw new Error("Authenticated subscription preflight is required before recording a worker outcome.");
+      }
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+        throw new Error("Only a running attempt can record a subscription worker outcome.");
+      }
+      if (Object.hasOwn(state.subscriptionWorkerExecutionOutcomes, event.payload.attemptId)) {
+        throw new Error("Subscription worker outcome was already recorded for this attempt.");
+      }
+      return { ...state, subscriptionWorkerExecutionOutcomes: { ...state.subscriptionWorkerExecutionOutcomes, [event.payload.attemptId]: event.payload } };
+    }
+    case "GoogleTrendsEvidenceCaptured": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-now" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
+      if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
+      return { ...state, googleTrendsEvidence: { ...state.googleTrendsEvidence, [event.payload.attemptId]: event.payload } };
+    }
+    case "GoogleTrendsComparisonImported": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-comparison" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-desk-organization-comparison") throw new Error("Only the running Google Trends comparison pilot can record imported evidence.");
+      if (Object.hasOwn(state.googleTrendsComparisonEvidence, event.payload.attemptId)) throw new Error("Google Trends comparison import was already recorded for this attempt.");
+      return { ...state, googleTrendsComparisonEvidence: { ...state.googleTrendsComparisonEvidence, [event.payload.attemptId]: event.payload } };
+    }
+    case "GoogleTrendsCaptureFailed": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-now" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
+      if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
+      return { ...state, googleTrendsCaptureFailures: { ...state.googleTrendsCaptureFailures, [event.payload.attemptId]: event.payload } };
+    }
     case "AuditCompleted":
       if (state.status !== "RUNNING" || Object.hasOwn(state.auditResults, event.payload.auditId)) throw new Error("Audit result cannot be recorded.");
       return { ...state, auditResults: { ...state.auditResults, [event.payload.auditId]: event.payload } };
@@ -204,7 +269,7 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (existingTask && !["INTERRUPTED", "FAILED_TRANSIENT", "FAILED_PERMANENT"].includes(existingTask.status)) throw new Error("Task cannot receive another attempt.");
       if (existingTask?.status === "FAILED_TRANSIENT" && existingTask.attemptIds.filter((attemptId) => state.attempts[attemptId]?.status === "FAILED_TRANSIENT").length >= 2) throw new Error("Transient retry allowance is exhausted.");
       if (existingTask && existingTask.workClass !== event.payload.workClass) throw new Error("A retry cannot change a task's work class.");
-      if (state.attempts[event.payload.attemptId]) throw new Error("Attempt is already scheduled.");
+      if (Object.hasOwn(state.attempts, event.payload.attemptId)) throw new Error("Attempt is already scheduled.");
       const workerRole = event.payload.workerRole ?? "legacy-unknown";
       if (existingTask?.status === "FAILED_PERMANENT" && existingTask.attemptIds.some((attemptId) => state.attempts[attemptId]?.workerRole === workerRole)) {
         throw new Error("A permanent failure cannot be retried with the same worker.");
@@ -241,6 +306,23 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         },
         tasks: { ...state.tasks, [attempt.taskId]: { ...task, status: "RUNNING" } },
         attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, status: "RUNNING", reserved: false } },
+      };
+    }
+    case "WorkerExecutionRecorded": {
+      const attempt = state.attempts[event.payload.attemptId];
+      const task = attempt ? state.tasks[attempt.taskId] : undefined;
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") {
+        throw new Error("Only a running attempt can record worker execution provenance.");
+      }
+      if (Object.hasOwn(state.workerExecutionProvenance, event.payload.attemptId)) {
+        throw new Error("Worker execution provenance was already recorded for this attempt.");
+      }
+      return {
+        ...state,
+        workerExecutionProvenance: {
+          ...state.workerExecutionProvenance,
+          [event.payload.attemptId]: { mode: event.payload.mode, providerUsageStatus: event.payload.providerUsageStatus },
+        },
       };
     }
     case "BudgetReserved": {

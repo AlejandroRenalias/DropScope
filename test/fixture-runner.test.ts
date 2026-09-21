@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { runFixtureMission } from "../src/fixture-runner.js";
 import { deriveAttemptDecision } from "../src/scheduler.js";
 import { JsonlEventStore } from "../src/event-store.js";
+import { projectFinalReport } from "../src/frontend/office-projection.js";
 
 describe("fixture-driven simulated missions", () => {
   it("can append a mission through an already-reserved writer handle", async () => {
@@ -34,6 +35,7 @@ describe("fixture-driven simulated missions", () => {
     expect(result.state.status).toBe(fixtureId === "evidence-drought" ? "COMPLETED_INSUFFICIENT_EVIDENCE" : "COMPLETED");
     expect(result.report.outcome).toBe(fixtureId === "evidence-drought" ? "INSUFFICIENT_EVIDENCE" : "RANKED");
     expect(result.events[0]?.type).toBe("MissionCreated");
+    expect(result.events[1]).toMatchObject({ type: "SubscriptionRuntimeDeclared", payload: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" } });
     expect(result.events.at(-1)?.type).toBe(fixtureId === "evidence-drought" ? "MissionTerminated" : "MissionCompleted");
     expect(new Set(Object.values(result.schedule.taskOutcomes))).toEqual(new Set(["COMPLETED"]));
   });
@@ -108,5 +110,55 @@ describe("fixture-driven simulated missions", () => {
       ["REGULATORY_CHILD_DIRECTED", "RISK_GATE_NOT_ALLOWED"],
       ["INSUFFICIENT_INFORMATION_MATERIAL_CONFLICT", "RISK_GATE_NOT_ALLOWED", "UNRESOLVED_BLOCKING_CONTRADICTION", "DECISION_CRITICAL_MISSING_EVIDENCE"],
     ]);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "TaskFailedTransient", payload: expect.objectContaining({ attemptId: "workflow-interviews:a1" }) }));
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "FindingSubmitted", payload: { attemptId: "workflow-interviews:a2", finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem." } }));
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "WorkerExecutionRecorded", payload: { attemptId: "workflow-interviews:a2", mode: "RECORDED_DRY_RUN", providerUsageStatus: "NOT_APPLICABLE" } }));
+    expect(result.events.filter((event) => event.type === "FindingSubmitted" && event.payload.finding.includes("Recorded Evidence Researcher"))).toHaveLength(1);
+  });
+
+  it("does not activate the recorded specialist for unrelated fixtures", async () => {
+    const result = await runFixtureMission({ fixtureId: "mixed-opportunity-market", missionId: "fixture-no-worker", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+
+    expect(result.events.some((event) => event.type === "FindingSubmitted" && event.payload.finding.includes("Recorded Evidence Researcher"))).toBe(false);
+  });
+
+  it("keeps the isolated live-worker pilot running without a worker execution event", async () => {
+    const result = await runFixtureMission({ fixtureId: "live-worker-pilot", missionId: "live-worker-pilot-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+
+    expect(result.state).toMatchObject({ status: "RUNNING", attempts: { "pilot-evidence:a1": { status: "RUNNING" } } });
+    expect(result.events.map((event) => event.type)).toEqual(["MissionCreated", "SubscriptionRuntimeDeclared", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+    expect(result.events.some((event) => event.type === "WorkerExecutionRecorded" || event.type === "SubscriptionWorkerExecutionOutcomeRecorded")).toBe(false);
+    expect(result.events.some((event) => event.type === "MissionCompleted" || event.type === "MissionTerminated")).toBe(false);
+  });
+
+  it("keeps the Google Trends pilot running without any automatic source request", async () => {
+    const result = await runFixtureMission({ fixtureId: "google-trends-pilot", missionId: "google-trends-pilot-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+    expect(result.state).toMatchObject({ status: "RUNNING", attempts: { "google-trends-us-now:a1": { status: "RUNNING" } } });
+    expect(result.events.map((event) => event.type)).toEqual(["MissionCreated", "TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted"]);
+  });
+
+  it("runs the fixed Failure Autopsy through the shared scheduler and replayed quality records", async () => {
+    const result = await runFixtureMission({ fixtureId: "failure-autopsy-pilot", missionId: "autopsy-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+    const report = projectFinalReport(result.events, result.fixtureId);
+
+    expect(result.events.slice(0, 3).map((event) => event.type)).toEqual(["MissionCreated", "MissionModeDeclared", "SubscriptionRuntimeDeclared"]);
+    expect(result.state).toMatchObject({ missionMode: "FAILURE_AUTOPSY", status: "COMPLETED_INSUFFICIENT_EVIDENCE" });
+    expect(result.events.slice(-4).map((event) => event.type)).toEqual(["TribunalCompleted", "AuditCompleted", "BlindReviewCompleted", "MissionTerminated"]);
+    expect(result.report).toMatchObject({ outcome: "INSUFFICIENT_EVIDENCE", ranking: [] });
+    expect(result.events.find((event) => event.type === "TribunalCompleted")?.payload).toMatchObject({ recommendation: "STOP" });
+    expect(report).toMatchObject({ fixtureId: "failure-autopsy-pilot", outcome: "INSUFFICIENT_EVIDENCE", reviewerVerdict: "REJECT", autopsy: { conclusion: expect.stringContaining("STOP") } });
+    expect(report.autopsy?.evidenceThatCouldChangeConclusion).toHaveLength(3);
+  });
+
+  it("runs Product Investigation through the shared scheduler with automatic autopsy pressure", async () => {
+    const result = await runFixtureMission({ fixtureId: "product-investigation-pilot", missionId: "investigation-mission", historyPath: join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl") });
+    const report = projectFinalReport(result.events, result.fixtureId);
+
+    expect(result.events.slice(0, 3).map((event) => event.type)).toEqual(["MissionCreated", "MissionModeDeclared", "SubscriptionRuntimeDeclared"]);
+    expect(result.state).toMatchObject({ missionMode: "PRODUCT_INVESTIGATION", status: "COMPLETED" });
+    expect(result.report.ranking.map(({ candidateId }) => candidateId)).toEqual(["modular-desk-organizer"]);
+    expect(result.events.find((event) => event.type === "TribunalCompleted")?.payload).toMatchObject({ recommendation: "CAUTION" });
+    expect(report).toMatchObject({ fixtureId: "product-investigation-pilot", outcome: "RANKED", reviewerVerdict: "REVISE", investigation: { autopsyConclusion: expect.stringContaining("CAUTION") } });
+    expect(report.investigation?.opposingEvidence).toHaveLength(3);
   });
 });

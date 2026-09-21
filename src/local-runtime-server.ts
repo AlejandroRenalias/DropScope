@@ -1,13 +1,16 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { localMissionDtoSchema, LocalMissionRuntime, MissionLaunchIncompleteError } from "./runtime/local-mission-runtime.js";
+import { localMissionDtoSchema, LocalMissionRuntime, MissionLaunchIncompleteError, subscriptionConfirmationDtoSchema } from "./runtime/local-mission-runtime.js";
 import { z } from "zod";
+import { GoogleTrendsComparisonImportError } from "./google-trends-comparison-import.js";
 
 const launchRequestSchema = z.object({ fixtureId: z.string().min(1) }).strict();
+const googleTrendsComparisonImportRequestSchema = z.object({ csv: z.string().min(1).max(32 * 1024) }).strict();
 const MAX_BODY_BYTES = 64 * 1024;
 
 export interface LocalRuntimeServerOptions {
   port?: number;
+  trustedUiOrigin?: string;
 }
 
 export interface LocalRuntimeServerHandle {
@@ -16,7 +19,8 @@ export interface LocalRuntimeServerHandle {
 }
 
 export async function listenLocalRuntimeServer(runtime: LocalMissionRuntime, options: LocalRuntimeServerOptions = {}): Promise<LocalRuntimeServerHandle> {
-  const server = createServer((request, response) => { void handleRequest(runtime, request, response); });
+  const trustedUiOrigin = options.trustedUiOrigin ?? "http://localhost:5173";
+  const server = createServer((request, response) => { void handleRequest(runtime, request, response, trustedUiOrigin); });
   const host = "127.0.0.1";
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -31,10 +35,10 @@ export async function listenLocalRuntimeServer(runtime: LocalMissionRuntime, opt
   };
 }
 
-async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMessage, response: ServerResponse): Promise<void> {
+async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMessage, response: ServerResponse, trustedUiOrigin: string): Promise<void> {
   try {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
-    const corsOrigin = loopbackOrigin(request.headers.origin);
+    const corsOrigin = loopbackOrigin(request.headers.origin, trustedUiOrigin);
     if (request.headers.origin && !corsOrigin) throw httpError(403, "Cross-origin requests must use a loopback origin.");
     if (request.method === "OPTIONS") {
       if (!url.pathname.startsWith("/api/")) throw httpError(404, "Unknown route.");
@@ -44,6 +48,50 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
     if (request.method === "POST" && url.pathname === "/api/missions") {
       const body = launchRequestSchema.parse(JSON.parse(await readBody(request)));
       sendJson(response, 201, localMissionDtoSchema.parse(await runtime.launch(body.fixtureId)), corsOrigin);
+      return;
+    }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/subscription-preflight")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/subscription-preflight".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      sendJson(response, 200, localMissionDtoSchema.parse(await runtime.preflightSubscriptionRuntime(missionId)), corsOrigin);
+      return;
+    }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/subscription-confirmation")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/subscription-confirmation".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      if (request.headers["content-length"] && Number(request.headers["content-length"]) > 0) throw httpError(400, "Subscription confirmation requests must not include a body.");
+      sendJson(response, 200, subscriptionConfirmationDtoSchema.parse(await runtime.confirmSubscriptionWorker(missionId)), corsOrigin);
+      return;
+    }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/subscription-run")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/subscription-run".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      if (request.headers["content-length"] && Number(request.headers["content-length"]) > 0) throw httpError(400, "Subscription worker run requests must not include a body.");
+      sendJson(response, 200, localMissionDtoSchema.parse(await runtime.runSubscriptionWorker(missionId)), corsOrigin);
+      return;
+    }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/google-trends-capture")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/google-trends-capture".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      if (request.headers["content-length"] && Number(request.headers["content-length"]) > 0) throw httpError(400, "Google Trends capture requests must not include a body.");
+      sendJson(response, 200, localMissionDtoSchema.parse(await runtime.captureGoogleTrends(missionId)), corsOrigin);
+      return;
+    }
+    if (request.method === "POST" && url.pathname.startsWith("/api/missions/") && url.pathname.endsWith("/google-trends-comparison-import")) {
+      const encodedMissionId = url.pathname.slice("/api/missions/".length, -"/google-trends-comparison-import".length);
+      if (!encodedMissionId || encodedMissionId.includes("/")) throw httpError(400, "Invalid mission ID.");
+      let missionId: string;
+      try { missionId = decodeURIComponent(encodedMissionId); } catch { throw httpError(400, "Invalid mission ID."); }
+      const body = googleTrendsComparisonImportRequestSchema.parse(JSON.parse(await readBody(request)));
+      sendJson(response, 200, localMissionDtoSchema.parse(await runtime.importGoogleTrendsComparison(missionId, body.csv)), corsOrigin);
       return;
     }
     if (request.method === "GET" && url.pathname.startsWith("/api/missions/")) {
@@ -56,8 +104,8 @@ async function handleRequest(runtime: LocalMissionRuntime, request: IncomingMess
     }
     throw httpError(request.method === "POST" || request.method === "GET" ? 404 : 405, "Unknown route.");
   } catch (error: unknown) {
-    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
-    sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin));
+    const status = error instanceof HttpError ? error.status : error instanceof MissionLaunchIncompleteError || isPreflightConflict(error) || isConfirmationConflict(error) || isExecutionConflict(error) || isGoogleTrendsConflict(error) ? 409 : isMissingHistory(error) ? 404 : isClientError(error) ? 400 : 500;
+    sendJson(response, status, { error: error instanceof Error ? error.message : "Request failed." }, loopbackOrigin(request.headers.origin, trustedUiOrigin));
   }
 }
 
@@ -90,18 +138,30 @@ function sendJson(response: ServerResponse, status: number, body: unknown, corsO
 class HttpError extends Error { constructor(readonly status: number, message: string) { super(message); } }
 function httpError(status: number, message: string): HttpError { return new HttpError(status, message); }
 function isClientError(error: unknown): boolean {
-  return error instanceof z.ZodError || error instanceof SyntaxError || (error instanceof Error && (/Unknown fixture ID|Mission IDs must|already exists|history not found|belongs to a different mission/.test(error.message)));
+  return error instanceof z.ZodError || error instanceof SyntaxError || error instanceof GoogleTrendsComparisonImportError || (error instanceof Error && (/Unknown fixture ID|Mission IDs must|already exists|history not found|belongs to a different mission/.test(error.message)));
 }
 function isMissingHistory(error: unknown): boolean {
   return error instanceof Error && error.message.includes("Mission history not found");
 }
+function isPreflightConflict(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("Subscription runtime preflight is already");
+}
+function isConfirmationConflict(error: unknown): boolean {
+  return error instanceof Error && (error.message.includes("only for the live-worker pilot") || error.message.includes("declaration is required before confirmation") || error.message.includes("Authenticated subscription preflight is required before confirmation") || error.message.includes("Exactly one running live-worker pilot attempt"));
+}
+function isExecutionConflict(error: unknown): boolean {
+  return error instanceof Error && (error.message.includes("only for the live-worker pilot") || error.message.includes("declaration is required before execution") || error.message.includes("Authenticated subscription preflight is required before execution") || error.message.includes("Exactly one running live-worker pilot attempt") || error.message.includes("fresh local live-worker confirmation") || error.message.includes("confirmation has expired") || error.message.includes("confirmation is missing") || error.message.includes("execution is already in progress"));
+}
+function isGoogleTrendsConflict(error: unknown): boolean {
+  return error instanceof Error && (error.message.includes("available only for the Google Trends pilot") || error.message.includes("Exactly one running Google Trends pilot attempt") || error.message.includes("Google Trends capture is already") || error.message.includes("available only for the Google Trends comparison pilot") || error.message.includes("Exactly one resumable Google Trends comparison pilot attempt") || error.message.includes("Google Trends comparison import is already"));
+}
 
-function loopbackOrigin(origin: string | undefined): string | undefined {
+function loopbackOrigin(origin: string | undefined, trustedUiOrigin: string): string | undefined {
   if (!origin) return undefined;
   try {
     const parsed = new URL(origin);
     const isLoopbackHost = parsed.protocol === "http:" && (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost");
-    return isLoopbackHost && (parsed.port === "" || Number(parsed.port) <= 65535) && parsed.pathname === "/" && !parsed.search && !parsed.hash ? parsed.origin : undefined;
+    return isLoopbackHost && parsed.origin === trustedUiOrigin ? parsed.origin : undefined;
   } catch {
     return undefined;
   }

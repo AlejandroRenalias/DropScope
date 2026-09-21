@@ -1,20 +1,24 @@
-import type { MissionEvent } from "../contracts.js";
+import type { GoogleTrendsComparisonEvidence, GoogleTrendsEvidence, MissionEvent, SubscriptionWorkerExecutionOutcome } from "../contracts.js";
 import { replay, type MissionStatus, type TaskStatus } from "../reducer.js";
 import { evaluateTribunal, type TribunalResult } from "../tribunal-policy.js";
 import type { BlindReviewResult } from "../research-domain.js";
-import { loadFixture, type FixtureCandidateEvaluation } from "../fixture-model.js";
+import { failureAutopsyPilotFixtureId, loadFixture, productInvestigationPilotFixtureId, type FixtureCandidateEvaluation } from "../fixture-model.js";
 import { evaluateRiskGate } from "../risk-policy.js";
 import { determineCandidateEligibility } from "../candidate-eligibility.js";
 import { buildCandidateReport, type CandidateReport } from "../report.js";
+import { firstLiveSubscriptionWorkerGuard, type FirstLiveSubscriptionWorkerGuard } from "../subscription-live-worker-contract.js";
 
 export type OfficeScenario = "RUNNING" | "BLOCKED" | "COMPLETED";
 export type AgentState = "WORKING" | "WAITING" | "BLOCKED" | "COMPLETED";
-export interface AgentDeskRecord { id: string; role: string; state: AgentState; task: string; detail: string; evidence: string; usage: { units: number; status: string }; }
-export interface DecisionViews { agentDesk: AgentDeskRecord[]; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
+export interface AgentDeskRecord { id: string; attemptId: string; role: string; state: AgentState; task: string; detail: string; evidence: string; provenance: "RECORDED_DRY_RUN" | null; usage: { units: number; status: string }; }
+export interface MissionUsageSummary { dryRunCount: number; unrecordedAttemptCount: number; recordedDryRunProviderUsageStatus: "NOT_APPLICABLE"; total: number; reserved: number; committed: number; spent: number; available: number; }
+export interface SubscriptionRuntimeProtocolFake { approvalCategories: readonly ["command", "file change", "permissions"]; terminalOutcomes: readonly ["completed", "timed out", "unavailable", "approval declined", "interrupted", "invalid result", "turn failed"]; }
+export interface SubscriptionRuntimeProjection { execution: "DISABLED"; access: "LOCAL_SUBSCRIPTION_NOT_CHECKED" | "LOCAL_CHATGPT_AUTHENTICATED" | "LOCAL_AUTHENTICATION_REQUIRED" | "LOCAL_UNSUPPORTED_AUTH_MODE" | "LOCAL_RUNTIME_UNAVAILABLE"; diagnosticCode: "NOT_RECORDED" | "NOT_APPLICABLE" | "APP_SERVER_START_FAILED" | "INITIALIZATION_FAILED" | "INITIALIZATION_TIMED_OUT" | "APP_SERVER_EXITED_DURING_INITIALIZATION" | "INITIALIZATION_REJECTED" | "INITIALIZATION_RESPONSE_INVALID" | "ACCOUNT_READ_FAILED" | "ACCOUNT_READ_TIMED_OUT" | "ACCOUNT_RESPONSE_INVALID"; usage: "SUBSCRIPTION_NOT_ITEMIZED"; firstLiveWorker: FirstLiveSubscriptionWorkerGuard; protocolFake: SubscriptionRuntimeProtocolFake; lastWorkerOutcome?: SubscriptionWorkerExecutionOutcome; }
+export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSummary: MissionUsageSummary | null; subscriptionRuntime: SubscriptionRuntimeProjection | null; googleTrendsEvidence: GoogleTrendsEvidence | null; googleTrendsComparisonEvidence: GoogleTrendsComparisonEvidence | null; tribunalRoom: { result: TribunalResult; recordedAtSequence: number } | null; reviewOffice: { result: BlindReviewResult; recordedAtSequence: number; blockingFeedback: string[]; divergences: string[]; revisionResponse: string | null } | null; }
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ label: string; state: AgentState; dependencies: string }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
 export interface ReplayEventRecord { sequence: number; type: string; category: ReplayEventCategory; detail: string; }
-export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; }
+export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; autopsy: { conclusion: string; evidenceThatCouldChangeConclusion: string[] } | null; investigation: { autopsyConclusion: string; opposingEvidence: string[] } | null; externalSignalContext: GoogleTrendsEvidence | null; comparisonSignalContext: GoogleTrendsComparisonEvidence | null; }
 const missionId = "crosscurrent-workspace-market";
 const sourceLabel = "Static demo history replayed through the existing MissionState reducer. It is not live engine data.";
 const timestamp = (n: number) => `2026-01-01T00:00:${String(n).padStart(2, "0")}.000Z`;
@@ -63,12 +67,12 @@ for (const scenario of Object.keys(officeHistories) as OfficeScenario[]) officeH
 function taskState(status: TaskStatus): AgentState { if (status === "RUNNING") return "WORKING"; if (status === "COMPLETED") return "COMPLETED"; if (status === "INTERRUPTED" || status === "FAILED_PERMANENT" || status === "FAILED_TRANSIENT") return "BLOCKED"; return "WAITING"; }
 function roleLabel(role: string): string { return role.toLowerCase().split("_").map((word) => word[0]!.toUpperCase() + word.slice(1)).join(" "); }
 function workstationId(role: string): string { return role === "MARKET_RESEARCHER" ? "commander" : role === "EVIDENCE_RESEARCHER" ? "evidence" : role === "OPERATIONS_RESEARCHER" ? "operations" : role === "RISK_RESEARCHER" ? "risk" : "evidence"; }
-function eventDetail(item: MissionEvent): string { const payload = item.payload as Record<string, unknown>; const detail = payload.reason ?? payload.finding ?? payload.objective ?? payload.status; return typeof detail === "string" ? detail : `${item.type} recorded in replay.`; }
+function eventDetail(item: MissionEvent): string { if (item.type === "GoogleTrendsEvidenceCaptured") return `${item.payload.attribution} ${item.payload.geo} source captured at ${item.payload.retrievedAt} from ${item.payload.sourceUrl}.`; if (item.type === "GoogleTrendsComparisonImported") return `${item.payload.attribution} ${item.payload.geo} manual comparison imported at ${item.payload.importedAt}: ${item.payload.series.map((series) => series.term).join(" · ")}.`; const payload = item.payload as Record<string, unknown>; const detail = payload.reason ?? payload.finding ?? payload.objective ?? payload.status; return typeof detail === "string" ? detail : `${item.type} recorded in replay.`; }
 function eventCategory(type: MissionEvent["type"]): ReplayEventCategory {
   if (type.includes("Budget")) return "budget";
   if (type.includes("Review") || type.includes("Tribunal") || type.includes("Divergence") || type.includes("Revision") || type.includes("Reaudit")) return "review";
   if (type.includes("Fail") || type.includes("Interrupt") || type.includes("Gap") || type.includes("Terminat")) return "failure";
-  if (type === "TaskStarted" || type === "FindingSubmitted") return "agent";
+  if (type === "TaskStarted" || type === "FindingSubmitted" || type === "WorkerExecutionRecorded" || type === "SubscriptionWorkerExecutionOutcomeRecorded") return "agent";
   return "task";
 }
 function missionName(id: string | null): string { return (id ?? "unknown-mission").split("-").map((word) => word[0]!.toUpperCase() + word.slice(1)).join(" "); }
@@ -80,13 +84,37 @@ export function projectOffice(events: MissionEvent[]): OfficeProjection {
     const task = state.tasks[taskId];
     return { label: task?.objective ?? authorization.objective, state: task ? taskState(task.status) : "WAITING", dependencies: authorization.dependencies.length ? `After ${authorization.dependencies.join(", ")}` : "Starting task" };
   });
-  const agents = Object.values(state.attempts).map((attempt) => ({ id: workstationId(attempt.workerRole), role: roleLabel(attempt.workerRole), state: taskState(attempt.status), task: state.tasks[attempt.taskId]?.objective ?? attempt.taskId, detail: attempt.finding ?? "Assigned through replay.", evidence: attempt.finding ?? (attempt.status === "INTERRUPTED" ? "Failure or revision context recorded in replay." : "No finding recorded yet."), usage: { units: state.tasks[attempt.taskId]?.cost ?? 0, status: attempt.status } }));
+  const agents = Object.entries(state.attempts).map(([attemptId, attempt]) => ({ id: workstationId(attempt.workerRole), attemptId, role: roleLabel(attempt.workerRole), state: taskState(attempt.status), task: state.tasks[attempt.taskId]?.objective ?? attempt.taskId, detail: attempt.finding ?? "Assigned through replay.", evidence: attempt.finding ?? (attempt.status === "INTERRUPTED" ? "Failure or revision context recorded in replay." : "No finding recorded yet."), provenance: state.workerExecutionProvenance[attemptId]?.mode ?? null, usage: { units: state.tasks[attempt.taskId]?.cost ?? 0, status: attempt.status } }));
   const tribunalEvent = events.find((item): item is Extract<MissionEvent, { type: "TribunalCompleted" }> => item.type === "TribunalCompleted");
   const reviewEvent = events.find((item): item is Extract<MissionEvent, { type: "BlindReviewCompleted" }> => item.type === "BlindReviewCompleted");
   const blockingFeedback = reviewEvent?.payload.candidateAssessments.flatMap((assessment) => assessment.blockingDefects) ?? [];
   const divergences = Object.values(state.divergenceRecords).map((record) => `${record.type}: ${record.candidateIds.join(", ")}`);
   const revisionResponse = state.revision?.rereview ? `Focused re-review returned ${state.revision.rereview.verdict.toLowerCase()} for the revision.` : state.revision ? "Revision requested; response is still pending." : null;
-  const decisionViews: DecisionViews = { agentDesk: agents, tribunalRoom: tribunalEvent ? { result: state.tribunalResults[tribunalEvent.payload.tribunalId]!, recordedAtSequence: tribunalEvent.sequenceNumber } : null, reviewOffice: reviewEvent ? { result: state.blindReviewResults[reviewEvent.payload.reviewId]!, recordedAtSequence: reviewEvent.sequenceNumber, blockingFeedback, divergences, revisionResponse } : null };
+  const dryRunCount = agents.filter((agent) => agent.provenance === "RECORDED_DRY_RUN").length;
+  const missionUsageSummary: MissionUsageSummary | null = dryRunCount > 0 ? {
+    dryRunCount,
+    unrecordedAttemptCount: agents.length - dryRunCount,
+    recordedDryRunProviderUsageStatus: "NOT_APPLICABLE",
+    total: state.budget.total,
+    reserved: state.budget.reserved,
+    committed: state.budget.committed,
+    spent: state.budget.spent,
+    available: state.budget.available,
+  } : null;
+  const access = state.subscriptionRuntimePreflight?.accessStatus === "CHATGPT_AUTHENTICATED" ? "LOCAL_CHATGPT_AUTHENTICATED" as const
+    : state.subscriptionRuntimePreflight?.accessStatus === "AUTHENTICATION_REQUIRED" ? "LOCAL_AUTHENTICATION_REQUIRED" as const
+      : state.subscriptionRuntimePreflight?.accessStatus === "UNSUPPORTED_AUTH_MODE" ? "LOCAL_UNSUPPORTED_AUTH_MODE" as const
+        : state.subscriptionRuntimePreflight?.accessStatus === "UNAVAILABLE" ? "LOCAL_RUNTIME_UNAVAILABLE" as const
+          : "LOCAL_SUBSCRIPTION_NOT_CHECKED" as const;
+  const lastSubscriptionWorkerOutcome = [...events].reverse().find((item): item is Extract<MissionEvent, { type: "SubscriptionWorkerExecutionOutcomeRecorded" }> => item.type === "SubscriptionWorkerExecutionOutcomeRecorded");
+  const preflightDiagnosticCode = state.subscriptionRuntimePreflight && "diagnosticCode" in state.subscriptionRuntimePreflight
+    ? state.subscriptionRuntimePreflight.diagnosticCode
+    : undefined;
+  const diagnosticCode = preflightDiagnosticCode ?? "NOT_RECORDED" as const;
+  const subscriptionRuntime = state.subscriptionRuntimeDeclaration ? { execution: "DISABLED" as const, access, diagnosticCode, usage: "SUBSCRIPTION_NOT_ITEMIZED" as const, firstLiveWorker: firstLiveSubscriptionWorkerGuard, protocolFake: { approvalCategories: ["command", "file change", "permissions"] as const, terminalOutcomes: ["completed", "timed out", "unavailable", "approval declined", "interrupted", "invalid result", "turn failed"] as const }, ...(lastSubscriptionWorkerOutcome ? { lastWorkerOutcome: lastSubscriptionWorkerOutcome.payload } : {}) } : null;
+  const googleTrendsEvidence = Object.values(state.googleTrendsEvidence).at(-1) ?? null;
+  const googleTrendsComparisonEvidence = Object.values(state.googleTrendsComparisonEvidence).at(-1) ?? null;
+  const decisionViews: DecisionViews = { agentDesk: agents, missionUsageSummary, subscriptionRuntime, googleTrendsEvidence, googleTrendsComparisonEvidence, tribunalRoom: tribunalEvent ? { result: state.tribunalResults[tribunalEvent.payload.tribunalId]!, recordedAtSequence: tribunalEvent.sequenceNumber } : null, reviewOffice: reviewEvent ? { result: state.blindReviewResults[reviewEvent.payload.reviewId]!, recordedAtSequence: reviewEvent.sequenceNumber, blockingFeedback, divergences, revisionResponse } : null };
   return { sourceLabel, mission: { name: missionName(state.missionId), phase: phaseLabel(state.status), status }, ledger: { ...state.budget }, agents, tasks, events: events.slice(-3).map((item) => ({ sequence: item.sequenceNumber, type: item.type, detail: eventDetail(item) })), decisionViews };
 }
 
@@ -94,24 +122,30 @@ export function replayEvents(events: MissionEvent[]): ReplayEventRecord[] {
   return events.map((item) => ({ sequence: item.sequenceNumber, type: item.type, category: eventCategory(item.type), detail: eventDetail(item) }));
 }
 
-export function projectFinalReport(): FinalReportProjection {
-  const fixture = loadFixture("crosscurrent-workspace-market");
+export function projectFinalReport(events?: MissionEvent[], fixtureId = "crosscurrent-workspace-market"): FinalReportProjection {
+  const fixture = loadFixture(fixtureId);
   const riskDecisions = fixture.candidateEvaluations.map((candidate) => evaluateRiskGate(candidate.riskInput));
   const eligibilities = fixture.candidateEvaluations.map((candidate, index) => determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }));
   const report = buildCandidateReport(fixture.candidateEvaluations, riskDecisions, eligibilities);
   const heldOutIds = new Set(report.heldOut.map((candidate) => candidate.candidateId));
   const priorities = report.ranking.map((ranked) => ({ ...fixture.candidateEvaluations.find((candidate) => candidate.candidateId === ranked.candidateId)!, researchPriorityScore: ranked.researchPriorityScore }));
   const representative = priorities[0] ?? fixture.candidateEvaluations[0]!;
-  const review = projectOffice(officeHistories.COMPLETED).decisionViews.reviewOffice;
+  const review = (fixture.fixtureId === failureAutopsyPilotFixtureId || fixture.fixtureId === productInvestigationPilotFixtureId) && events?.length
+    ? projectOffice(events).decisionViews.reviewOffice
+    : projectOffice(officeHistories.COMPLETED).decisionViews.reviewOffice;
   const heldOut = report.heldOut.filter((candidate) => heldOutIds.has(candidate.candidateId));
-  const nextStep = report.outcome === "INSUFFICIENT_EVIDENCE"
+  const autopsy = fixture.fixtureId === failureAutopsyPilotFixtureId && fixture.autopsy ? fixture.autopsy : null;
+  const investigation = fixture.fixtureId === productInvestigationPilotFixtureId && fixture.investigation ? fixture.investigation : null;
+  const nextStep = autopsy ? autopsy.conclusion : investigation ? investigation.autopsyConclusion : report.outcome === "INSUFFICIENT_EVIDENCE"
     ? "Insufficient evidence: resolve held-out blockers before selecting a candidate."
     : priorities.length > 0
       ? `Next step: deepen validation for ${priorities[0]!.candidateId} before committing spend.`
       : "Insufficient evidence: no candidate cleared the recorded gates.";
   const representativeDecision = riskDecisions.find((decision) => decision.candidateId === representative.candidateId);
+  const externalSignalContext = events?.length ? projectOffice(events).decisionViews.googleTrendsEvidence : null;
+  const comparisonSignalContext = events?.length ? projectOffice(events).decisionViews.googleTrendsComparisonEvidence : null;
   return {
-    sourceLabel: "Static fixture crosscurrent-workspace-market evaluated by browser-safe pure helpers. This is not live market data.",
+    sourceLabel: `Static fixture ${fixture.fixtureId} evaluated by browser-safe pure helpers. This is not live market data.`,
     fixtureId: fixture.fixtureId,
     outcome: report.outcome,
     priorities,
@@ -136,5 +170,9 @@ export function projectFinalReport(): FinalReportProjection {
       ],
     },
     nextStep,
+    autopsy,
+    investigation,
+    externalSignalContext,
+    comparisonSignalContext,
   };
 }

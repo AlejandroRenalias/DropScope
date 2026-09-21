@@ -193,6 +193,51 @@ TaskAttemptRecord
 
 Attempt ID format example: `echo-problem-validation-04:a2`.
 
+## 10.1 WorkerExecutionRecorded payload
+
+```text
+WorkerExecutionRecordedPayload
+  attemptId: string
+  mode: RECORDED_DRY_RUN
+  providerUsageStatus: NOT_APPLICABLE
+```
+
+The event is accepted only once for a running attempt immediately before the recorded local adapter is invoked. It records execution provenance, not provider billing. Histories without the event remain replayable with provenance not recorded.
+
+## 10.2 SubscriptionRuntimeDeclared payload
+
+```text
+SubscriptionRuntimeDeclaredPayload
+  executionEnabled: false
+  accessStatus: NOT_CHECKED
+  usageStatus: NOT_ITEMIZED
+```
+
+This closed declaration is persisted for new local fixture missions only. It does not invoke a worker or infer status for legacy histories.
+
+## 10.3 SubscriptionRuntimePreflightCompleted payload
+
+```text
+SubscriptionRuntimePreflightCompletedPayload
+  accessStatus: CHATGPT_AUTHENTICATED | AUTHENTICATION_REQUIRED | UNSUPPORTED_AUTH_MODE | UNAVAILABLE
+  usageStatus: NOT_ITEMIZED
+```
+
+This is a one-shot user-triggered account-status observation after the disabled declaration. It contains no identity, plan, token, rate-limit, usage, or billing data and does not authorize a worker.
+
+## 10.4 SubscriptionWorkerExecutionOutcomeRecorded payload
+
+```text
+SubscriptionWorkerExecutionOutcomeRecordedPayload
+  attemptId: string
+  outcome: COMPLETED | TIMEOUT | UNAVAILABLE | APPROVAL_DECLINED |
+           INTERRUPTED | INVALID_RESULT | TURN_FAILED
+  providerUsageStatus: UNKNOWN
+  elapsedMs: integer 0..90000
+```
+
+This durable event records only the sanitized terminal result of a separately authorized subscription worker. It requires an authenticated preflight and a running attempt, occurs at most once per attempt before its existing finding or failure lifecycle event, and never contains a Codex thread ID, account data, quota, price, raw error, or provider usage measurement. A confirmation is deliberately not persisted.
+
 ## 11. BudgetLedger
 
 ```text
@@ -320,6 +365,7 @@ TaskCreated
 TaskWaitingDependencies
 TaskAuthorized
 TaskStarted
+WorkerExecutionRecorded
 TaskCompleted
 TaskFailedTransient
 TaskFailedPermanent

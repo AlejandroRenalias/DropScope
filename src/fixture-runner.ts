@@ -1,13 +1,14 @@
 import { JsonlEventStore } from "./event-store.js";
-import { loadFixture } from "./fixture-model.js";
+import { failureAutopsyPilotFixtureId, googleTrendsComparisonPilotFixtureId, googleTrendsPilotFixtureId, liveWorkerPilotFixtureId, productInvestigationPilotFixtureId, loadFixture } from "./fixture-model.js";
 import { replay, type MissionState } from "./reducer.js";
-import { runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
+import { prepareGoogleTrendsComparisonPilotSchedule, prepareGoogleTrendsPilotSchedule, prepareLiveWorkerPilotSchedule, runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
 import type { MissionEvent } from "./contracts.js";
 import { determineCandidateEligibility, type CandidateEligibility } from "./candidate-eligibility.js";
 import { evaluateRiskGate } from "./risk-policy.js";
 import type { RiskGateDecision } from "./research-domain.js";
 import { buildCandidateReport, type CandidateReport } from "./report.js";
-import { buildFixtureQualityPipeline } from "./fixture-quality-pipeline.js";
+import { buildFailureAutopsyQualityPipeline, buildFixtureQualityPipeline, buildProductInvestigationQualityPipeline } from "./fixture-quality-pipeline.js";
+import { RecordedWorkerAdapter } from "./worker-adapter.js";
 
 export interface FixtureRunResult {
   fixtureId: string;
@@ -28,7 +29,26 @@ export async function runFixtureMission(options: {
   missionSeed?: number;
 }): Promise<FixtureRunResult> {
   const fixture = loadFixture(options.fixtureId);
-  const schedule = await runSimulatedSchedule({
+  const recordedWorkerAssignment = fixture.fixtureId === "crosscurrent-workspace-market"
+    ? {
+        workerRole: "EVIDENCE_RESEARCHER",
+        adapter: new RecordedWorkerAdapter({
+          "workflow-interviews:a2": {
+            taskId: "workflow-interviews",
+            attemptId: "workflow-interviews:a2",
+            status: "COMPLETED" as const,
+            finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem.",
+          },
+        }),
+      }
+    : undefined;
+  const schedule = fixture.fixtureId === liveWorkerPilotFixtureId
+    ? await prepareLiveWorkerPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
+    : fixture.fixtureId === googleTrendsPilotFixtureId
+      ? await prepareGoogleTrendsPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
+      : fixture.fixtureId === googleTrendsComparisonPilotFixtureId
+        ? await prepareGoogleTrendsComparisonPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
+      : await runSimulatedSchedule({
     missionId: options.missionId,
     missionSeed: options.missionSeed ?? fixture.seed,
     totalBudget: fixture.budget,
@@ -36,6 +56,9 @@ export async function runFixtureMission(options: {
     eventStore: options.eventStore,
     maxConcurrency: options.maxConcurrency,
     completeMission: false,
+    recordedWorkerAssignment,
+    subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
+    missionMode: fixture.fixtureId === failureAutopsyPilotFixtureId ? "FAILURE_AUTOPSY" : fixture.fixtureId === productInvestigationPilotFixtureId ? "PRODUCT_INVESTIGATION" : undefined,
     tasks: fixture.tasks.map((task) => ({
       taskId: task.id,
       objective: task.objective,
@@ -56,8 +79,19 @@ export async function runFixtureMission(options: {
   if (scheduledState.status !== "RUNNING") {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
+  if (fixture.fixtureId === liveWorkerPilotFixtureId || fixture.fixtureId === googleTrendsPilotFixtureId || fixture.fixtureId === googleTrendsComparisonPilotFixtureId) {
+    return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
+  }
   if (fixture.fixtureId === "crosscurrent-workspace-market") {
     const qualityEvents = buildFixtureQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
+    for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
+  }
+  if (fixture.fixtureId === failureAutopsyPilotFixtureId) {
+    const qualityEvents = buildFailureAutopsyQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
+    for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
+  }
+  if (fixture.fixtureId === productInvestigationPilotFixtureId) {
+    const qualityEvents = buildProductInvestigationQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
     for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
   }
   const sequenceNumber = (await store.readAll()).length + 1;

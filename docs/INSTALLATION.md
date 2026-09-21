@@ -30,21 +30,19 @@ npm.cmd run test:e2e
 
 Use two PowerShell windows from the repository root.
 
-In the first window, start the local mission runtime:
-
-```powershell
-npm.cmd run runtime:dev
-```
-
-It listens only at `http://127.0.0.1:8787` and writes local mission histories under `.dropscope-data/`, which Git ignores.
-
-In the second window, start the browser interface:
+In the first window, start the browser interface:
 
 ```powershell
 npm.cmd run dev
 ```
 
-Open the local URL that Vite prints in that window (normally `http://localhost:5173`) before starting the runtime. If Vite selects a different port, set `DROPSCOPE_TRUSTED_UI_ORIGIN` to that origin without its trailing slash (for example, `$env:DROPSCOPE_TRUSTED_UI_ORIGIN = "http://localhost:5174"`) and then start, or stop and restart, the local-runtime command. Choose a fixed fixture in the **Local runtime** control strip and select **Launch local mission**. The browser stores the active mission ID locally so **Reload saved mission** can restore it after a refresh.
+Open the local URL that Vite prints in that window (normally `http://localhost:5173`). In the second window, set `DROPSCOPE_TRUSTED_UI_ORIGIN` to that origin without its trailing slash if Vite selected a different port (for example, `$env:DROPSCOPE_TRUSTED_UI_ORIGIN = "http://localhost:5174"`), then start the local mission runtime:
+
+```powershell
+npm.cmd run runtime:dev
+```
+
+It listens only at `http://127.0.0.1:8787` and writes local mission histories under `.dropscope-data/`, which Git ignores. Choose a fixed fixture in the **Local runtime** control strip and select **Launch local mission**. The browser stores the active mission ID locally so **Reload saved mission** can restore it after a refresh.
 
 The initial synthetic fallback is expected if you have not launched a local mission yet.
 

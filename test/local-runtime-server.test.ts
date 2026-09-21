@@ -151,10 +151,12 @@ describe("local runtime HTTP bridge", () => {
     expect(launch.status).toBe(201);
     expect(launch.headers.get("access-control-allow-origin")).toBe(origin);
     const defaultPort = await fetch(`${base}/api/missions`, { method: "OPTIONS", headers: { Origin: "http://localhost", "Access-Control-Request-Method": "POST" } });
-    expect(defaultPort.status).toBe(204);
-    expect(defaultPort.headers.get("access-control-allow-origin")).toBe("http://localhost");
+    expect(defaultPort.status).toBe(403);
+    expect(defaultPort.headers.get("access-control-allow-origin")).toBeNull();
     const foreign = await fetch(`${base}/api/missions`, { method: "POST", headers: { Origin: "https://example.com", "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
     expect(foreign.status).toBe(403);
+    const otherLocalhost = await fetch(`${base}/api/missions`, { method: "POST", headers: { Origin: "http://localhost:3000", "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
+    expect(otherLocalhost.status).toBe(403);
     expect(server).not.toHaveProperty("listen");
   });
 

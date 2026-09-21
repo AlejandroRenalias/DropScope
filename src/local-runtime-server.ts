@@ -159,7 +159,8 @@ function loopbackOrigin(origin: string | undefined): string | undefined {
   try {
     const parsed = new URL(origin);
     const isLoopbackHost = parsed.protocol === "http:" && (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost");
-    return isLoopbackHost && (parsed.port === "" || Number(parsed.port) <= 65535) && parsed.pathname === "/" && !parsed.search && !parsed.hash ? parsed.origin : undefined;
+    const isTrustedUiPort = parsed.port === "5173" || parsed.port === "5177";
+    return isLoopbackHost && isTrustedUiPort && parsed.pathname === "/" && !parsed.search && !parsed.hash ? parsed.origin : undefined;
   } catch {
     return undefined;
   }

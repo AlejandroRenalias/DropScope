@@ -1,9 +1,50 @@
 # DropScope Frontend Direction
 
-**Status:** Approved visual direction for Milestone 1B  
-**Decision date:** 2026-09-07  
-**Scope:** Visual language, interaction character, and the first Research Office slice  
+**Status:** Current - Editorial Command Desk with approved Single Mission Brief refinement
+
+**Original decision date:** 2026-09-07
+
+**Superseding decision date:** 2026-09-22
+
+**Cross-surface propagation approval:** 2026-09-23
+
+**Scope:** Visual language and interaction character across all six current frontend surfaces
 **Does not change:** Product behavior, engine policy, event contracts, permissions, or the frozen interface surfaces
+
+## 0. Superseding direction: Editorial Command Desk
+
+The Editorial Command Desk direction replaces the robot-centered emphasis described in the historical Milestone 1B sections below. Those sections remain useful for state, accessibility, and product-boundary requirements, but this section takes precedence for composition and visual hierarchy.
+
+Reading this as a dense research command center for a serious solo operator, with an editorial intelligence-workbench language and a restrained operational character layer.
+
+Approved design dials:
+
+- `DESIGN_VARIANCE: 7` - asymmetric hierarchy without sacrificing scan speed;
+- `MOTION_INTENSITY: 3` - interaction feedback and real state animation only;
+- `VISUAL_DENSITY: 7` - compact daily-use information without generic dashboard cards.
+
+The visual system uses warm near-black surfaces, paper-white typography, a single signal-orange accent, sharp two-pixel corners, sparse dividers, and tabular monospace for identifiers and measured values. Green, amber, and red remain semantic colors for success, warning, and failure only.
+
+Pixel robots remain original operational signatures inside the Research Office. They are compact supporting characters, not the primary identity of the application. Evidence, provenance, policy, budget, review, and report information must dominate every surface.
+
+The application frame uses a compact horizontal workspace navigation and command ribbon. Research Office, Agent Desk, Tribunal Room, Review Office, Final Report, and Mission Replay each receive a composition suited to their work rather than sharing one repeated card grid.
+
+The event-derived boundary remains unchanged:
+
+> JSONL events -> engine reducer -> frontend projection -> React views
+
+No frontend component may become a second source of truth or acquire policy authority. The redesign changes presentation and internal component organization only.
+
+### 0.1 Single Mission Brief refinement
+
+The approved follow-up reduces the command-desk treatment to a calmer mission-first hierarchy. Its design dials are `DESIGN_VARIANCE: 6`, `MOTION_INTENSITY: 2`, and `VISUAL_DENSITY: 6`.
+
+- The global shell keeps the six primary navigation labels but gives runtime setup one compact `Mission controls` disclosure instead of a permanently dominant ribbon.
+- Mission identity is presented as a brief: one title, one source statement, a compact provenance line, and one phase summary.
+- Research Office established the accepted proof direction. `Current work` is a continuous row-based assignment sheet, robots are 48-64 pixel operational signatures, dependencies continue beneath the work list, and ledger plus recent activity form a secondary 8+4 context rail.
+- Borders communicate section changes rather than boxing every object. Signal orange is limited to brand, selection, and high-value orientation cues; semantic green, amber, and red continue to describe real state only.
+- Desktop content is capped near 1440 pixels. At narrow widths the rail follows the primary brief, navigation remains horizontally usable, identifiers wrap safely, and action targets remain touch-sized.
+- The accepted hierarchy now applies across all six surfaces. Agent Desk separates bounded actions from the event-derived evidence ledger; Tribunal Room frames opposing arguments beneath a dominant verdict; Review Office reads as a ranked defect sheet; Final Report reads as a decision document; and Mission Replay pairs a sticky control rail with event chronology and a distinct projected snapshot.
 
 ## 1. Design read
 

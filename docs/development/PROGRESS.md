@@ -4,29 +4,39 @@ Concise running report. Update it at each stage: what was done, validation, what
 
 ## Current status (2026-10-13)
 
-**Phase:** Codex-to-Claude Code migration (configuration only). No product code changed. The seven-day roadmap has not been created yet.
+**Phase:** command-center UI redesign on branch `claude/editorial-ui` (local, awaiting approval to push and open a PR). The Codex-to-Claude Code migration is merged (PR #46). The seven-day roadmap has not been created yet.
 
 ### Done
 
-- Engine (Milestone 1A): scheduler, event store, reducer and recovery, budget ledger, evidence audit and scoring, tribunal, blind review, divergence detection, risk policy, synthetic fixtures. Typecheck, build, and 296 unit tests (45 files) pass on `origin/main`; the preserved unfinished UI work brings this to 299 tests (46 files).
+- Engine (Milestone 1A): scheduler, event store, reducer and recovery, budget ledger, evidence audit and scoring, tribunal, blind review, divergence detection, risk policy, synthetic fixtures.
 - Research Office UI foundation (Milestone 1B) and local runtime bridge (merged as PR #45).
 - Milestone 2 groundwork: subscription-worker contract, preflight, protocol fake, Google Trends pilot, Failure Autopsy and Product Investigation pilots.
 - Public-release documentation drafts and MIT license (Milestone 6 groundwork).
-- Migration: agent-neutral `AGENTS.md`, `CLAUDE.md`, rewritten workflow and templates, minimal `.claude/settings.json`, temporary sprint exception.
+- Migration (PR #46): agent-neutral `AGENTS.md`, `CLAUDE.md`, rewritten workflow and templates, minimal `.claude/settings.json`, temporary sprint exception.
+- Command-center UI on `claude/editorial-ui` (presentation only; the engine, contracts and policies are untouched):
+  - light cobalt-on-white design with one accent and one alert colour, self-hosted IBM Plex, approved brief in `docs/design/DROPSCOPE_FRONTEND_DIRECTION.md`;
+  - persistent frame (top bar with live status and event counter, side rails) on all six screens;
+  - Research Office constellation and inspector, Mission Replay scrubber, Final Report verdict briefing, Agent Desk provenance chain, Review Office score radar and revision path, Tribunal Room courtroom, polished first-mission panel;
+  - nine reviewed `win32` visual baselines committed.
 
-### In progress / preserved, not yet on main
+### Validation (latest, on the branch)
 
-- Editorial command-desk UI (`410dbfb`, unpushed) and an unfinished clean-research layout pass, preserved on the local branch `backup/codex-handoff-2026-10-13`.
-- Isolated design prototypes, five policy drafts, `LEARNING.md`, and the `design-taste-frontend` skill: preserved on the backup branch only; purpose and value still to be decided.
+Typecheck clean; 316 unit tests (47 files); build succeeds; 27 of 27 Playwright e2e tests pass (stable over repeated runs). Screens were also reviewed at 1440px and 390px for every fixture, including the guarded-action tiles (Google Trends pilot) and the held-out, insufficient-evidence and no-review states.
+
+### In progress
+
+- Awaiting approval to push `claude/editorial-ui` and open a PR. Optional: a Codex review of keyboard and accessibility behaviour of the constellation and scrubber.
 
 ### Remaining
 
-- Land the editorial UI on a clean branch from `origin/main`, with build and e2e validation and reviewed snapshots. Restore the PR template's learning-record item if the learning workflow resumes after the sprint.
 - Seven-day roadmap and MVP definition (not yet written).
 - Milestones 2 to 6 of `DROPSCOPE_FINAL_PROJECT_PLAN.md` as scoped by the sprint MVP.
+- Preserved on the local backup branch only: isolated design prototypes, five policy drafts, `LEARNING.md`, the `design-taste-frontend` skill; decide their value later.
+- Restore the PR template's learning-record item if the learning workflow resumes after the sprint.
 
 ### Open risks
 
 - Frozen product plan still names Codex as the local worker runtime (Milestone 2); decide separately whether the MVP keeps that runtime.
-- `docs/design/DROPSCOPE_FRONTEND_DIRECTION.md` still refers to "Terra"; update when the UI work lands.
-- Visual snapshots (currently only on the backup branch) are `win32`-only, e2e needs Chrome installed, and CI does not run e2e.
+- Visual snapshots are `win32`-only, e2e needs Chrome installed, and CI does not run e2e.
+- Replay chronology still shows raw event type names; Autopsy and Investigation reports were only checked through the existing e2e assertions, not visually.
+- `CLAUDE.md` still mentions "Terra" in an example line; changing it needs independent review under `AGENTS.md`.

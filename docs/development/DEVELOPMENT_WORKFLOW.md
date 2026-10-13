@@ -46,7 +46,7 @@ Independent review is required for:
 - security, persistence, budget accounting, recovery, migrations, architecture (frozen or not), frozen-policy work, and correctness-sensitive state transitions;
 - changes to `AGENTS.md`, `CLAUDE.md`, this workflow, agent permission settings (for example `.claude/settings.json`), and publication or merge rules.
 
-Use the highest available reasoning effort for security, persistence, budget, recovery, and frozen-architecture reviews. The reviewer must not have implemented or led the change, and must be read-only. Other low-risk work uses focused tests, CI, a mechanical gate, and lightweight lead-agent acceptance; do not add independent review by default. Do not run duplicate final reviews without a material new risk or a new SHA.
+Use the highest available reasoning effort for security, persistence, budget, recovery, migration, and architecture (frozen or not) reviews. The reviewer must not have implemented or led the change, and must be read-only. Other low-risk work uses focused tests, CI, a mechanical gate, and lightweight lead-agent acceptance; do not add independent review by default. Do not run duplicate final reviews without a material new risk or a new SHA.
 
 ## Failure handling
 
@@ -78,4 +78,4 @@ Keep prompts compact, inspect only relevant files, and avoid duplicate work and 
 
 ## Temporary seven-day sprint exception
 
-During the sprint declared in `AGENTS.md`, the learning-oriented process (60/40 target, Learning Checkpoints, `LEARNING.md`) is paused, while technical explanations for architecture, security, persistence, budget, and recovery decisions and the `PROGRESS.md` reports are kept. The exception ends 2026-10-20 unless the user extends it. All gates in this document remain in force.
+During the sprint declared in `AGENTS.md`, the learning-oriented process (60/40 target, Learning Checkpoints, `LEARNING.md`) is paused, while technical explanations for architecture, security, persistence, budget, and recovery decisions and the `PROGRESS.md` reports are kept. The exception ends 2026-10-20 unless the user extends or ends it earlier (see `AGENTS.md`). All gates in this document remain in force.

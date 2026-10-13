@@ -18,7 +18,7 @@ CI runs `npm ci`, `typecheck`, and `test` on Ubuntu. Run `build` and `test:e2e` 
 ## Working rules
 
 - Do not commit unrelated files; the repo may contain untracked prototypes and local artifacts. Stage explicit paths; never `git add -A`, `git add .` or `git commit -a`. Before committing, check `git status` and `git diff --cached --stat`, and re-stage any file edited after staging.
-- Never push, open or merge a PR, delete a branch, or change GitHub settings without explicit user approval.
+- Never push, open/close/merge a PR, delete a branch, change GitHub settings, run workflows or releases, or publish anything without explicit user approval (see `AGENTS.md`).
 - Do not add skills, hooks, or subagents unless a concrete need is shown and approved. Use a fresh read-only subagent for the independent reviews required by `AGENTS.md`, giving it the brief, diff and SHA but not your own conclusions.
 - Product architecture is frozen: `DROPSCOPE_FINAL_PROJECT_PLAN.md`, `docs/architecture/`, `docs/adr/`, and `docs/policies/` change only via a superseding ADR and user approval.
 - "Terra", "Luna" and "Active Commander" in older development docs (for example `docs/design/DROPSCOPE_FRONTEND_DIRECTION.md`) mean the lead agent and workers; the gates they describe still apply.

@@ -15,7 +15,8 @@ let nextPreflightResult: SubscriptionPreflightResult = { accessStatus: "CHATGPT_
 const comparisonCsv = "Category: All categories\nWeek,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,12,24,36\n2026-01-11,18,30,42";
 
 async function openMissionControls(page: Page) {
-  await page.getByRole("button", { name: "Mission controls" }).click();
+  const trigger = page.getByRole("button", { name: "Mission controls" });
+  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
 }
 
 test.beforeAll(async () => {
@@ -34,15 +35,20 @@ test.afterAll(async () => {
 
 test("launches, preserves retry evidence, reloads, and replays the local mission", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Synthetic demo fallback")).toBeVisible();
+  await expect(page.locator(".source-label")).toHaveText("Synthetic demo · recorded replay");
+  await openMissionControls(page);
+  const firstMissionSetup = page.getByRole("region", { name: "First mission setup" });
+  await expect(firstMissionSetup).toContainText("Record a mission before you inspect it.");
+  await expect(firstMissionSetup).toContainText("npm.cmd run runtime:dev");
+  await expect(firstMissionSetup).toContainText("Launching a fixture does not start a live worker or use a subscription.");
   await openMissionControls(page);
 
   await page.getByRole("button", { name: "Launch local mission" }).click();
   await expect(page.getByRole("status")).toContainText("Mission crosscurrent-workspace-market-");
   await expect(page.getByRole("status")).toContainText("launched and persisted");
-  await expect(page.getByText("Local event history")).toBeVisible();
+  await expect(page.locator(".source-label")).toHaveText("Synthetic demo · recorded replay");
 
-  await page.getByRole("button", { name: "Agent Desk" }).click();
+  await page.getByRole("button", { name: "Inspect evidence" }).click();
   const agentDesk = page.getByRole("region", { name: "Agent Desk" });
   await expect(agentDesk).toContainText("Mission usage summary · recorded dry-run provenance");
   await expect(agentDesk).toContainText("Recorded dry-run count: 1");
@@ -57,6 +63,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(agentDesk).toContainText("Confirmation is one-use, stays only in local runtime memory, and expires after 60 seconds.");
   await expect(agentDesk).toContainText("Any command, file-change, or permission request is automatically declined and ends the run.");
   expect(preflightChecks).toBe(0);
+  await openMissionControls(page);
   await page.getByRole("button", { name: "Check subscription runtime" }).click();
   await expect.poll(() => preflightChecks).toBe(1);
   await expect(page.getByRole("button", { name: "Launch local mission" })).toBeDisabled();
@@ -139,7 +146,7 @@ test("captures Google Trends only after the explicit browser action, then reload
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 8 / 8");
   await expect(replay.getByText("GoogleTrendsEvidenceCaptured", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Final Report" }).click();
+  await page.getByRole("button", { name: "Final Report", exact: true }).click();
   const finalReport = page.getByRole("region", { name: "Final Report" });
   await expect(finalReport).toContainText("External signal context · not scored");
   await expect(finalReport).toContainText("It does not change any score, ranking, gate, or recommendation");
@@ -171,7 +178,7 @@ test("imports one selected Google Trends comparison CSV as replayed unscored con
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 8 / 8");
   await expect(replay.getByText("GoogleTrendsComparisonImported", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Final Report" }).click();
+  await page.getByRole("button", { name: "Final Report", exact: true }).click();
   const finalReport = page.getByRole("region", { name: "Final Report" });
   await expect(finalReport).toContainText("Manual comparison context · not scored");
   await expect(finalReport).toContainText("It does not change any score, ranking, gate, or recommendation");
@@ -195,7 +202,7 @@ test("replays the fixed Failure Autopsy through the shared local mission runtime
   await expect(replay).toContainText("MissionTerminated");
   await page.getByRole("button", { name: "Tribunal Room" }).click();
   await expect(page.getByRole("region", { name: "Tribunal Room" })).toContainText("STOP");
-  await page.getByRole("button", { name: "Final Report" }).click();
+  await page.getByRole("button", { name: "Final Report", exact: true }).click();
   const finalReport = page.getByRole("region", { name: "Final Report" });
   await expect(finalReport).toContainText("Failure Autopsy");
   await expect(finalReport).toContainText("What would change this conclusion");
@@ -209,7 +216,7 @@ test("replays Product Investigation with automatic Failure Autopsy pressure", as
   await page.getByRole("button", { name: "Launch local mission" }).click();
   await page.getByRole("button", { name: "Tribunal Room" }).click();
   await expect(page.getByRole("region", { name: "Tribunal Room" })).toContainText("CAUTION");
-  await page.getByRole("button", { name: "Final Report" }).click();
+  await page.getByRole("button", { name: "Final Report", exact: true }).click();
   const finalReport = page.getByRole("region", { name: "Final Report" });
   await expect(finalReport).toContainText("Product Investigation");
   await expect(finalReport).toContainText("modular-desk-organizer");

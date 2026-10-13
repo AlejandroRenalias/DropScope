@@ -1,5 +1,6 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { Archive } from "@phosphor-icons/react/dist/csr/Archive";
+import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { ChartLineUp } from "@phosphor-icons/react/dist/csr/ChartLineUp";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
@@ -23,6 +24,8 @@ import {
   type ReplayEventCategory,
 } from "./office-projection.js";
 import type { LocalMissionDto, SubscriptionConfirmationDto } from "./runtime-client.js";
+import { displayResearchCopy, summarizeResearchEvent } from "./research-presentation.js";
+import type { MissionEvent } from "../contracts.js";
 
 export type OfficeView = "floor" | "agent" | "tribunal" | "review" | "report" | "replay";
 type Icon = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill" }>;
@@ -57,23 +60,10 @@ function StateLabel({ state }: { state: AgentState | OfficeProjection["mission"]
   return <span className={`state-label ${state.toLowerCase()}`}>{state}</span>;
 }
 
-function AgentWorkRow({ agent, onApproval, lead = false }: { agent: OfficeProjection["agents"][number]; onApproval: () => void; lead?: boolean }) {
-  const RoleIcon = roleIcons[agent.id] ?? Target;
-  const equipment = agent.id === "commander" ? "Dispatch console / mission board" : agent.id === "evidence" ? "Scanner / evidence board" : agent.id === "operations" ? "Supplier terminal / logistics bay" : "Inspection console / safety hold";
-  return <article className={`work-row ${lead ? "work-row-lead" : ""} ${agent.id} ${agent.state.toLowerCase()}`} aria-label={`${agent.role} workstation`}>
-    <div className="work-agent">
-      <Robot id={agent.id} state={agent.state} />
-      <div><span className="work-role"><RoleIcon size={16} />{agent.role}</span><small>{equipment}</small></div>
-    </div>
-    <div className="work-assignment"><strong>{agent.task}</strong>{!["Evidence work is visible.", "Operational research is visible."].includes(agent.detail) && <small>{agent.detail}</small>}{agent.state === "BLOCKED" && <button className="approval-button" onClick={onApproval}><Warning size={14} />Open required approval</button>}</div>
-    <StateLabel state={agent.state} />
-  </article>;
-}
-
 function WorkGraph({ tasks }: { tasks: OfficeProjection["tasks"] }) {
   return <section className="work-graph" aria-labelledby="work-graph-title">
     <div className="surface-heading"><div><GitBranch size={16} /><h2 id="work-graph-title">Dependencies and concurrency</h2></div><span>{tasks.length} recorded tasks</span></div>
-    <div className="graph-list">{tasks.map((task, index) => <div className={`graph-row ${task.state.toLowerCase()}`} key={task.label}><span className="graph-index">{String(index + 1).padStart(2, "0")}</span><div className="graph-task"><strong>{task.label}</strong><small>{task.dependencies}</small></div><StateLabel state={task.state} /></div>)}</div>
+    <div className="graph-list">{tasks.map((task, index) => <div className={`graph-row ${task.state.toLowerCase()}`} key={task.label}><span className="graph-index">{String(index + 1).padStart(2, "0")}</span><div className="graph-task"><strong>{displayResearchCopy(task.label)}</strong><small>{task.dependencies}</small></div><StateLabel state={task.state} /></div>)}</div>
   </section>;
 }
 
@@ -87,28 +77,54 @@ function MissionLedger({ projection }: { projection: OfficeProjection }) {
   </section>;
 }
 
-function EventTrail({ projection, reduced, setReduced }: { projection: OfficeProjection; reduced: boolean; setReduced: (value: boolean) => void }) {
+function EventTrail({ history }: { history: MissionEvent[] }) {
+  const events = history.slice(-3).reverse();
   return <section className="context-panel event-panel" aria-labelledby="event-trail-title">
-    <div className="surface-heading"><div><h2 id="event-trail-title">Recent activity</h2></div><button className="quiet-button" onClick={() => setReduced(!reduced)}>{reduced ? "Motion off" : "Reduce motion"}</button></div>
-    <div className="event-list">{projection.events.map((event) => <div className="event" key={event.sequence}><b>{String(event.sequence).padStart(2, "0")}</b><span><strong>{event.type}</strong><small>{event.detail}</small></span></div>)}</div>
+    <div className="surface-heading"><div><h2 id="event-trail-title">Recent activity</h2></div><span>Newest first</span></div>
+    <div className="event-list">{events.map((event) => <details className="event" key={event.eventId}><summary><span><strong>{summarizeResearchEvent(event)}</strong></span><CaretDown size={14} aria-hidden="true" /></summary><div className="event-raw"><strong>{event.type} · {event.sequenceNumber}</strong><pre>{JSON.stringify(event.payload, null, 2)}</pre></div></details>)}</div>
   </section>;
 }
 
-export function ResearchOffice({ projection, agents, onApproval, reduced, setReduced }: { projection: OfficeProjection; agents: OfficeProjection["agents"]; onApproval: () => void; reduced: boolean; setReduced: (value: boolean) => void }) {
-  const commander = agents.find((agent) => agent.id === "commander");
-  const specialists = agents.filter((agent) => agent.id !== "commander");
-  return <section className="office-layout" aria-label="Research Office floor">
-    <div className="office-primary">
-      <section className="current-work">
-        <div className="surface-heading"><div><h2>Current work</h2></div><span>Event-derived projection</span></div>
-        <div className="work-list">
-          {commander && <AgentWorkRow agent={commander} onApproval={onApproval} lead />}
-          {specialists.map((agent) => <AgentWorkRow agent={agent} onApproval={onApproval} key={agent.id} />)}
-        </div>
+export function ResearchOffice({ projection, agents, onApproval, onEvidence, synthetic, history }: { projection: OfficeProjection; agents: OfficeProjection["agents"]; onApproval: () => void; onEvidence: () => void; reduced: boolean; setReduced: (value: boolean) => void; synthetic: boolean; history: MissionEvent[] }) {
+  const [activeTab, setActiveTab] = useState<"findings" | "dependencies">("findings");
+  const completed = projection.decisionViews.agentDesk.filter((record) => record.state === "COMPLETED");
+  const pending = agents.filter((agent) => agent.state === "WORKING" || agent.state === "WAITING" || agent.state === "BLOCKED");
+  const completedTasks = projection.tasks.filter((task) => task.state === "COMPLETED").length;
+  const tabs = ["findings", "dependencies"] as const;
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const selectTab = (tab: typeof tabs[number]) => setActiveTab(tab);
+  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const current = tabs.indexOf(activeTab);
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      event.preventDefault();
+      const next = (current + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+      selectTab(tabs[next]);
+      tabRefs.current[next]?.focus();
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      const next = event.key === "Home" ? 0 : tabs.length - 1;
+      selectTab(tabs[next]);
+      tabRefs.current[next]?.focus();
+    }
+  };
+  return <section className="office-layout research-workspace" aria-label="Research Office floor">
+    <div className="dossier">
+      <div className="dossier-tabs" role="tablist" aria-label="Research dossier views">
+        {tabs.map((tab, index) => <button ref={(node) => { tabRefs.current[index] = node; }} className="dossier-tab" key={tab} id={`dossier-tab-${tab}`} role="tab" aria-selected={activeTab === tab} aria-controls={`dossier-panel-${tab}`} tabIndex={activeTab === tab ? 0 : -1} onClick={() => selectTab(tab)} onKeyDown={onTabKeyDown}>{tab === "findings" ? "Findings" : "Dependencies"}</button>)}
+        <button className="inspect-evidence" onClick={onEvidence}>Inspect evidence</button>
+      </div>
+      <section id="dossier-panel-findings" className="findings-panel" role="tabpanel" aria-labelledby="dossier-tab-findings" hidden={activeTab !== "findings"}>
+        {completed.length ? completed.map((record) => <details className="finding-record" key={record.attemptId}><summary><CheckCircle size={18} aria-hidden="true" /><span className="finding-copy"><strong>{displayResearchCopy(record.task)}</strong><span className="finding-text">{(record.evidence || "No finding was recorded for this completed attempt.").split(/\n\s*\n/).map((paragraph, index) => <span key={index}>{displayResearchCopy(paragraph)}</span>)}</span><small>{record.role}</small><small className="finding-source">{synthetic ? "Synthetic demo · recorded replay" : "Recorded replay · inspect provenance"}</small></span><CaretDown className="finding-caret" size={15} aria-hidden="true" /></summary><div className="finding-provenance"><dl><div><dt>Attempt</dt><dd>{record.attemptId}</dd></div><div><dt>Provenance</dt><dd>{record.provenance ?? "Not recorded"}</dd></div><div><dt>Usage</dt><dd>{record.usage.units} replay units · {record.usage.status}</dd></div></dl></div></details>) : <div className="research-empty"><h3>No completed findings yet</h3><p>There are no completed research attempts in this replay.</p></div>}
+        {pending.length > 0 && <section className="pending-research"><h3>Still being researched</h3>{pending.map((agent) => <article className={`pending-row ${agent.state.toLowerCase()}`} key={agent.attemptId}><div className="pending-task"><strong>{displayResearchCopy(agent.task)}</strong>{agent.detail !== "Assigned through replay." && agent.detail && <small>{displayResearchCopy(agent.detail)}</small>}</div><StateLabel state={agent.state} />{agent.state === "BLOCKED" && <button className="approval-button" onClick={onApproval}>Open required approval</button>}</article>)}</section>}
       </section>
-      <WorkGraph tasks={projection.tasks} />
+      <section id="dossier-panel-dependencies" className="dependency-panel" role="tabpanel" aria-labelledby="dossier-tab-dependencies" hidden={activeTab !== "dependencies"}><WorkGraph tasks={projection.tasks} /></section>
     </div>
-    <aside className="office-context" aria-label="Mission context"><MissionLedger projection={projection} /><EventTrail projection={projection} reduced={reduced} setReduced={setReduced} /></aside>
+    <aside className="office-context activity-rail" aria-label="Mission context">
+      <section className="team-panel"><header className="surface-heading"><div><h2>Team activity</h2></div><span>{agents.length} researchers</span></header>{agents.map((agent) => <details className={`team-member ${agent.state.toLowerCase()}`} key={agent.attemptId} aria-label={`${agent.role} workstation`}><summary><span>{agent.role}</span><StateLabel state={agent.state} /><CaretDown className="team-caret" size={14} aria-hidden="true" /></summary><div className="team-member-detail"><Robot id={agent.id} state={agent.state} /><strong>{displayResearchCopy(agent.task)}</strong>{agent.detail !== "Assigned through replay." && agent.detail && <p>{displayResearchCopy(agent.detail)}</p>}{agent.state === "BLOCKED" && <button className="approval-button" onClick={onApproval}>Open required approval</button>}</div></details>)}</section>
+      <div className="research-completion">{completedTasks} of {projection.tasks.length} recorded tasks completed</div>
+      <details className="office-detail"><summary>Mission ledger <span>{projection.ledger.available} units available</span></summary><MissionLedger projection={projection} /></details>
+      <EventTrail history={history} />
+    </aside>
   </section>;
 }
 

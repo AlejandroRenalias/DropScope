@@ -2,11 +2,13 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Theme } from "@radix-ui/themes";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
+import { Aperture } from "@phosphor-icons/react/dist/csr/Aperture";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { Play } from "@phosphor-icons/react/dist/csr/Play";
 import { Warning } from "@phosphor-icons/react/dist/csr/Warning";
 import "@radix-ui/themes/styles.css";
 import "./styles.css";
+import "./research-workspace.css";
 import { fixtureIds } from "../fixture-model.js";
 import { officeHistories, projectOffice, type OfficeScenario } from "./office-projection.js";
 import {
@@ -31,6 +33,15 @@ import {
 
 type RuntimeState = "idle" | "loading" | "success" | "error";
 
+const fixturePresentation: Record<string, { label: string; description: string }> = {
+  "crosscurrent-workspace-market": { label: "Learn a Market", description: "Run the complete synthetic opportunity-research mission." },
+  "failure-autopsy-pilot": { label: "Failure Autopsy", description: "Test why a fixed concept should stop before more effort is spent." },
+  "product-investigation-pilot": { label: "Product Investigation", description: "Research one fixed product with automatic failure pressure." },
+  "live-worker-pilot": { label: "Guarded live-worker pilot", description: "Prepare the fixed one-turn worker path with separate local approval." },
+  "google-trends-pilot": { label: "Google Trends capture", description: "Record one fixed public-source snapshot after an explicit action." },
+  "google-trends-comparison-pilot": { label: "Google Trends comparison", description: "Import the approved comparison CSV as unscored local context." },
+};
+
 function Office() {
   const [scenario, setScenario] = useState<OfficeScenario>("RUNNING");
   const [activeMission, setActiveMission] = useState<LocalMissionDto>();
@@ -46,6 +57,7 @@ function Office() {
   const [reduced, setReduced] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [view, setView] = useState<OfficeView>("floor");
 
   useEffect(() => {
@@ -64,6 +76,7 @@ function Office() {
         setActiveMission(mission);
         setRuntimeState("success");
         setRuntimeMessage("Reloaded the browser-saved local mission.");
+        setControlsOpen(false);
       })
       .catch((error: unknown) => {
         setRuntimeState("error");
@@ -78,6 +91,10 @@ function Office() {
   const StatusIcon = status === "BLOCKED" ? Warning : status === "COMPLETED" ? CheckCircle : Play;
   const workingAgents = floorAgents.filter((agent) => agent.state === "WORKING").length;
   const floorStatus = status === "BLOCKED" ? "Policy block" : status === "COMPLETED" ? "Mission complete" : "Replay running";
+  const synthetic = !activeMission || ["crosscurrent-workspace-market", "mixed-opportunity-market", "failure-autopsy-pilot", "product-investigation-pilot"].includes(activeMission.fixtureId);
+  const demoRuntimeUnavailable = !activeMission && runtimeState === "error" && runtimeMessage.startsWith("Local runtime is unavailable.");
+  const previewStates = <div className="scenario-switcher" role="group" aria-label="Replay state"><span>{view === "floor" ? "Preview state" : activeMission ? "Demo fallback" : "Replay state"}</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button className={scenario === name ? "selected" : ""} onClick={() => { setScenario(name); setApprovalOpen(false); }} key={name}>{name}</button>)}</div>;
+  const runtimeSetupNote = <p className="runtime-start-note">Start the local runtime in a second terminal: <code>npm.cmd run runtime:dev</code>. Launching a fixture does not start a live worker or use a subscription.</p>;
 
   const launch = async () => {
     setRuntimeState("loading");
@@ -90,12 +107,15 @@ function Office() {
         window.localStorage.setItem("dropscope.activeMissionId", mission.missionId);
         setRuntimeState("success");
         setRuntimeMessage(`Mission ${mission.missionId} launched and persisted.`);
+        setControlsOpen(false);
       } catch {
         setRuntimeState("success");
         setRuntimeMessage(`Mission ${mission.missionId} launched, but browser storage is unavailable. It will not auto-reload after refresh.`);
+        setControlsOpen(false);
       }
     } catch (error: unknown) {
       setRuntimeState("error");
+      setControlsOpen(true);
       setRuntimeMessage(error instanceof Error ? error.message : "Could not launch the local mission.");
     }
   };
@@ -122,11 +142,18 @@ function Office() {
       setSubscriptionConfirmation(undefined);
       setRuntimeState("success");
       setRuntimeMessage("Persisted local mission reloaded.");
+      setControlsOpen(false);
     } catch (error: unknown) {
       setRuntimeState("error");
+      setControlsOpen(true);
       setRuntimeMessage(error instanceof Error ? error.message : "Could not reload the local mission.");
     }
   };
+
+  const selectedFixture = fixturePresentation[fixtureId] ?? { label: fixtureId, description: "Run the selected fixed local mission." };
+  const RuntimeStatusIcon = runtimeState === "error" ? Warning : runtimeState === "success" ? CheckCircle : Play;
+  const runtimeStatusTitle = runtimeState === "error" ? activeMission ? "Action needs attention" : "Local runtime needs attention" : runtimeState === "loading" ? "Working locally" : "Mission ready";
+  const showMissionNextActions = Boolean(activeMission && runtimeState === "success" && (runtimeMessage.includes("launched") || runtimeMessage.includes("mission reloaded") || runtimeMessage.includes("browser-saved local mission")));
 
   const confirmSubscription = async () => {
     if (!activeMission || activeMission.fixtureId !== "live-worker-pilot") return;
@@ -220,10 +247,13 @@ function Office() {
     }
   };
 
-  return <div className={`app ${reduced ? "reduced" : ""}`}>
+  return <div className={`app ${view === "floor" ? "clean-proof" : ""} ${reduced ? "reduced" : ""}`}>
     <header className="topbar">
-      <div className="brand"><b>D</b><span>DropScope</span><em>Research OS</em></div>
-      <WorkspaceNavigation view={view} onChange={setView} />
+      <div className="brand">{view === "floor" ? <Aperture className="scope-mark" size={34} weight="duotone" aria-hidden="true" /> : <b>D</b>}<span>DropScope</span><em>Research OS</em></div>
+      {view === "floor" ? <div className={`research-navigation ${workspaceOpen ? "is-open" : ""}`} onKeyDown={(event) => { if (event.key === "Escape" && workspaceOpen) { setWorkspaceOpen(false); event.currentTarget.querySelector<HTMLButtonElement>(".workspace-toggle")?.focus(); } }}>
+        <button className="workspace-toggle" type="button" aria-controls="research-navigation-links" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>Workspace <span>Research Office</span><CaretDown size={16} aria-hidden="true" /></button>
+        <div id="research-navigation-links"><WorkspaceNavigation view={view} onChange={(next) => { setWorkspaceOpen(false); setView(next); }} /></div>
+      </div> : <WorkspaceNavigation view={view} onChange={setView} />}
       <div className="topbar-mission">
         <div className="topbar-mission-copy"><span>{projection.mission.phase}</span><strong>{projection.mission.name}</strong></div>
         <button className="mission-controls-link" type="button" aria-controls="mission-controls-panel" aria-expanded={controlsOpen} onClick={() => setControlsOpen((value) => !value)}><span>Mission controls</span><CaretDown size={14} aria-hidden="true" /></button>
@@ -231,22 +261,31 @@ function Office() {
     </header>
     <main className="content">
       <section className="command-ribbon" id="mission-controls" aria-label="Local mission controls">
-        <div className="command-panel" id="mission-controls-panel" hidden={!controlsOpen}>
-          <div className="runtime-identity"><span>{activeMission ? "Persisted mission source" : "Synthetic event replay"}</span><strong>{activeMission ? `Mission ${activeMission.missionId}` : "No local mission selected"}</strong><small>Read-only projection</small></div>
-          <div className="runtime-actions"><label htmlFor="fixture-select">Fixture</label><select id="fixture-select" value={fixtureId} onChange={(event) => setFixtureId(event.currentTarget.value)}>{fixtureIds.map((id) => <option value={id} key={id}>{id}</option>)}</select><button className="primary-action" onClick={() => void launch()} disabled={runtimeState === "loading"}>Launch local mission</button><button onClick={() => void reload()} disabled={runtimeState === "loading"}>Reload saved mission</button></div>
-        </div>
-        {runtimeMessage && <span className={`runtime-message ${runtimeState}`} role="status">{runtimeMessage}</span>}
+        <section className={`command-panel ${activeMission ? "mission-selected" : "first-mission"}`} id="mission-controls-panel" aria-label={activeMission ? "Mission controls" : "First mission setup"} hidden={!controlsOpen}>
+          <div className="runtime-identity"><span>{activeMission ? "Persisted mission source" : "First local mission"}</span><strong>{activeMission ? `Mission ${activeMission.missionId}` : "Record a mission before you inspect it."}</strong><small>{activeMission ? "Read-only projection" : "Choose one fixed fixture. DropScope writes event history locally and keeps policy authority in the engine."}</small></div>
+          <div className="runtime-actions"><div className="fixture-field"><label htmlFor="fixture-select">Fixture</label><select id="fixture-select" value={fixtureId} onChange={(event) => setFixtureId(event.currentTarget.value)}>{fixtureIds.map((id) => <option value={id} key={id}>{fixturePresentation[id]?.label ?? id}</option>)}</select><small>{selectedFixture.description}</small></div><div className="runtime-buttons"><button className="primary-action" onClick={() => void launch()} disabled={runtimeState === "loading"}>Launch local mission</button><button onClick={() => void reload()} disabled={runtimeState === "loading"}>Reload saved mission</button></div></div>
+          {!activeMission && <><div className="mission-route" aria-label="First mission path"><span><strong>Choose fixture</strong><small>Fixed research scope</small></span><span><strong>Launch locally</strong><small>Replayable event history</small></span><span><strong>Inspect evidence</strong><small>Sources, usage, and policy</small></span><span><strong>Read decision</strong><small>Verdict and next action</small></span></div>{view === "floor" ? <details className="runtime-start-disclosure"><summary>Local setup instructions</summary>{runtimeSetupNote}</details> : runtimeSetupNote}</>}
+          {view === "floor" && <div className="prototype-settings">{previewStates}<button className="quiet-button" onClick={() => setReduced(!reduced)}>{reduced ? "Motion off" : "Reduce motion"}</button></div>}
+        </section>
+        {view !== "floor" && runtimeMessage && <span className={`runtime-message ${runtimeState}`} role="status"><RuntimeStatusIcon size={17} aria-hidden="true" /><span className="runtime-message-copy"><strong>{runtimeStatusTitle}</strong><small>{runtimeMessage}</small></span>{showMissionNextActions && <span className="runtime-next-actions"><button onClick={() => setView("agent")}>Inspect evidence</button><button onClick={() => setView("report")}>Read final report</button></span>}</span>}
       </section>
 
       <header className="mission-overview">
-        <div className="mission-copy"><span className="section-label">Mission brief</span><h1>{projection.mission.name}</h1><p title={activeMission ? `Persisted local mission ${activeMission.missionId}` : projection.sourceLabel}>{activeMission ? `Persisted local mission ${activeMission.missionId}.` : projection.sourceLabel}</p><div className="mission-meta"><span>{activeMission ? "Local event history" : "Synthetic demo fallback"}</span><span>Read-only projection</span></div></div>
-        <div className="mission-state"><span className={`mission-status ${status.toLowerCase()}`}><StatusIcon size={15} />{projection.mission.phase}</span><strong>{floorStatus}</strong><small>{floorAgents.length} assigned workers / {workingAgents} active</small></div>
+        <div className="mission-copy">{view !== "floor" && <span className="section-label">Mission brief</span>}<h1>{projection.mission.name}</h1>{view === "floor" ? <>
+          <div className={`source-notice ${runtimeState === "error" && !demoRuntimeUnavailable ? "action-error" : ""}`}>
+            <strong className="source-label">{synthetic ? "Synthetic demo · recorded replay" : "Local history · recorded replay"}</strong>
+            <span>{synthetic ? "Illustrative data, not market research." : "Inspect attempt provenance before treating findings as market evidence."}</span>
+            {runtimeMessage && <div className="runtime-context" role="status"><strong>{demoRuntimeUnavailable ? "Local runtime is offline. The synthetic demo remains available." : runtimeStatusTitle}</strong><details><summary>Runtime details</summary><p><strong>{runtimeStatusTitle}</strong> {runtimeMessage}</p></details>{showMissionNextActions && <button className="quiet-button" onClick={() => setView("report")}>Read final report</button>}</div>}
+            <details className="source-details"><summary>Source details</summary><p>{activeMission ? `Persisted local mission ${activeMission.missionId}.` : projection.sourceLabel} Read-only projection.</p></details>
+          </div>
+        </> : <><p title={activeMission ? `Persisted local mission ${activeMission.missionId}` : projection.sourceLabel}>{activeMission ? `Persisted local mission ${activeMission.missionId}.` : projection.sourceLabel}</p><div className="mission-meta"><span>{activeMission ? "Local event history" : "Synthetic demo fallback"}</span><span>Read-only projection</span></div></>}</div>
+        {view === "floor" ? <p className={`research-status ${status.toLowerCase()}`}>Replaying · {workingAgents} of {floorAgents.length} researchers active{status === "BLOCKED" ? " · Policy blocked" : status === "COMPLETED" ? " · Completed" : ""}</p> : <div className="mission-state"><span className={`mission-status ${status.toLowerCase()}`}><StatusIcon size={15} />{projection.mission.phase}</span><strong>{floorStatus}</strong><small>{floorAgents.length} assigned workers / {workingAgents} active</small></div>}
       </header>
 
-      <div className="scenario-switcher" role="group" aria-label="Replay state"><span>{activeMission ? "Demo fallback" : "Replay state"}</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button className={scenario === name ? "selected" : ""} onClick={() => { setScenario(name); setApprovalOpen(false); }} key={name}>{name}</button>)}</div>
+      {view !== "floor" && previewStates}
 
       {view === "report" ? <FinalReport events={activeMission?.events} fixtureId={activeMission?.fixtureId} /> : view === "replay" ? <MissionReplay scenario={scenario} setScenario={setScenario} activeHistory={activeMission} /> : <DecisionView projection={projection} view={view} onSubscriptionPreflight={activeMission ? () => void checkSubscriptionRuntime() : undefined} subscriptionPreflightLoading={subscriptionPreflightLoading} onSubscriptionConfirmation={activeMission ? () => void confirmSubscription() : undefined} subscriptionConfirmationLoading={subscriptionConfirmationLoading} onSubscriptionRun={activeMission ? () => void runSubscription() : undefined} subscriptionRunLoading={subscriptionRunLoading} subscriptionConfirmation={subscriptionConfirmation} subscriptionConfirmationEligible={activeMission?.fixtureId === "live-worker-pilot"} onGoogleTrendsCapture={activeMission ? () => void runGoogleTrendsCapture() : undefined} googleTrendsCaptureLoading={googleTrendsCaptureLoading} googleTrendsCaptureEligible={activeMission?.fixtureId === "google-trends-pilot" && projection.mission.status === "RUNNING"} onGoogleTrendsComparisonImport={activeMission ? (file) => void importGoogleTrendsComparisonCsv(file) : undefined} googleTrendsComparisonImportLoading={googleTrendsComparisonImportLoading} googleTrendsComparisonImportEligible={activeMission?.fixtureId === "google-trends-comparison-pilot" && projection.mission.status === "RUNNING"} />}
-      {view === "floor" && <ResearchOffice projection={projection} agents={floorAgents} onApproval={() => setApprovalOpen((value) => !value)} reduced={reduced} setReduced={setReduced} />}
+      {view === "floor" && <ResearchOffice projection={projection} agents={floorAgents} synthetic={synthetic} history={history} onEvidence={() => setView("agent")} onApproval={() => setApprovalOpen((value) => !value)} reduced={reduced} setReduced={setReduced} />}
       {approvalOpen && status === "BLOCKED" && <div className="approval-note" role="status"><Warning size={17} /><span><strong>Policy block</strong> This replay stopped with unresolved safety evidence. This local disclosure does not change mission data or policy.</span></div>}
     </main>
   </div>;

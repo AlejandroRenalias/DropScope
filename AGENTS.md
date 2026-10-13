@@ -27,7 +27,7 @@ Read `docs/development/DEVELOPMENT_WORKFLOW.md` before non-trivial work.
 
 ## Temporary seven-day sprint exception
 
-In effect from 2026-10-13 until 00:00 local time on 2026-10-20 (exclusive), unless the user explicitly ends it earlier. Continuing beyond that time requires an explicit, approved extension. Until the user decides, treat the exception as expired and ask before resuming the learning workflow. It changes working style only; it does not amend the product plan, the frozen architecture, any ADR, or any product policy.
+In effect from 2026-10-13 until 00:00 on 2026-10-20 in the user's local time zone (exclusive), unless the user explicitly ends it earlier. Continuing beyond that time requires an explicit, approved extension. After expiry without an extension, all engineering gates continue unchanged and the learning workflow stays paused until the user decides whether to resume it. It changes working style only; it does not amend the product plan, the frozen architecture, any ADR, or any product policy.
 
 - **Paused:** the 60/40 product/learning target, Routine versus Learning Checkpoint classification, mental-model briefings, `LEARNING.md` updates, and teaching-oriented debugging exercises. Earlier Codex-era documents that mention these remain valid history.
 - **Kept:** a short technical explanation whenever a decision touches architecture, security, persistence, budget accounting, or recovery, plus the progress reports in `docs/development/PROGRESS.md` (done, in progress, remaining, risks).

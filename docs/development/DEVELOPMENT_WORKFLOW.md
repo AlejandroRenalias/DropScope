@@ -78,4 +78,4 @@ Keep prompts compact, inspect only relevant files, and avoid duplicate work and 
 
 ## Temporary seven-day sprint exception
 
-During the sprint declared in `AGENTS.md`, the learning-oriented process (60/40 target, Learning Checkpoints, `LEARNING.md`) is paused, while technical explanations for architecture, security, persistence, budget, and recovery decisions and the `PROGRESS.md` reports are kept. The exception expires at 00:00 local time on 2026-10-20 unless the user explicitly extends or ends it earlier (see `AGENTS.md`). All gates in this document remain in force.
+During the sprint declared in `AGENTS.md`, the learning-oriented process (60/40 target, Learning Checkpoints, `LEARNING.md`) is paused, while technical explanations for architecture, security, persistence, budget, and recovery decisions and the `PROGRESS.md` reports are kept. The exception expires at 00:00 on 2026-10-20 in the user's local time zone unless the user explicitly extends or ends it earlier (see `AGENTS.md`). All gates in this document remain in force.

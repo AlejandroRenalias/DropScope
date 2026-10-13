@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { officeHistories, projectOffice } from "../src/frontend/office-projection.js";
-import { attemptChain, defaultSelection, describeChange, humanizeType, layoutTasks, nodeTitle, uniqueAgents } from "../src/frontend/research-model.js";
+import { attemptChain, defaultSelection, describeChange, humanizeType, layoutTasks, nodeTitle, revisionPath, uniqueAgents } from "../src/frontend/research-model.js";
 
 const prefix = (scenario: keyof typeof officeHistories, length: number) => projectOffice(officeHistories[scenario].slice(0, length));
 
@@ -94,5 +94,26 @@ describe("worker provenance chain", () => {
   it("humanizes event type names", () => {
     expect(humanizeType("TaskStarted")).toBe("Task started");
     expect(humanizeType("SubscriptionWorkerExecutionOutcomeRecorded")).toBe("Subscription worker execution outcome recorded");
+  });
+});
+
+describe("revision path", () => {
+  const states = (scenario: keyof typeof officeHistories) => revisionPath(officeHistories[scenario]).steps.map((step) => step.state);
+
+  it("is waiting on a revision request when only the blind review is recorded", () => {
+    expect(revisionPath(officeHistories.RUNNING).requested).toBe(false);
+    expect(states("RUNNING")).toEqual(["done", "current", "pending", "pending"]);
+  });
+
+  it("marks every step done once the focused re-review is recorded", () => {
+    expect(revisionPath(officeHistories.COMPLETED).requested).toBe(true);
+    expect(states("COMPLETED")).toEqual(["done", "done", "done", "done"]);
+  });
+
+  it("advances the current step as revision events arrive", () => {
+    const events = officeHistories.COMPLETED;
+    const upTo = (type: string) => events.slice(0, events.findIndex((event) => event.type === type) + 1);
+    expect(revisionPath(upTo("RevisionRequested")).steps.map((step) => step.state)).toEqual(["done", "done", "current", "pending"]);
+    expect(revisionPath(upTo("FocusedReauditCompleted")).steps.map((step) => step.state)).toEqual(["done", "done", "done", "current"]);
   });
 });

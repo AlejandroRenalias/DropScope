@@ -8,6 +8,7 @@ import { ShieldCheck } from "@phosphor-icons/react/dist/csr/ShieldCheck";
 import { Target } from "@phosphor-icons/react/dist/csr/Target";
 import { GoogleTrendsComparisonTimeline } from "./google-trends-comparison-timeline.js";
 import { PageHead, roleIcon } from "./research-office.js";
+import { ReviewOffice } from "./review-office.js";
 import { attemptChain, humanizeType, stateText } from "./research-model.js";
 import { displayResearchCopy } from "./research-presentation.js";
 import type { MissionEvent } from "../contracts.js";
@@ -135,8 +136,7 @@ export function DecisionView(props: DecisionViewProps) {
     const room = projection.decisionViews.tribunalRoom;
     return <section className="decision-view tribunal-view" aria-label="Tribunal Room"><SectionHeader title="Recorded policy result" description="Compare the venture case, ruin case, and deterministic recommendation." />{room ? <><div className="verdict-banner"><span>Recorded recommendation</span><strong>{room.result.recommendation}</strong><small>Candidate {room.result.candidateId} · sequence {room.recordedAtSequence}</small></div><div className="tribunal-columns"><article className="claim-column venture-claim"><span>Argument 01</span><h2>Venture case</h2><p>{room.result.ventureClaimIds.join(", ") || "No venture claims recorded."}</p></article><article className="claim-column ruin-claim"><span>Argument 02</span><h2>Ruin case</h2><p>{room.result.ruinClaimIds.join(", ") || "No ruin claims recorded."}</p></article></div><section className="reason-record"><span>Decision basis</span><h2>Recorded reasoning</h2><p>{room.result.reasons.map((reason) => reason.explanation).join(" ")}</p></section></> : <EmptyState title="No tribunal result" copy="No TribunalCompleted event in this replay." />}</section>;
   }
-  const office = projection.decisionViews.reviewOffice;
-  return <section className="decision-view review-view" aria-label="Review Office"><SectionHeader title="Blind review record" description="Reviewer ranking, blocking feedback, divergence, and revision response." aside={office && <span className="review-verdict"><small>Recorded verdict</small>{office.result.verdict}</span>} />{office ? <><div className="review-sheet-heading"><span>Rank</span><span>Candidate assessment</span><span>Score</span></div><div className="assessment-list">{office.result.candidateAssessments.map((assessment) => <article className="assessment-row" key={assessment.anonymizedCandidateId}><span className="assessment-rank">{String(office.result.ranking.indexOf(assessment.anonymizedCandidateId) + 1).padStart(2, "0")}</span><div className="assessment-main"><h2>{assessment.anonymizedCandidateId}</h2><dl className="dimension-list">{Object.entries(assessment.dimensionScores).map(([dimension, score]) => <div key={dimension}><dt>{dimension}</dt><dd>{score}</dd></div>)}</dl><p>Blocking feedback: {[...assessment.blockingDefects, ...assessment.missingResearchKeys].join(", ") || "none"}</p>{office.divergences.length > 0 ? <small>Divergences: {office.divergences.join(" · ")}</small> : <small>Divergences: none recorded in this replay.</small>}{office.revisionResponse && <small>{office.revisionResponse}</small>}</div><strong className="assessment-score">{assessment.reviewerScore}<small>score</small></strong></article>)}</div></> : <EmptyState title="No blind review" copy="No BlindReviewCompleted event in this replay." />}</section>;
+  return <ReviewOffice projection={projection} history={props.history} />;
 }
 
 function EmptyState({ title, copy }: { title: string; copy: string }) {

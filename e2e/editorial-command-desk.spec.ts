@@ -343,3 +343,30 @@ test("agent desk shows worker cards, a selectable provenance chain and usage by 
   await expect(desk.locator(".ops-none")).toContainText("No guarded actions are available for this mission.");
   expect(await desk.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
+
+test("review office scores the candidate, flags blockers and tracks the revision path", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Review Office", exact: true }).click();
+  const review = page.getByRole("region", { name: "Review Office", exact: true });
+  await expect(review.locator(".review-verdict")).toHaveText("Recorded verdict · REVISE");
+  const score = review.getByRole("region", { name: /Reviewer score for crosscurrent-workspace-market/ });
+  await expect(score).toContainText("68");
+  await expect(score).toContainText("Not eligible");
+  await expect(score).toContainText("Confidence: Medium");
+  await expect(score.getByRole("img", { name: /Review profile: Source independence 70/ })).toBeVisible();
+  const detail = review.getByRole("region", { name: /Review detail for/ });
+  await expect(detail.locator(".rv-dimlist > div")).toHaveCount(5);
+  await expect(detail.locator(".flag").first()).toContainText("unresolved_decision_critical_contradiction");
+  await expect(detail).toContainText("Missing research: crosscurrent-risk");
+  await expect(detail).toContainText("Divergences: none recorded in this replay.");
+  await expect(review.locator(".steps li.done")).toHaveCount(1);
+  await expect(review.locator(".steps li.current")).toHaveText("Revision requested");
+  await expect(review).toContainText("A revision has not been requested yet.");
+
+  await page.getByRole("button", { name: "Mission controls", exact: true }).click();
+  await page.getByRole("button", { name: "COMPLETED", exact: true }).click();
+  await expect(review.locator(".steps li.done")).toHaveCount(4);
+  await expect(review).toContainText("Focused re-review returned accept");
+  await expect(detail).toContainText("TOP_CANDIDATE_DIVERGENCE");
+  expect(await review.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+});

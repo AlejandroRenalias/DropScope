@@ -89,3 +89,15 @@ export function attemptChain(history: MissionEvent[], attemptId: string): ChainS
     })
     .map((event) => ({ sequence: event.sequenceNumber, type: event.type, summary: summarizeResearchEvent(event), final: event.type === "FindingSubmitted" || event.type === "SubscriptionWorkerExecutionOutcomeRecorded" }));
 }
+
+export interface RevisionStep { label: string; state: "done" | "current" | "pending" }
+
+/** Where a blind-review revision stands, derived from which revision events have been recorded. */
+export function revisionPath(history: MissionEvent[]): { requested: boolean; steps: RevisionStep[] } {
+  const seen = (type: MissionEvent["type"]) => history.some((event) => event.type === type);
+  const requested = seen("RevisionRequested");
+  const flags = [true, requested, seen("FocusedReauditCompleted"), seen("FocusedRereviewCompleted")];
+  const labels = ["Blind review", "Revision requested", "Focused re-audit", "Focused re-review"];
+  const firstOpen = flags.indexOf(false);
+  return { requested, steps: labels.map((label, index) => ({ label, state: flags[index] ? "done" : index === firstOpen ? "current" : "pending" })) };
+}

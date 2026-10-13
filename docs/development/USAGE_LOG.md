@@ -1,5 +1,7 @@
 # Development Usage Log
 
+> **Frozen historical record (Codex era, through 2026-10-09).** Roles such as "Active Commander", "Terra", and "Luna" refer to the earlier Codex workflow. New progress entries go in [`PROGRESS.md`](PROGRESS.md); do not rewrite the rows below.
+
 Record exact credits only when visible; do not invent unavailable credits or token counts. For new entries, record the proxy metrics below so the first three issues using this workflow can be evaluated as a measured pilot.
 
 | Date | Issue/task | Agent role | Model / effort | Worker runs | Implementation attempts | Review cycles | CI runs | Exact usage / credits | Outcome | Escalation reason | Extra model work changed outcome |

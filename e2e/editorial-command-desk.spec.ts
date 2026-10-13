@@ -387,3 +387,49 @@ test("tribunal room weighs the venture case against the ruin case and shows the 
   await expect(room.locator(".tribunal-meta")).toContainText("crosscurrent-workspace-market");
   expect(await room.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
+test("replay is operable by keyboard and assistive tech", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
+  const replay = page.getByRole("region", { name: "Mission Replay" });
+
+  await expect(replay.locator(".tick[tabindex='0']")).toHaveCount(1);
+  await expect(replay.locator(".tick[tabindex='-1']")).toHaveCount(15);
+  await replay.getByRole("button", { name: "Event 16, ", exact: false }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(replay).toContainText(/Event 15 \/ 16/);
+  await expect(replay.locator(".tick.cur")).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(replay).toContainText(/Event 1 \/ 16/);
+
+  const slider = replay.getByLabel("Timeline position");
+  await expect(slider).toHaveAttribute("aria-valuetext", /^Event 1 of 16, /);
+  await replay.getByRole("button", { name: "Event 8, agent" }).click();
+  await expect(replay.locator("p[aria-live='polite']")).toContainText("Event 8 of 16: Finding submitted. Market: Working → Completed");
+  await expect(replay.getByRole("button", { name: "Market: Completed, just changed" })).toBeVisible();
+
+  const running = replay.getByRole("button", { name: "RUNNING", exact: true });
+  await expect(running).toHaveAttribute("aria-pressed", "true");
+  await expect(replay.getByRole("button", { name: "BLOCKED", exact: true })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("compact navigation returns focus after a choice and phones keep roster and 40px replay targets", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const nav = page.getByRole("navigation", { name: "Primary navigation" });
+  const toggle = page.getByRole("button", { name: /^Workspace / });
+  await expect(page.getByRole("region", { name: "Researchers" }).or(page.locator(".roster-card")).first()).toBeVisible();
+  await toggle.click();
+  await nav.getByRole("button", { name: "Mission Replay" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("region", { name: "Mission Replay" })).toBeVisible();
+  await expect(toggle).toBeFocused();
+
+  const replay = page.getByRole("region", { name: "Mission Replay" });
+  for (const locator of [replay.locator(".cat"), replay.locator(".replay-scenarios button"), replay.locator(".replay-chronology .event button"), replay.locator(".tick")]) {
+    const boxes = await locator.evaluateAll((items) => items.map((item) => item.getBoundingClientRect()));
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const box of boxes) expect(box.height).toBeGreaterThanOrEqual(39.5);
+  }
+  const tickWidths = await replay.locator(".tick").evaluateAll((items) => items.map((item) => item.getBoundingClientRect().width));
+  for (const width of tickWidths) expect(width).toBeGreaterThanOrEqual(23.5);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

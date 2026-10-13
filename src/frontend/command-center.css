@@ -266,7 +266,7 @@
   .live-status b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .mc-full { display: none; }
   .mc-short { display: inline; }
-  .roster-card, .read-only { display: none; }
+  .read-only { display: none; }
   .research-navigation { position: static; order: 5; }
   .workspace-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 10px; border: 1px solid #c0ceea; border-radius: 8px; background: var(--surface); color: var(--brand); font-size: 14px; font-weight: 600; }
   .workspace-toggle .ws-current { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -603,3 +603,13 @@
 .rp-held code, .rp-held em, .rp-held li span, .code-list em, .links em { overflow-wrap: anywhere; }
 .runtime-message { border-radius: 10px; font-size: 14px; }
 .runtime-message .runtime-next-actions button { min-height: 36px; padding: 6px 14px; border-radius: 8px; border-color: #c0ceea; color: var(--brand); font-size: 14px; font-weight: 600; }
+
+/* Replay: phone targets and disabled demo histories */
+.timeline-card .replay-scenarios button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 760px) {
+  .cat, .timeline-card .replay-scenarios button, .replay-chronology .event button, .event-card button { min-height: 40px; }
+  .ticks { overflow-x: auto; padding-bottom: 28px; margin-bottom: -28px; gap: 3px; }
+  .tick { flex: 0 0 24px; min-height: 40px; }
+  .scrubber { height: 8px; }
+  .scrubber::-webkit-slider-thumb { width: 28px; height: 28px; }
+}

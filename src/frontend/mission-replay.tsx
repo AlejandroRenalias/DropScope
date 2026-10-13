@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { MissionEvent } from "../contracts.js";
 import { officeHistories, projectOffice, replayEvents, type OfficeProjection, type OfficeScenario, type ReplayEventCategory } from "./office-projection.js";
 import { Constellation, PageHead } from "./research-office.js";
@@ -22,6 +22,7 @@ export function MissionReplay({ scenario, setScenario, activeHistory, history, p
   const current = records[bounded - 1];
   const event = history[bounded - 1];
   const numberEvery = Math.max(1, Math.ceil(records.length / 12));
+  const ticksRef = useRef<HTMLDivElement>(null);
 
   let projection: OfficeProjection | null = null;
   let previous: OfficeProjection | null = null;
@@ -30,6 +31,18 @@ export function MissionReplay({ scenario, setScenario, activeHistory, history, p
   try { previous = bounded > 1 ? projectOffice(history.slice(0, bounded - 1)) : null; } catch { previous = null; }
   const change = projection ? describeChange(previous, projection) : { lines: [], taskIds: new Set<string>() };
   const working = projection ? uniqueAgents(projection).filter((agent) => agent.state === "WORKING").length : 0;
+  const moveTo = (sequence: number) => {
+    const next = Math.max(1, Math.min(sequence, history.length));
+    setPosition(next);
+    requestAnimationFrame(() => ticksRef.current?.querySelector<HTMLButtonElement>(`[data-sequence="${next}"]`)?.focus());
+  };
+  const onTickKey = (keyEvent: React.KeyboardEvent) => {
+    const target = keyEvent.key === "ArrowRight" || keyEvent.key === "ArrowUp" ? bounded + 1 : keyEvent.key === "ArrowLeft" || keyEvent.key === "ArrowDown" ? bounded - 1 : keyEvent.key === "Home" ? 1 : keyEvent.key === "End" ? history.length : null;
+    if (target === null) return;
+    keyEvent.preventDefault();
+    moveTo(target);
+  };
+  const announcement = event ? `Event ${bounded} of ${history.length}: ${humanizeType(event.type)}. ${change.lines.length ? change.lines.join(". ") : "No visible change to the research state."}` : "";
   const toggle = (category: ReplayEventCategory) => setFilters((currentFilters) => currentFilters.includes(category) ? currentFilters.filter((item) => item !== category) : [...currentFilters, category]);
 
   return <section className="decision-view replay-view" aria-label="Mission Replay">
@@ -37,14 +50,15 @@ export function MissionReplay({ scenario, setScenario, activeHistory, history, p
 
     <section className="panel-card timeline-card" aria-labelledby="timeline-title">
       <div className="eyebrow" id="timeline-title">Timeline</div>
-      <div className="ticks" role="group" aria-label="Recorded events">
-        {records.map((record) => <button type="button" key={record.sequence} className={`tick ${record.category} ${record.sequence <= bounded ? "past" : "future"} ${record.sequence === bounded ? "cur" : ""} ${filters.includes(record.category) ? "" : "dim"}`} aria-label={`Event ${record.sequence}, ${record.category}`} aria-current={record.sequence === bounded ? "step" : undefined} onClick={() => setPosition(record.sequence)}>{(record.sequence === 1 || record.sequence % numberEvery === 0 || record.sequence === bounded) && <span className="num" aria-hidden="true">{record.sequence}</span>}</button>)}
+      <div className="ticks" role="group" aria-label="Recorded events" ref={ticksRef} onKeyDown={onTickKey}>
+        {records.map((record) => <button type="button" key={record.sequence} className={`tick ${record.category} ${record.sequence <= bounded ? "past" : "future"} ${record.sequence === bounded ? "cur" : ""} ${filters.includes(record.category) ? "" : "dim"}`} data-sequence={record.sequence} tabIndex={record.sequence === bounded ? 0 : -1} aria-label={`Event ${record.sequence}, ${record.category}`} aria-current={record.sequence === bounded ? "step" : undefined} onClick={() => setPosition(record.sequence)}>{(record.sequence === 1 || record.sequence % numberEvery === 0 || record.sequence === bounded) && <span className="num" aria-hidden="true">{record.sequence}</span>}</button>)}
       </div>
       <label className="sr-only" htmlFor="replay-position">Timeline position</label>
-      <input id="replay-position" className="scrubber" type="range" min="1" max={history.length} value={bounded} style={{ "--fill": `${history.length > 1 ? ((bounded - 1) / (history.length - 1)) * 100 : 100}%` } as React.CSSProperties} onChange={(changeEvent) => setPosition(Number(changeEvent.currentTarget.value))} />
+      <input id="replay-position" className="scrubber" type="range" min="1" max={history.length} value={bounded} aria-valuetext={event ? `Event ${bounded} of ${history.length}, ${humanizeType(event.type)}` : undefined} style={{ "--fill": `${history.length > 1 ? ((bounded - 1) / (history.length - 1)) * 100 : 100}%` } as React.CSSProperties} onChange={(changeEvent) => setPosition(Number(changeEvent.currentTarget.value))} />
+      <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       <div className="timeline-tools">
         <div className="cats" role="group" aria-label="Event category filters">{categories.map((category) => <button type="button" key={category.id} className={`cat ${filters.includes(category.id) ? "on" : ""}`} aria-pressed={filters.includes(category.id)} onClick={() => toggle(category.id)}><i className={`dot ${category.id}`} aria-hidden="true" />{category.label}</button>)}</div>
-        <div className="replay-scenarios"><span>{activeHistory ? "Demo fallback histories" : "History"}</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button type="button" className={scenario === name ? "selected" : ""} key={name} onClick={() => { setScenario(name); setPosition(officeHistories[name].length); }}>{name}</button>)}</div>
+        <div className="replay-scenarios"><span>{activeHistory ? "Demo histories (unavailable while a saved mission is loaded)" : "History"}</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button type="button" className={scenario === name && !activeHistory ? "selected" : ""} aria-pressed={scenario === name && !activeHistory} disabled={Boolean(activeHistory)} key={name} onClick={() => { setScenario(name); setPosition(officeHistories[name].length); }}>{name}</button>)}</div>
       </div>
     </section>
 

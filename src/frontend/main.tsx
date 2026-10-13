@@ -90,9 +90,9 @@ function Office() {
 
   const history = activeMission?.events ?? officeHistories[scenario];
   const replayAt = view === "replay" ? Math.max(1, Math.min(replayPosition ?? history.length, history.length)) : history.length;
-  const shownHistory = replayAt >= history.length ? history : history.slice(0, replayAt);
+  let shownHistory = replayAt >= history.length ? history : history.slice(0, replayAt);
   let projection = projectOffice(history);
-  if (shownHistory !== history) { try { projection = projectOffice(shownHistory); } catch { projection = projectOffice(history); } }
+  if (shownHistory !== history) { try { projection = projectOffice(shownHistory); } catch { shownHistory = history; } }
   const floorAgents = uniqueAgents(projection);
   const status = projection.mission.status;
   const workingAgents = floorAgents.filter((agent) => agent.state === "WORKING").length;
@@ -263,7 +263,7 @@ function Office() {
         <div className="brand"><span className="brand-mark" aria-hidden="true" /><span className="brand-name">DropScope</span><em>Research OS</em></div>
         <div className={`research-navigation ${workspaceOpen ? "is-open" : ""}`} onKeyDown={(event) => { if (event.key === "Escape" && workspaceOpen) { setWorkspaceOpen(false); event.currentTarget.querySelector<HTMLButtonElement>(".workspace-toggle")?.focus(); } }}>
           <button className="workspace-toggle" type="button" aria-controls="research-navigation-links" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}><span className="ws-label">Workspace </span><span className="ws-current">{currentLabel}</span><CaretDown size={16} aria-hidden="true" /></button>
-          <div id="research-navigation-links"><WorkspaceNavigation view={view} onChange={(next) => { setWorkspaceOpen(false); setView(next); }} /></div>
+          <div id="research-navigation-links"><WorkspaceNavigation view={view} onChange={(next) => { const wasOpen = workspaceOpen; setWorkspaceOpen(false); setView(next); if (wasOpen) requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(".workspace-toggle")?.focus()); }} /></div>
         </div>
         <div className="topbar-spacer" />
         <div className={`live-status ${liveKind}`} aria-live="polite"><span className="dot" aria-hidden="true" /><b>{liveText}</b></div>

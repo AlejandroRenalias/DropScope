@@ -75,7 +75,7 @@ function eventCategory(type: MissionEvent["type"]): ReplayEventCategory {
   if (type === "TaskStarted" || type === "FindingSubmitted" || type === "WorkerExecutionRecorded" || type === "SubscriptionWorkerExecutionOutcomeRecorded") return "agent";
   return "task";
 }
-function missionName(id: string | null): string { return (id ?? "unknown-mission").split("-").map((word) => word[0]!.toUpperCase() + word.slice(1)).join(" "); }
+function missionName(id: string | null): string { return (id ?? "unknown-mission").replace(/-[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i, "").split("-").map((word) => word[0]!.toUpperCase() + word.slice(1)).join(" "); }
 function officeStatus(status: MissionStatus): OfficeScenario { return status === "COMPLETED" || status === "COMPLETED_INSUFFICIENT_EVIDENCE" ? "COMPLETED" : status === "RUNNING" || status === "NOT_STARTED" ? "RUNNING" : "BLOCKED"; }
 function phaseLabel(status: MissionStatus): string { return status === "COMPLETED" ? "Report ready" : status === "COMPLETED_INSUFFICIENT_EVIDENCE" ? "Insufficient evidence" : status === "BLOCKED_POLICY" ? "Policy block" : status === "FAILED_UNRECOVERABLE" ? "Mission stopped" : "Research in progress"; }
 export function projectOffice(events: MissionEvent[]): OfficeProjection {

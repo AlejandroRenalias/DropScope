@@ -594,3 +594,12 @@
 .command-panel .prototype-settings .scenario-switcher > span, .command-panel .prototype-settings .scenario-switcher label { color: var(--muted); font-size: 13px; font-weight: 600; }
 .command-panel .prototype-settings button { min-height: 36px; padding: 6px 14px; border-radius: 8px; font-size: 13px; letter-spacing: 0; }
 .command-panel .prototype-settings .scenario-switcher button[aria-pressed="true"], .command-panel .prototype-settings .scenario-switcher button.active { border-color: var(--brand); background: var(--brand-tint); color: var(--brand-strong); font-weight: 600; }
+
+/* Review follow-ups: action rail heading, long risk codes, mission-ready bar */
+.ops-card .surface-heading { flex-wrap: wrap; align-items: baseline; }
+.ops-card .surface-heading > div { display: grid; gap: 2px; }
+.ops-card .surface-heading .eyebrow { font: 600 13px/1.2 "IBM Plex Sans", system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ops-card .surface-heading small { font: 400 13px/1.3 "IBM Plex Sans", system-ui, sans-serif; }
+.rp-held code, .rp-held em, .rp-held li span, .code-list em, .links em { overflow-wrap: anywhere; }
+.runtime-message { border-radius: 10px; font-size: 14px; }
+.runtime-message .runtime-next-actions button { min-height: 36px; padding: 6px 14px; border-radius: 8px; border-color: #c0ceea; color: var(--brand); font-size: 14px; font-weight: 600; }

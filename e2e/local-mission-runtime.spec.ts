@@ -82,14 +82,14 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByRole("region", { name: "Review Office" })).toContainText("REVISE");
   await expect(page.getByRole("region", { name: "Review Office" })).toContainText("Focused re-review returned accept");
   await page.getByRole("button", { name: "Mission Replay" }).click();
-  await expect(page.getByText(/Event 36 \/ 36/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Event 36 \/ 36/)).toBeVisible();
   await expect(page.getByText("MissionCompleted", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("status")).toContainText("Reloaded the browser-saved local mission");
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
-  await expect(page.getByText(/Event 36 \/ 36/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Event 36 \/ 36/)).toBeVisible();
 });
 
 test("runs the isolated live-worker pilot through the injected safe browser fake", async ({ page }) => {

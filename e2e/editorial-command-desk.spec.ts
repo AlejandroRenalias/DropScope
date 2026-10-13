@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { officeHistories } from "../src/frontend/office-projection.js";
 import { researchLayoutHistory } from "./fixtures/research-layout.js";
@@ -22,6 +22,16 @@ test.beforeEach(async ({ page }) => {
   await page.addStyleTag({ content: ".topbar { position: static !important; }" });
 });
 
+const COMPACT_NAVIGATION_MAX_WIDTH = 760;
+
+async function openSurface(page: Page, label: string) {
+  if ((page.viewportSize()?.width ?? 1440) <= COMPACT_NAVIGATION_MAX_WIDTH) {
+    const toggle = page.getByRole("button", { name: /^Workspace/ });
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  }
+  await page.getByRole("button", { name: label, exact: true }).click();
+}
+
 test("guides the first local mission and recovers from an offline runtime", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole("button", { name: "Mission controls" }).click();
@@ -42,7 +52,7 @@ test("guides the first local mission and recovers from an offline runtime", asyn
   await expect(setup).toBeVisible();
 });
 
-test("captures the six editorial command desk surfaces", async ({ page }) => {
+test("captures the six command-center surfaces", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(page).toHaveScreenshot("clean-research-page.png", { animations: "disabled", fullPage: true });
 
@@ -70,9 +80,9 @@ for (const viewport of [
   { width: 1024, height: 768 },
   { width: 390, height: 844 },
 ]) {
-  test(`keeps the command desk inside ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+  test(`keeps the command center inside ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
-    if (viewport.width >= 1280) await expect(page.getByRole("button", { name: "Research Office", exact: true })).toBeVisible();
+    if (viewport.width > COMPACT_NAVIGATION_MAX_WIDTH) await expect(page.getByRole("button", { name: "Research Office", exact: true })).toBeVisible();
     else await expect(page.getByRole("button", { name: "Workspace Research Office" })).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByRole("region", { name: "Research Office floor" })).toBeVisible();
     const officeDimensions = await page.evaluate(() => ({
@@ -84,12 +94,11 @@ for (const viewport of [
     }));
     expect(officeDimensions.scrollWidth).toBe(officeDimensions.clientWidth);
     expect(officeDimensions).toMatchObject({ workGraphs: 1, ledgers: 1, eventTrails: 1 });
-    await page.screenshot({ path: testInfo.outputPath(`research-prototype-${viewport.width}.png`), fullPage: true, animations: "disabled" });
+    await page.screenshot({ path: testInfo.outputPath(`research-office-${viewport.width}.png`), fullPage: true, animations: "disabled" });
     if (viewport.width === 390) await expect(page).toHaveScreenshot("clean-research-mobile.png", { animations: "disabled", fullPage: true });
 
     for (const surface of ["Agent Desk", "Tribunal Room", "Review Office", "Final Report", "Mission Replay"]) {
-      if (surface === "Agent Desk" && viewport.width < 1280) await page.getByRole("button", { name: "Workspace Research Office" }).click();
-      await page.getByRole("button", { name: surface }).click();
+      await openSurface(page, surface);
       const dimensions = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth,
@@ -99,7 +108,7 @@ for (const viewport of [
   });
 }
 
-test("prototype header fits one desktop line and provides keyboard-accessible compact navigation", async ({ page }) => {
+test("top bar fits one desktop line, shows live status, and provides keyboard-accessible compact navigation", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const nav = page.getByRole("navigation", { name: "Primary navigation" });
   await expect(nav.getByRole("button")).toHaveCount(6);
@@ -107,6 +116,8 @@ test("prototype header fits one desktop line and provides keyboard-accessible co
   const rows = await nav.getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().top));
   expect(new Set(rows).size).toBe(1);
   expect(await page.locator(".topbar").evaluate((header) => header.getBoundingClientRect().height)).toBeLessThanOrEqual(81);
+  await expect(page.locator(".live-status")).toContainText("2 researchers working");
+  await expect(page.locator(".event-counter")).toHaveText(/^Event \d+ \/ \d+$/);
   await page.setViewportSize({ width: 390, height: 844 });
   const toggle = page.getByRole("button", { name: "Workspace Research Office" });
   await expect(nav).toBeHidden();
@@ -124,38 +135,61 @@ test("prototype header fits one desktop line and provides keyboard-accessible co
   await expect(page.getByRole("region", { name: "Agent Desk" })).toBeVisible();
 });
 
-test("research dossier preserves findings, keyboard tabs, provenance and policy disclosure", async ({ page }) => {
+test("constellation shows real dependencies, keyboard selection, findings, provenance and policy disclosure", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   const office = page.getByRole("region", { name: "Research Office floor" });
-  await expect(office.locator(".finding-record")).toHaveCount(1);
-  await expect(office).toContainText("Workspace demand mapped.");
-  await office.locator(".finding-record summary").click();
-  await expect(office.locator(".finding-provenance")).toContainText("Not recorded");
-  await expect(office.locator(".finding-provenance")).toContainText("25 replay units");
+  await expect(office.locator(".cnode")).toHaveCount(3);
+  await expect(office.locator(".edge")).toHaveCount(2);
+  await expect(office.getByRole("button", { name: "Market: Completed" })).toBeVisible();
+  await expect(office.getByRole("button", { name: "Evidence: Working" })).toBeVisible();
 
-  const findings = office.getByRole("tab", { name: "Findings", exact: true });
-  const dependencies = office.getByRole("tab", { name: "Dependencies", exact: true });
-  await findings.focus();
-  await findings.press("ArrowRight");
-  await expect(dependencies).toBeFocused();
-  await expect(dependencies).toHaveAttribute("aria-selected", "true");
-  await expect(office.getByRole("tabpanel", { name: "Dependencies" })).toContainText("Starting task");
-  await dependencies.press("Home");
-  await expect(findings).toBeFocused();
-  await expect(office.getByRole("tabpanel", { name: "Findings" })).toBeVisible();
+  const latest = office.getByRole("article", { name: "Latest finding" });
+  await expect(latest).toContainText("Workspace demand mapped.");
+  await expect(latest).toContainText("25 replay units");
+  await expect(latest).toContainText("Not recorded");
+  await expect(office.locator(".finding-record")).toHaveCount(0);
+
+  const selected = office.getByRole("region", { name: "Selected task" });
+  await expect(selected).toContainText("workflow-interviews");
+  const operations = office.getByRole("button", { name: "Operations: Working" });
+  await operations.focus();
+  await operations.press("Enter");
+  await expect(operations).toHaveAttribute("aria-pressed", "true");
+  await expect(selected).toContainText("supplier-check");
+  await office.getByRole("button", { name: "Market: Completed" }).click();
+  await expect(selected).toContainText("Recorded finding");
+  await expect(selected).toContainText("Workspace demand mapped.");
 
   await page.getByRole("button", { name: "Mission controls", exact: true }).click();
   await page.getByRole("button", { name: "BLOCKED", exact: true }).click();
-  await office.getByRole("button", { name: "Open required approval", exact: true }).click();
+  await expect(page.locator(".live-status")).toContainText("Policy block");
+  await office.getByRole("button", { name: "Open required approval", exact: true }).first().click();
   await expect(page.getByRole("status")).toContainText("This local disclosure does not change mission data or policy.");
   await page.getByRole("button", { name: "COMPLETED", exact: true }).click();
-  await expect(office.locator(".finding-record")).toHaveCount(4);
-  await expect(office.locator(".pending-research")).toHaveCount(0);
+  await expect(page.locator(".live-status")).toContainText("Mission complete");
+  await expect(office.locator(".finding-record")).toHaveCount(3);
+  await office.locator(".finding-record summary").first().click();
+  await expect(office.locator(".finding-provenance").first()).toContainText("Not recorded");
   await expect(office).toContainText("4 of 4 recorded tasks completed");
-  await office.getByRole("button", { name: "Inspect evidence", exact: true }).click();
+  await expect(office.getByRole("group", { name: "Task dependency map" })).toBeVisible();
+  await office.getByRole("button", { name: /^Inspect evidence/ }).click();
   await expect(page.getByRole("region", { name: "Agent Desk" })).toBeVisible();
 });
 
-test("research dossier is honest when a saved history has no research attempts", async ({ page }) => {
+test("recorded decisions and activity navigate to their screens", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const office = page.getByRole("region", { name: "Research Office floor" });
+  const decisions = office.getByRole("region", { name: "Recorded decisions" });
+  await expect(decisions).toContainText("Tribunal");
+  await expect(decisions).toContainText("Blind review");
+  await decisions.getByRole("button", { name: "Open" }).first().click();
+  await expect(page.getByRole("region", { name: "Tribunal Room" })).toBeVisible();
+  await page.getByRole("button", { name: "Research Office", exact: true }).click();
+  await office.getByRole("button", { name: /^All events/ }).click();
+  await expect(page.getByRole("region", { name: "Mission Replay" })).toBeVisible();
+});
+
+test("research office is honest when a saved history has no research attempts", async ({ page }) => {
   await page.route("**/api/missions", (route) => route.fulfill({
     json: { missionId: officeHistories.RUNNING[0]!.missionId, fixtureId: "crosscurrent-workspace-market", events: [officeHistories.RUNNING[0]!] },
   }));
@@ -164,30 +198,40 @@ test("research dossier is honest when a saved history has no research attempts",
   const office = page.getByRole("region", { name: "Research Office floor" });
   await expect(office).toContainText("No completed findings yet");
   await expect(office).toContainText("0 of 0 recorded tasks completed");
+  await expect(office).toContainText("No tasks are recorded in this replay yet.");
   await expect(office.locator(".finding-record")).toHaveCount(0);
   await expect(office.locator(".team-member")).toHaveCount(0);
-  await office.locator(".office-detail > summary").click();
-  await expect(office.getByRole("region", { name: "Mission ledger", exact: true })).toContainText("140");
+  await expect(office.getByRole("region", { name: "Mission budget · units" })).toContainText("140");
+  await expect(page.locator(".live-status")).toContainText("No researchers working");
 });
 
 for (const width of [1440, 768, 375]) {
   test(`clarity and long finding layout at ${width}px`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: width === 1440 ? 900 : 900 });
+    await page.setViewportSize({ width, height: 900 });
     await expect(page.locator(".source-label")).toHaveText("Synthetic demo · recorded replay");
-    await expect(page.locator(".research-status")).toHaveText("Replaying · 2 of 3 researchers active");
-    await expect(page.locator(".dossier-intro, .dossier-toolbar")).toHaveCount(0);
+    await expect(page.locator(".live-status")).toContainText("2 researchers working");
     await expect(page.getByRole("button", { name: "RUNNING", exact: true })).toBeHidden();
-    const first = page.locator(".finding-record > summary").first();
-    if (width === 1440) expect(await first.evaluate((node) => node.getBoundingClientRect().bottom)).toBeLessThanOrEqual(900);
+    if (width === 1440) expect(await page.locator(".work-graph").evaluate((node) => node.getBoundingClientRect().bottom)).toBeLessThanOrEqual(900);
     await page.screenshot({ path: testInfo.outputPath(`clarity-${width}.png`), fullPage: true, animations: "disabled" });
     const contrast = await page.evaluate(() => {
-      const rgb = (value: string) => value.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+      type Rgba = [number, number, number, number];
+      const parse = (value: string): Rgba => { const parts = value.match(/[\d.]+/g)!.map(Number); return [parts[0]!, parts[1]!, parts[2]!, parts[3] ?? 1]; };
       const luminance = (values: number[]) => values.map((value) => { const s = value / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }).reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i]!, 0);
-      return [".source-label", ".source-notice > span", ".finding-copy small", ".finding-copy strong", ".research-status", ".event summary"].flatMap((selector) => [...document.querySelectorAll(selector)].map((node) => {
-        let ancestor: Element | null = node;
-        while (ancestor && getComputedStyle(ancestor).backgroundColor === "rgba(0, 0, 0, 0)") ancestor = ancestor.parentElement;
-        const background = ancestor ? getComputedStyle(ancestor).backgroundColor : "rgb(255, 255, 255)";
-        const a = luminance(rgb(getComputedStyle(node).color)); const b = luminance(rgb(background));
+      const backdrop = (node: Element): number[] => {
+        const layers: Rgba[] = [];
+        for (let ancestor: Element | null = node; ancestor; ancestor = ancestor.parentElement) {
+          const color = parse(getComputedStyle(ancestor).backgroundColor);
+          if (color[3] > 0) layers.push(color);
+          if (color[3] === 1) break;
+        }
+        let base: number[] = [255, 255, 255];
+        for (const [r, g, b, a] of layers.reverse()) base = [r * a + base[0]! * (1 - a), g * a + base[1]! * (1 - a), b * a + base[2]! * (1 - a)];
+        return base;
+      };
+      const selectors = [".source-label", ".source-copy", ".live-status b", ".chip", ".eyebrow", ".cnode-copy small", ".cnode-copy strong", ".cnode-copy em", ".tl-item summary", ".decisions small", ".roster small", ".note", ".inspector dt", ".finding-top", ".facts dt", ".facts dd", ".finding-text > span", ".finding-source", ".stages li"];
+      return selectors.flatMap((selector) => [...document.querySelectorAll(selector)].filter((node) => (node as HTMLElement).offsetParent !== null).map((node) => {
+        const color = parse(getComputedStyle(node).color);
+        const a = luminance([color[0], color[1], color[2]]); const b = luminance(backdrop(node));
         return { selector, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
       }));
     });
@@ -196,9 +240,9 @@ for (const width of [1440, 768, 375]) {
     await page.route("**/api/missions", (route) => route.fulfill({ json: { missionId: researchLayoutHistory[0]!.missionId, fixtureId: "crosscurrent-workspace-market", events: researchLayoutHistory } }));
     await page.getByRole("button", { name: "Mission controls", exact: true }).click();
     await page.getByRole("button", { name: "Launch local mission", exact: true }).click();
-    await expect(page.locator(".finding-text").first()).toContainText("Layout-only sample");
-    await expect(page.locator(".finding-text").nth(1).locator(":scope > span")).toHaveCount(3);
-    const metrics = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, proseWidth: document.querySelector(".finding-text")!.getBoundingClientRect().width, maxWidth: getComputedStyle(document.querySelector(".finding-text")!).maxWidth }));
+    await expect(page.locator(".earlier .finding-text").first()).toContainText("Layout-only sample");
+    await expect(page.locator(".earlier .finding-text").nth(1).locator(":scope > span")).toHaveCount(3);
+    const metrics = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, proseWidth: document.querySelector(".earlier .finding-text")!.getBoundingClientRect().width, maxWidth: getComputedStyle(document.querySelector(".earlier .finding-text")!).maxWidth }));
     expect(metrics.scroll).toBe(metrics.width);
     expect(metrics.proseWidth).toBeLessThanOrEqual(parseFloat(metrics.maxWidth));
     await page.screenshot({ path: testInfo.outputPath(`long-findings-${width}.png`), fullPage: true, animations: "disabled" });

@@ -95,9 +95,7 @@ function Office() {
   if (shownHistory !== history) { try { projection = projectOffice(shownHistory); } catch { projection = projectOffice(history); } }
   const floorAgents = uniqueAgents(projection);
   const status = projection.mission.status;
-  const StatusIcon = status === "BLOCKED" ? Warning : status === "COMPLETED" ? CheckCircle : Play;
   const workingAgents = floorAgents.filter((agent) => agent.state === "WORKING").length;
-  const floorStatus = status === "BLOCKED" ? "Policy block" : status === "COMPLETED" ? "Mission complete" : "Replay running";
   const synthetic = !activeMission || ["crosscurrent-workspace-market", "mixed-opportunity-market", "failure-autopsy-pilot", "product-investigation-pilot"].includes(activeMission.fixtureId);
   const demoRuntimeUnavailable = !activeMission && runtimeState === "error" && runtimeMessage.startsWith("Local runtime is unavailable.");
   const previewStates = <div className="scenario-switcher" role="group" aria-label="Replay state"><span>{view === "floor" ? "Preview state" : activeMission ? "Demo fallback" : "Replay state"}</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button className={scenario === name ? "selected" : ""} onClick={() => { setScenario(name); setApprovalOpen(false); }} key={name}>{name}</button>)}</div>;

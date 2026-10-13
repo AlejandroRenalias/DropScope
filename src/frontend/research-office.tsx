@@ -8,7 +8,7 @@ import { Target } from "@phosphor-icons/react/dist/csr/Target";
 import { Warning } from "@phosphor-icons/react/dist/csr/Warning";
 import type { MissionEvent } from "../contracts.js";
 import type { OfficeView } from "./editorial-views.js";
-import type { AgentDeskRecord, AgentState, OfficeProjection } from "./office-projection.js";
+import type { AgentDeskRecord, OfficeProjection } from "./office-projection.js";
 import { displayResearchCopy, summarizeResearchEvent } from "./research-presentation.js";
 import { defaultSelection, layoutTasks, nodeTitle, stateText, uniqueAgents, type Task } from "./research-model.js";
 

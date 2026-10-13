@@ -1,5 +1,4 @@
-import { useEffect, useState, type ComponentType } from "react";
-import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
+import { useState, type ComponentType } from "react";
 import { ChartBar } from "@phosphor-icons/react/dist/csr/ChartBar";
 import { ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
@@ -13,17 +12,8 @@ import { TribunalRoom } from "./tribunal-room.js";
 import { attemptChain, humanizeType, stateText } from "./research-model.js";
 import { displayResearchCopy } from "./research-presentation.js";
 import type { MissionEvent } from "../contracts.js";
-import {
-  officeHistories,
-  projectFinalReport,
-  projectOffice,
-  replayEvents,
-  type AgentState,
-  type OfficeProjection,
-  type OfficeScenario,
-  type ReplayEventCategory,
-} from "./office-projection.js";
-import type { LocalMissionDto, SubscriptionConfirmationDto } from "./runtime-client.js";
+import type { OfficeProjection } from "./office-projection.js";
+import type { SubscriptionConfirmationDto } from "./runtime-client.js";
 
 export type OfficeView = "floor" | "agent" | "tribunal" | "review" | "report" | "replay";
 type Icon = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill" }>;
@@ -40,10 +30,6 @@ export function WorkspaceNavigation({ view, onChange }: { view: OfficeView; onCh
   return <nav className="workspace-nav" aria-label="Primary navigation">
     {navigation.map(({ view: target, label, icon: Icon }) => <button aria-label={label} className={view === target ? "active" : ""} onClick={() => onChange(target)} aria-current={view === target ? "page" : undefined} key={target}><span className="nav-icon" aria-hidden="true"><Icon size={17} weight={view === target ? "fill" : "regular"} /></span><span className="nav-label">{label}</span></button>)}
   </nav>;
-}
-
-function StateLabel({ state }: { state: AgentState | OfficeProjection["mission"]["status"] }) {
-  return <span className={`state-label ${state.toLowerCase()}`}>{state}</span>;
 }
 
 function subscriptionAccessCopy(runtime: NonNullable<OfficeProjection["decisionViews"]["subscriptionRuntime"]>): string {
@@ -82,10 +68,6 @@ export interface DecisionViewProps {
   onGoogleTrendsComparisonImport?: (file: File) => void;
   googleTrendsComparisonImportLoading: boolean;
   googleTrendsComparisonImportEligible: boolean;
-}
-
-function SectionHeader({ title, description, aside }: { title: string; description: string; aside?: React.ReactNode }) {
-  return <header className="view-header"><div><h1>{title}</h1><p>{description}</p></div>{aside}</header>;
 }
 
 function AgentDesk(props: DecisionViewProps) {
@@ -137,6 +119,3 @@ export function DecisionView(props: DecisionViewProps) {
   return <ReviewOffice projection={projection} history={props.history} />;
 }
 
-function EmptyState({ title, copy }: { title: string; copy: string }) {
-  return <section className="empty-state"><strong>{title}</strong><p>{copy}</p></section>;
-}

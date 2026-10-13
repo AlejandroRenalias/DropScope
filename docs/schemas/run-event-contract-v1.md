@@ -11,8 +11,8 @@ Conventions: "fail closed" means the import stops with a closed error code (sect
 3. Integer lexemes: a JSON string matching `^-?[0-9]{1,20}$` or a JSON number token matching `^-?[0-9]{1,16}$` within plus or minus (2^53 - 1); anything else fails closed. Time fields are uint64; start times must be greater than zero. `intValue` is int64. Dropped counts are uint32. Doubles are JSON numbers; the OTLP strings `"NaN"`, `"Infinity"` and `"-Infinity"` are tagged non-finite doubles.
 4. Ids: trace ids 32 and span ids 16 hexadecimal characters, case-insensitive, lowercased. All-zero trace or span ids fail closed. An absent, empty or all-zero parent id means no parent.
 5. Enums are integers. Names for `SpanKind` and `StatusCode` are accepted with one `ENUM_NAME_ACCEPTED` note per input (count). An unknown enum value fails closed.
-6. `AnyValue` must have exactly one arm; none or several fail closed.
-7. A property the mapping does not define is kept as tagged raw data in `unknownFields` (classified content) and counted in an `UNKNOWN_FIELD` note.
+6. `AnyValue` must have exactly one arm; none or several fail closed. `KeyValue` and the array and key-value-list wrappers accept only their defined properties; any other property fails closed. A JSON `null` for a known field means the field is absent. One exception: a log record `body` that is exactly `{}` is an unset body, not an error (real instrumentation writes it), and the record has no body content.
+7. A property the mapping does not define on a span or a log record is kept as tagged raw data in `unknownFields` (classified content) and counted in an `UNKNOWN_FIELD` note. An undefined property on an envelope object (request, resource group, scope group, resource, scope, span event, link, status) is counted in the same note but not stored, because the event payloads have no field for it. A JSON `null` inside a kept unknown property fails closed (`E_ANYVALUE`), as does a number that is not finite or has more than 20 digits (`E_NUMBER`).
 
 ## 2. Phases (strict order)
 
@@ -135,7 +135,7 @@ Input: 32 MiB per file, 64 MiB per import; JSON depth 64, checked while scanning
 
 ## 12. Error codes
 
-`E_SYNTAX` (malformed JSON, a BOM, trailing bytes, a duplicate property name), `E_EMPTY`, `E_MULTIPLE_TRACES`, `E_TRACE_NOT_FOUND`, `E_CONFLICTING_DUPLICATE`, `E_NUMBER`, `E_ENUM`, `E_ANYVALUE`, `E_UNICODE`, `E_ID`, `E_LIMIT`, `E_PATH`, `E_FILE_KIND`, `E_EXISTS_DIFFERENT`, `E_INVALID_LOG`, `E_PLATFORM`. Each carries a stage name and, for parse errors, a byte position.
+`E_SYNTAX` (malformed JSON, a BOM, trailing bytes, a duplicate property name, or a structural field of the wrong JSON type), `E_EMPTY`, `E_MULTIPLE_TRACES`, `E_TRACE_NOT_FOUND`, `E_CONFLICTING_DUPLICATE`, `E_NUMBER`, `E_ENUM`, `E_ANYVALUE`, `E_UNICODE`, `E_ID`, `E_LIMIT`, `E_PATH`, `E_FILE_KIND`, `E_EXISTS_DIFFERENT`, `E_INVALID_LOG`, `E_PLATFORM`. Each carries a stage name and, for parse errors, a byte position.
 
 ## 13. Versioning and migration
 

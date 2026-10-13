@@ -2,13 +2,12 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Theme } from "@radix-ui/themes";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
-import { Aperture } from "@phosphor-icons/react/dist/csr/Aperture";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { Play } from "@phosphor-icons/react/dist/csr/Play";
 import { Warning } from "@phosphor-icons/react/dist/csr/Warning";
 import "@radix-ui/themes/styles.css";
 import "./styles.css";
-import "./research-workspace.css";
+import "./command-center.css";
 import { fixtureIds } from "../fixture-model.js";
 import { officeHistories, projectOffice, type OfficeScenario } from "./office-projection.js";
 import {
@@ -26,10 +25,11 @@ import {
   DecisionView,
   FinalReport,
   MissionReplay,
-  ResearchOffice,
   WorkspaceNavigation,
+  navigation,
   type OfficeView,
 } from "./editorial-views.js";
+import { ResearchOffice } from "./research-office.js";
 
 type RuntimeState = "idle" | "loading" | "success" | "error";
 
@@ -247,18 +247,32 @@ function Office() {
     }
   };
 
-  return <div className={`app ${view === "floor" ? "clean-proof" : ""} ${reduced ? "reduced" : ""}`}>
+  const currentLabel = navigation.find((item) => item.view === view)?.label ?? "Research Office";
+  const liveKind = status === "BLOCKED" ? "blocked" : status === "COMPLETED" ? "completed" : workingAgents > 0 ? "working" : "idle";
+  const liveText = status === "BLOCKED" ? "Policy block" : status === "COMPLETED" ? "Mission complete" : workingAgents > 0 ? `${workingAgents} researcher${workingAgents === 1 ? "" : "s"} working` : "No researchers working";
+  const sourceDetail = activeMission ? `Persisted local mission ${activeMission.missionId}.` : projection.sourceLabel;
+
+  return <div className={`app ${view === "floor" ? "view-floor" : ""} ${reduced ? "reduced" : ""}`}>
     <header className="topbar">
-      <div className="brand">{view === "floor" ? <Aperture className="scope-mark" size={34} weight="duotone" aria-hidden="true" /> : <b>D</b>}<span>DropScope</span><em>Research OS</em></div>
-      {view === "floor" ? <div className={`research-navigation ${workspaceOpen ? "is-open" : ""}`} onKeyDown={(event) => { if (event.key === "Escape" && workspaceOpen) { setWorkspaceOpen(false); event.currentTarget.querySelector<HTMLButtonElement>(".workspace-toggle")?.focus(); } }}>
-        <button className="workspace-toggle" type="button" aria-controls="research-navigation-links" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>Workspace <span>Research Office</span><CaretDown size={16} aria-hidden="true" /></button>
-        <div id="research-navigation-links"><WorkspaceNavigation view={view} onChange={(next) => { setWorkspaceOpen(false); setView(next); }} /></div>
-      </div> : <WorkspaceNavigation view={view} onChange={setView} />}
-      <div className="topbar-mission">
-        <div className="topbar-mission-copy"><span>{projection.mission.phase}</span><strong>{projection.mission.name}</strong></div>
-        <button className="mission-controls-link" type="button" aria-controls="mission-controls-panel" aria-expanded={controlsOpen} onClick={() => setControlsOpen((value) => !value)}><span>Mission controls</span><CaretDown size={14} aria-hidden="true" /></button>
+      <div className="topbar-row">
+        <div className="brand"><span className="brand-mark" aria-hidden="true" /><span className="brand-name">DropScope</span><em>Research OS</em></div>
+        <div className={`research-navigation ${workspaceOpen ? "is-open" : ""}`} onKeyDown={(event) => { if (event.key === "Escape" && workspaceOpen) { setWorkspaceOpen(false); event.currentTarget.querySelector<HTMLButtonElement>(".workspace-toggle")?.focus(); } }}>
+          <button className="workspace-toggle" type="button" aria-controls="research-navigation-links" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}><span className="ws-label">Workspace </span><span className="ws-current">{currentLabel}</span><CaretDown size={16} aria-hidden="true" /></button>
+          <div id="research-navigation-links"><WorkspaceNavigation view={view} onChange={(next) => { setWorkspaceOpen(false); setView(next); }} /></div>
+        </div>
+        <div className="topbar-spacer" />
+        <div className={`live-status ${liveKind}`} aria-live="polite"><span className="dot" aria-hidden="true" /><b>{liveText}</b></div>
+        <span className="event-counter" title="Latest recorded event of the replayed history">Event {history.length} / {history.length}</span>
+        <button className="mission-controls-link" type="button" aria-label="Mission controls" aria-controls="mission-controls-panel" aria-expanded={controlsOpen} onClick={() => setControlsOpen((value) => !value)}><span className="mc-full" aria-hidden="true">Mission controls</span><span className="mc-short" aria-hidden="true">Controls</span><CaretDown size={14} aria-hidden="true" /></button>
       </div>
     </header>
+    {view === "floor" && <div className={`source-banner ${runtimeState === "error" && !demoRuntimeUnavailable ? "action-error" : ""}`}>
+      <div className="source-banner-row">
+        <span className="source-notice"><strong className="source-label">{synthetic ? "Synthetic demo · recorded replay" : "Local history · recorded replay"}</strong><span className="source-copy">{synthetic ? "Illustrative data, not market research." : "Inspect attempt provenance before treating findings as market evidence."}</span></span>
+        <details className="source-details"><summary>Source details</summary><p>{sourceDetail} Read-only projection.</p></details>
+      </div>
+      {runtimeMessage && <div className="runtime-context" role="status"><strong>{demoRuntimeUnavailable ? "Local runtime is offline. The synthetic demo remains available." : runtimeStatusTitle}</strong><details><summary>Runtime details</summary><p><strong>{runtimeStatusTitle}</strong> {runtimeMessage}</p></details>{showMissionNextActions && <button className="quiet-button" onClick={() => setView("report")}>Read final report</button>}</div>}
+    </div>}
     <main className="content">
       <section className="command-ribbon" id="mission-controls" aria-label="Local mission controls">
         <section className={`command-panel ${activeMission ? "mission-selected" : "first-mission"}`} id="mission-controls-panel" aria-label={activeMission ? "Mission controls" : "First mission setup"} hidden={!controlsOpen}>
@@ -270,25 +284,17 @@ function Office() {
         {view !== "floor" && runtimeMessage && <span className={`runtime-message ${runtimeState}`} role="status"><RuntimeStatusIcon size={17} aria-hidden="true" /><span className="runtime-message-copy"><strong>{runtimeStatusTitle}</strong><small>{runtimeMessage}</small></span>{showMissionNextActions && <span className="runtime-next-actions"><button onClick={() => setView("agent")}>Inspect evidence</button><button onClick={() => setView("report")}>Read final report</button></span>}</span>}
       </section>
 
-      <header className="mission-overview">
-        <div className="mission-copy">{view !== "floor" && <span className="section-label">Mission brief</span>}<h1>{projection.mission.name}</h1>{view === "floor" ? <>
-          <div className={`source-notice ${runtimeState === "error" && !demoRuntimeUnavailable ? "action-error" : ""}`}>
-            <strong className="source-label">{synthetic ? "Synthetic demo · recorded replay" : "Local history · recorded replay"}</strong>
-            <span>{synthetic ? "Illustrative data, not market research." : "Inspect attempt provenance before treating findings as market evidence."}</span>
-            {runtimeMessage && <div className="runtime-context" role="status"><strong>{demoRuntimeUnavailable ? "Local runtime is offline. The synthetic demo remains available." : runtimeStatusTitle}</strong><details><summary>Runtime details</summary><p><strong>{runtimeStatusTitle}</strong> {runtimeMessage}</p></details>{showMissionNextActions && <button className="quiet-button" onClick={() => setView("report")}>Read final report</button>}</div>}
-            <details className="source-details"><summary>Source details</summary><p>{activeMission ? `Persisted local mission ${activeMission.missionId}.` : projection.sourceLabel} Read-only projection.</p></details>
-          </div>
-        </> : <><p title={activeMission ? `Persisted local mission ${activeMission.missionId}` : projection.sourceLabel}>{activeMission ? `Persisted local mission ${activeMission.missionId}.` : projection.sourceLabel}</p><div className="mission-meta"><span>{activeMission ? "Local event history" : "Synthetic demo fallback"}</span><span>Read-only projection</span></div></>}</div>
-        {view === "floor" ? <p className={`research-status ${status.toLowerCase()}`}>Replaying · {workingAgents} of {floorAgents.length} researchers active{status === "BLOCKED" ? " · Policy blocked" : status === "COMPLETED" ? " · Completed" : ""}</p> : <div className="mission-state"><span className={`mission-status ${status.toLowerCase()}`}><StatusIcon size={15} />{projection.mission.phase}</span><strong>{floorStatus}</strong><small>{floorAgents.length} assigned workers / {workingAgents} active</small></div>}
-      </header>
+      {view !== "floor" && <header className="mission-overview">
+        <div className="mission-copy"><span className="section-label">Mission brief</span><h1>{projection.mission.name}</h1><p title={sourceDetail}>{sourceDetail}</p><div className="mission-meta"><span>{activeMission ? "Local event history" : "Synthetic demo fallback"}</span><span>Read-only projection</span></div></div>
+        <div className="mission-state"><span className={`mission-status ${status.toLowerCase()}`}><StatusIcon size={15} />{projection.mission.phase}</span><strong>{floorStatus}</strong><small>{floorAgents.length} assigned workers / {workingAgents} active</small></div>
+      </header>}
 
       {view !== "floor" && previewStates}
 
       {view === "report" ? <FinalReport events={activeMission?.events} fixtureId={activeMission?.fixtureId} /> : view === "replay" ? <MissionReplay scenario={scenario} setScenario={setScenario} activeHistory={activeMission} /> : <DecisionView projection={projection} view={view} onSubscriptionPreflight={activeMission ? () => void checkSubscriptionRuntime() : undefined} subscriptionPreflightLoading={subscriptionPreflightLoading} onSubscriptionConfirmation={activeMission ? () => void confirmSubscription() : undefined} subscriptionConfirmationLoading={subscriptionConfirmationLoading} onSubscriptionRun={activeMission ? () => void runSubscription() : undefined} subscriptionRunLoading={subscriptionRunLoading} subscriptionConfirmation={subscriptionConfirmation} subscriptionConfirmationEligible={activeMission?.fixtureId === "live-worker-pilot"} onGoogleTrendsCapture={activeMission ? () => void runGoogleTrendsCapture() : undefined} googleTrendsCaptureLoading={googleTrendsCaptureLoading} googleTrendsCaptureEligible={activeMission?.fixtureId === "google-trends-pilot" && projection.mission.status === "RUNNING"} onGoogleTrendsComparisonImport={activeMission ? (file) => void importGoogleTrendsComparisonCsv(file) : undefined} googleTrendsComparisonImportLoading={googleTrendsComparisonImportLoading} googleTrendsComparisonImportEligible={activeMission?.fixtureId === "google-trends-comparison-pilot" && projection.mission.status === "RUNNING"} />}
-      {view === "floor" && <ResearchOffice projection={projection} agents={floorAgents} synthetic={synthetic} history={history} onEvidence={() => setView("agent")} onApproval={() => setApprovalOpen((value) => !value)} reduced={reduced} setReduced={setReduced} />}
+      {view === "floor" && <ResearchOffice projection={projection} agents={floorAgents} synthetic={synthetic} history={history} onEvidence={() => setView("agent")} onNavigate={setView} onApproval={() => setApprovalOpen((value) => !value)} />}
       {approvalOpen && status === "BLOCKED" && <div className="approval-note" role="status"><Warning size={17} /><span><strong>Policy block</strong> This replay stopped with unresolved safety evidence. This local disclosure does not change mission data or policy.</span></div>}
     </main>
   </div>;
 }
-
-createRoot(document.getElementById("root")!).render(<StrictMode><Theme appearance="dark" accentColor="orange" grayColor="sand" radius="small"><Office /></Theme></StrictMode>);
+createRoot(document.getElementById("root")!).render(<StrictMode><Theme appearance="light" accentColor="blue" grayColor="slate" radius="small"><Office /></Theme></StrictMode>);

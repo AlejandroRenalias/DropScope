@@ -1,17 +1,11 @@
-import { useEffect, useRef, useState, type ComponentType } from "react";
-import { Archive } from "@phosphor-icons/react/dist/csr/Archive";
-import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
-import { ChartLineUp } from "@phosphor-icons/react/dist/csr/ChartLineUp";
+import { useEffect, useState, type ComponentType } from "react";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
-import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
-import { List } from "@phosphor-icons/react/dist/csr/List";
+import { ChartBar } from "@phosphor-icons/react/dist/csr/ChartBar";
+import { ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
-import { Play } from "@phosphor-icons/react/dist/csr/Play";
+import { Scales } from "@phosphor-icons/react/dist/csr/Scales";
 import { ShieldCheck } from "@phosphor-icons/react/dist/csr/ShieldCheck";
 import { Target } from "@phosphor-icons/react/dist/csr/Target";
-import { Warning } from "@phosphor-icons/react/dist/csr/Warning";
-import { Wrench } from "@phosphor-icons/react/dist/csr/Wrench";
-import robotRoles from "./assets/robot-roles.svg";
 import { GoogleTrendsComparisonTimeline } from "./google-trends-comparison-timeline.js";
 import {
   officeHistories,
@@ -24,108 +18,26 @@ import {
   type ReplayEventCategory,
 } from "./office-projection.js";
 import type { LocalMissionDto, SubscriptionConfirmationDto } from "./runtime-client.js";
-import { displayResearchCopy, summarizeResearchEvent } from "./research-presentation.js";
-import type { MissionEvent } from "../contracts.js";
 
 export type OfficeView = "floor" | "agent" | "tribunal" | "review" | "report" | "replay";
 type Icon = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill" }>;
 
-const navigation: Array<{ view: OfficeView; label: string; icon: Icon }> = [
-  { view: "floor", label: "Research Office", icon: Play },
-  { view: "agent", label: "Agent Desk", icon: Target },
-  { view: "tribunal", label: "Tribunal Room", icon: ShieldCheck },
-  { view: "review", label: "Review Office", icon: Archive },
-  { view: "report", label: "Final Report", icon: ChartLineUp },
-  { view: "replay", label: "Mission Replay", icon: List },
+export const navigation: Array<{ view: OfficeView; label: string; icon: Icon }> = [
+  { view: "floor", label: "Research Office", icon: Target },
+  { view: "agent", label: "Agent Desk", icon: MagnifyingGlass },
+  { view: "tribunal", label: "Tribunal Room", icon: Scales },
+  { view: "review", label: "Review Office", icon: ShieldCheck },
+  { view: "report", label: "Final Report", icon: ChartBar },
+  { view: "replay", label: "Mission Replay", icon: ClockCounterClockwise },
 ];
-
-const roleIcons: Record<string, Icon> = {
-  commander: Target,
-  evidence: MagnifyingGlass,
-  operations: Wrench,
-  risk: ShieldCheck,
-};
-
 export function WorkspaceNavigation({ view, onChange }: { view: OfficeView; onChange: (view: OfficeView) => void }) {
   return <nav className="workspace-nav" aria-label="Primary navigation">
     {navigation.map(({ view: target, label, icon: Icon }) => <button aria-label={label} className={view === target ? "active" : ""} onClick={() => onChange(target)} aria-current={view === target ? "page" : undefined} key={target}><span className="nav-icon" aria-hidden="true"><Icon size={17} weight={view === target ? "fill" : "regular"} /></span><span className="nav-label">{label}</span></button>)}
   </nav>;
 }
 
-function Robot({ id, state }: { id: string; state: AgentState }) {
-  return <div className={`robot ${id} ${state.toLowerCase()}`} aria-label={`${id} robot is ${state.toLowerCase()}`}><div className="sprite"><img className="sprite-image" src={robotRoles} alt="" /></div></div>;
-}
-
 function StateLabel({ state }: { state: AgentState | OfficeProjection["mission"]["status"] }) {
   return <span className={`state-label ${state.toLowerCase()}`}>{state}</span>;
-}
-
-function WorkGraph({ tasks }: { tasks: OfficeProjection["tasks"] }) {
-  return <section className="work-graph" aria-labelledby="work-graph-title">
-    <div className="surface-heading"><div><GitBranch size={16} /><h2 id="work-graph-title">Dependencies and concurrency</h2></div><span>{tasks.length} recorded tasks</span></div>
-    <div className="graph-list">{tasks.map((task, index) => <div className={`graph-row ${task.state.toLowerCase()}`} key={task.label}><span className="graph-index">{String(index + 1).padStart(2, "0")}</span><div className="graph-task"><strong>{displayResearchCopy(task.label)}</strong><small>{task.dependencies}</small></div><StateLabel state={task.state} /></div>)}</div>
-  </section>;
-}
-
-function MissionLedger({ projection }: { projection: OfficeProjection }) {
-  const entries = Object.entries(projection.ledger).filter(([key]) => key !== "total");
-  return <section className="context-panel ledger-panel" aria-labelledby="ledger-title">
-    <div className="surface-heading"><div><h2 id="ledger-title">Mission ledger</h2></div><span>{projection.ledger.total} total</span></div>
-    <strong className="ledger-available">{projection.ledger.available}<small> units available</small></strong>
-    <div className="ledger-measure" aria-label={`${projection.ledger.spent} spent, ${projection.ledger.committed} committed, ${projection.ledger.reserved} reserved`}><i className="spent" style={{ width: `${(projection.ledger.spent / projection.ledger.total) * 100}%` }} /><i className="committed" style={{ width: `${(projection.ledger.committed / projection.ledger.total) * 100}%` }} /><i className="reserved" style={{ width: `${(projection.ledger.reserved / projection.ledger.total) * 100}%` }} /></div>
-    <dl className="ledger-list">{entries.map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>
-  </section>;
-}
-
-function EventTrail({ history }: { history: MissionEvent[] }) {
-  const events = history.slice(-3).reverse();
-  return <section className="context-panel event-panel" aria-labelledby="event-trail-title">
-    <div className="surface-heading"><div><h2 id="event-trail-title">Recent activity</h2></div><span>Newest first</span></div>
-    <div className="event-list">{events.map((event) => <details className="event" key={event.eventId}><summary><span><strong>{summarizeResearchEvent(event)}</strong></span><CaretDown size={14} aria-hidden="true" /></summary><div className="event-raw"><strong>{event.type} · {event.sequenceNumber}</strong><pre>{JSON.stringify(event.payload, null, 2)}</pre></div></details>)}</div>
-  </section>;
-}
-
-export function ResearchOffice({ projection, agents, onApproval, onEvidence, synthetic, history }: { projection: OfficeProjection; agents: OfficeProjection["agents"]; onApproval: () => void; onEvidence: () => void; reduced: boolean; setReduced: (value: boolean) => void; synthetic: boolean; history: MissionEvent[] }) {
-  const [activeTab, setActiveTab] = useState<"findings" | "dependencies">("findings");
-  const completed = projection.decisionViews.agentDesk.filter((record) => record.state === "COMPLETED");
-  const pending = agents.filter((agent) => agent.state === "WORKING" || agent.state === "WAITING" || agent.state === "BLOCKED");
-  const completedTasks = projection.tasks.filter((task) => task.state === "COMPLETED").length;
-  const tabs = ["findings", "dependencies"] as const;
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const selectTab = (tab: typeof tabs[number]) => setActiveTab(tab);
-  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const current = tabs.indexOf(activeTab);
-    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-      event.preventDefault();
-      const next = (current + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
-      selectTab(tabs[next]);
-      tabRefs.current[next]?.focus();
-    } else if (event.key === "Home" || event.key === "End") {
-      event.preventDefault();
-      const next = event.key === "Home" ? 0 : tabs.length - 1;
-      selectTab(tabs[next]);
-      tabRefs.current[next]?.focus();
-    }
-  };
-  return <section className="office-layout research-workspace" aria-label="Research Office floor">
-    <div className="dossier">
-      <div className="dossier-tabs" role="tablist" aria-label="Research dossier views">
-        {tabs.map((tab, index) => <button ref={(node) => { tabRefs.current[index] = node; }} className="dossier-tab" key={tab} id={`dossier-tab-${tab}`} role="tab" aria-selected={activeTab === tab} aria-controls={`dossier-panel-${tab}`} tabIndex={activeTab === tab ? 0 : -1} onClick={() => selectTab(tab)} onKeyDown={onTabKeyDown}>{tab === "findings" ? "Findings" : "Dependencies"}</button>)}
-        <button className="inspect-evidence" onClick={onEvidence}>Inspect evidence</button>
-      </div>
-      <section id="dossier-panel-findings" className="findings-panel" role="tabpanel" aria-labelledby="dossier-tab-findings" hidden={activeTab !== "findings"}>
-        {completed.length ? completed.map((record) => <details className="finding-record" key={record.attemptId}><summary><CheckCircle size={18} aria-hidden="true" /><span className="finding-copy"><strong>{displayResearchCopy(record.task)}</strong><span className="finding-text">{(record.evidence || "No finding was recorded for this completed attempt.").split(/\n\s*\n/).map((paragraph, index) => <span key={index}>{displayResearchCopy(paragraph)}</span>)}</span><small>{record.role}</small><small className="finding-source">{synthetic ? "Synthetic demo · recorded replay" : "Recorded replay · inspect provenance"}</small></span><CaretDown className="finding-caret" size={15} aria-hidden="true" /></summary><div className="finding-provenance"><dl><div><dt>Attempt</dt><dd>{record.attemptId}</dd></div><div><dt>Provenance</dt><dd>{record.provenance ?? "Not recorded"}</dd></div><div><dt>Usage</dt><dd>{record.usage.units} replay units · {record.usage.status}</dd></div></dl></div></details>) : <div className="research-empty"><h3>No completed findings yet</h3><p>There are no completed research attempts in this replay.</p></div>}
-        {pending.length > 0 && <section className="pending-research"><h3>Still being researched</h3>{pending.map((agent) => <article className={`pending-row ${agent.state.toLowerCase()}`} key={agent.attemptId}><div className="pending-task"><strong>{displayResearchCopy(agent.task)}</strong>{agent.detail !== "Assigned through replay." && agent.detail && <small>{displayResearchCopy(agent.detail)}</small>}</div><StateLabel state={agent.state} />{agent.state === "BLOCKED" && <button className="approval-button" onClick={onApproval}>Open required approval</button>}</article>)}</section>}
-      </section>
-      <section id="dossier-panel-dependencies" className="dependency-panel" role="tabpanel" aria-labelledby="dossier-tab-dependencies" hidden={activeTab !== "dependencies"}><WorkGraph tasks={projection.tasks} /></section>
-    </div>
-    <aside className="office-context activity-rail" aria-label="Mission context">
-      <section className="team-panel"><header className="surface-heading"><div><h2>Team activity</h2></div><span>{agents.length} researchers</span></header>{agents.map((agent) => <details className={`team-member ${agent.state.toLowerCase()}`} key={agent.attemptId} aria-label={`${agent.role} workstation`}><summary><span>{agent.role}</span><StateLabel state={agent.state} /><CaretDown className="team-caret" size={14} aria-hidden="true" /></summary><div className="team-member-detail"><Robot id={agent.id} state={agent.state} /><strong>{displayResearchCopy(agent.task)}</strong>{agent.detail !== "Assigned through replay." && agent.detail && <p>{displayResearchCopy(agent.detail)}</p>}{agent.state === "BLOCKED" && <button className="approval-button" onClick={onApproval}>Open required approval</button>}</div></details>)}</section>
-      <div className="research-completion">{completedTasks} of {projection.tasks.length} recorded tasks completed</div>
-      <details className="office-detail"><summary>Mission ledger <span>{projection.ledger.available} units available</span></summary><MissionLedger projection={projection} /></details>
-      <EventTrail history={history} />
-    </aside>
-  </section>;
 }
 
 function subscriptionAccessCopy(runtime: NonNullable<OfficeProjection["decisionViews"]["subscriptionRuntime"]>): string {

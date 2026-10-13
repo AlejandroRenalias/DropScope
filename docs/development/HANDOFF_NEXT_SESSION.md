@@ -44,14 +44,13 @@ Then: generalize the Mission Replay screen (this also fixes the raw event-name l
 - Independent read-only review is required for security, persistence, budget, recovery, architecture and state-transition changes. Preferred reviewer: Codex gpt-6.1-sol on the user's machine (one review per SHA, with their approval). Codex cannot run in the cloud container (no login, OpenAI hosts blocked). Fallback: a fresh read-only Opus subagent.
 - Visual snapshots are regenerated only after the user has reviewed the images.
 - Short technical explanations for architecture, security, persistence, budget and recovery decisions, and reports in `PROGRESS.md`. The user does not use jargon fluently: explain terms in plain words.
-- The user prefers no em dashes.
+- The user prefers no em dashes, and is a beginner: follow "Communication with the user" in `AGENTS.md`.
 
 ## Still pending (each needs the user's approval and an independent review)
 
-- `AGENTS.md`: extend the sprint exception to 2026-10-31 (end date exclusive, the user's local time). The user agreed in chat; the edit has not been made.
-- `CLAUDE.md`: fix the "Terra" example line, and add a pointer to `docs/development/WORKING_PRINCIPLES.md`.
+- `AGENTS.md`, `CLAUDE.md` and `DEVELOPMENT_WORKFLOW.md` were edited (sprint exception extended to 2026-10-31, new "Communication with the user" plain-language rule, "Terra" example corrected, pointer to `WORKING_PRINCIPLES.md`). They still need one independent review of the exact SHA before they count as accepted.
 - `.claude/settings.json`: a rule denying development-agent reads of `%LOCALAPPDATA%\DropScope\runs` (required by ADR-027 before real traces are admitted).
-- Ask the user whether to resume the learning workflow now (it was paused by the sprint exception; they said the project is for learning).
+- The user decided NOT to resume the learning workflow (2026-10-13). Do not ask again.
 - Open UI items: Replay chronology raw event names; visual check of the Failure Autopsy and Product Investigation reports.
 
 ## Cloud container notes
@@ -60,4 +59,4 @@ Outbound network is limited by policy: the vendor doc sites and OpenAI hosts ret
 
 ## Starter prompt for the new chat
 
-> Read CLAUDE.md, AGENTS.md, docs/development/PROGRESS.md and docs/development/HANDOFF_NEXT_SESSION.md on branch claude/inspiring-ritchie-8n0iay. DropScope is a learning project. Summarize the state in a few lines, then ask me the pending questions in the handoff (accepting ADR-027, resuming the learning workflow) before starting the first build step. Do not push or open anything without my approval.
+> Read CLAUDE.md, AGENTS.md, docs/development/PROGRESS.md and docs/development/HANDOFF_NEXT_SESSION.md on branch claude/inspiring-ritchie-8n0iay. DropScope is a learning project. Summarize the state in a few lines, then ask me the pending questions in the handoff (accepting ADR-027) before starting the first build step. Do not push or open anything without my approval.

@@ -49,6 +49,8 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Content reality: with content in log events or absent, claim checking is not possible without tool outputs; it worked only where both answer text and tool outputs were captured.
 - Not tested: the replay UI, real production traces, streaming responses, clock skew across machines.
 
+- Decisions on 2026-10-13 (later): the learning workflow is not resumed; a plain-language communication rule was added to `AGENTS.md`; the sprint exception is extended to 2026-10-31 and the "Terra" example in `CLAUDE.md` is corrected (the names appear in `USAGE_LOG.md`, not in the frontend direction doc). These edits to `AGENTS.md`, `CLAUDE.md` and `DEVELOPMENT_WORKFLOW.md` await independent review.
+
 ### Review record: ADR-027
 
 - Review 1: fresh read-only Opus subagent (fallback; Codex gpt-6.1-sol is not runnable in the cloud container: no login, OpenAI hosts blocked by network policy, no tool). Target commit `15e54c3`. Verdict REJECT: 2 blockers (derived order not a complete rule; Evidence overstated), 7 major (raw-content privacy default and run-folder location; undefined hash and verbatim retention; underspecified OTLP/JSON input; incomplete limits and parser hazards; file-path and loopback hazards; undefined persistence and recovery; undefined usage and state rules; frozen-document consistency), 3 minor. The lead agent verified the repository-specific claims (64 KiB body cap, no `Host` check, data root under the working directory, baseline section 18 envelope fields) before acting.

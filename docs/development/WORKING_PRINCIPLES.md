@@ -33,3 +33,7 @@ Reviewers disagree in detail and agree on themes. Verify each claim against the 
 ## 5. Ask before every outward-facing action
 
 Pushes, posts, messages and anything that leaves the machine need the user's explicit approval for that exact thing. A hook or a notification is not approval.
+
+## 6. Write for a beginner
+
+The user is new to software engineering. Explaining things as if to a 20-year veteran wastes their time and hides decisions from them. Use plain words, define each term when it first appears, lead with the conclusion, and put a plain-language summary above any technical document they must approve. The enforceable version is in `AGENTS.md`, section "Communication with the user".

@@ -21,8 +21,9 @@ CI runs `npm ci`, `typecheck`, and `test` on Ubuntu. Run `build` and `test:e2e` 
 - Never push, open/close/merge a PR, delete a branch, change GitHub settings, run workflows or releases, or publish anything without explicit user approval (see `AGENTS.md`).
 - Do not add skills, hooks, or subagents unless a concrete need is shown and approved. Use a fresh read-only subagent for the independent reviews required by `AGENTS.md`, giving it the brief, diff and SHA but not your own conclusions.
 - Product architecture is frozen: `DROPSCOPE_FINAL_PROJECT_PLAN.md`, `docs/architecture/`, `docs/adr/`, and `docs/policies/` change only via a superseding ADR and user approval.
-- "Terra", "Luna" and "Active Commander" in older development docs (for example `docs/design/DROPSCOPE_FRONTEND_DIRECTION.md`) mean the lead agent and workers; the gates they describe still apply.
+- "Terra", "Luna" and "Active Commander" in older Codex-era records (for example `docs/development/USAGE_LOG.md`) mean the lead agent and workers; the gates they describe still apply.
 - Record progress in `docs/development/PROGRESS.md`, not in `USAGE_LOG.md`.
+- Write to the user following "Communication with the user" in `AGENTS.md` (plain words, terms explained). Read `docs/development/WORKING_PRINCIPLES.md` at the start of a session; it holds reusable lessons, including checking demand before building when a project is meant for other people.
 
 ## Environment
 

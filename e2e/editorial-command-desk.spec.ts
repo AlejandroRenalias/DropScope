@@ -370,3 +370,20 @@ test("review office scores the candidate, flags blockers and tracks the revision
   await expect(detail).toContainText("TOP_CANDIDATE_DIVERGENCE");
   expect(await review.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
+
+test("tribunal room weighs the venture case against the ruin case and shows the recorded reasoning", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Tribunal Room", exact: true }).click();
+  const room = page.getByRole("region", { name: "Tribunal Room", exact: true });
+  await expect(room).toContainText("Recorded at event 2");
+  await expect(room.getByRole("region", { name: "Venture case" })).toContainText("venture-claim");
+  await expect(room.getByRole("region", { name: "Ruin case" })).toContainText("No ruin claims recorded.");
+  await expect(room.getByRole("img", { name: "Scale: 1 venture claim against 0 ruin claims" })).toBeVisible();
+  await expect(room.locator(".verdict-pill")).toContainText("CONTINUE RESEARCH");
+  await expect(room.locator(".verdict-pill")).toContainText("Recommendation");
+  await expect(room.locator(".reason-list li")).toHaveCount(1);
+  await expect(room.locator(".reason-list")).toContainText("TRIBUNAL_SUPPORTED_DECISIVE_CASE");
+  await expect(room.locator(".reason-list")).toContainText("evidence venture-evidence-a");
+  await expect(room.locator(".tribunal-meta")).toContainText("crosscurrent-workspace-market");
+  expect(await room.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+});

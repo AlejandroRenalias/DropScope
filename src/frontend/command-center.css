@@ -518,3 +518,41 @@
 .rv-note { margin: 12px 0 0; color: var(--muted); overflow-wrap: anywhere; }
 @media (max-width: 900px) { .rv-grid { grid-template-columns: 1fr; } .rv-dimlist > div { grid-template-columns: 1fr; gap: 2px; } }
 @media (max-width: 760px) { .steps { flex-direction: column; } .steps li, .steps li:first-child { margin: 0 0 2px; padding: 10px 14px; clip-path: none; } .rv-big { font-size: 56px; } }
+
+/* ---------- tribunal room ---------- */
+.court { display: grid; grid-template-columns: minmax(0, 1fr) 190px minmax(0, 1fr); align-items: stretch; }
+.side { display: flex; flex-direction: column; gap: 8px; padding: 20px 22px; border: 1px solid var(--rule); background: var(--surface); }
+.side.venture { border-top: 4px solid var(--brand); clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
+.side.ruin { border-top: 4px solid var(--paper); clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px); }
+.side h2 { margin: 2px 0 4px; font-size: 24px; letter-spacing: -.01em; }
+.claims { display: grid; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
+.claims li { padding: 9px 12px; border-left: 3px solid #b4c1d6; background: var(--surface-soft); overflow-wrap: anywhere; }
+.side.venture .claims li { border-left-color: var(--brand); }
+.side.ruin .claims li { border-left-color: var(--paper); }
+.court-empty { margin: 4px 0 0; color: var(--muted); }
+.court-count { margin-top: auto; color: var(--muted); font-size: 13px; }
+.risk-codes { display: grid; gap: 6px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.risk-codes small { color: var(--muted); }
+.code-list, .links { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.code-list em, .links em { padding: 1px 8px; border-radius: 6px; background: #eef2f9; color: #3a4a63; font-size: 12px; font-style: normal; font-weight: 600; overflow-wrap: anywhere; }
+.verdict-column { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px 8px; text-align: center; }
+.verdict-column small { color: var(--muted); font-size: 12.5px; }
+.scale { width: 140px; height: 112px; overflow: visible; }
+.scale-post, .scale-beam, .scale-string { stroke: var(--brand); stroke-width: 3; stroke-linecap: round; fill: none; }
+.scale-string { stroke-width: 1.5; stroke: #93b4f5; }
+.scale-pivot { fill: var(--brand); }
+.scale-pan { fill: #eaf0ff; stroke: var(--brand); stroke-width: 2; }
+.scale-pan.heavy { fill: var(--brand); }
+.verdict-pill { display: grid; gap: 2px; padding: 10px 14px; background: var(--brand); color: #fff; clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px)); }
+.verdict-pill span { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .9; }
+.verdict-pill strong { font-size: 16px; line-height: 1.15; }
+.verdict-pill.stop { background: #b91c1c; }
+.verdict-pill.caution { background: #fdecec; color: #b91c1c; box-shadow: inset 0 0 0 2px #b91c1c; }
+.reasoning { padding: 18px 22px; }
+.reasoning h2 { margin: 4px 0 8px; font-size: 20px; }
+.reason-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.reason-list li { padding: 10px 14px; border-left: 3px solid var(--brand); background: var(--surface-soft); }
+.reason-list .code { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.reason-list p { max-width: 90ch; margin: 4px 0 6px; color: #334155; }
+.tribunal-meta { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .court { grid-template-columns: 1fr; } .verdict-column { order: -1; padding: 16px 8px; } .side.venture, .side.ruin { clip-path: none; } }

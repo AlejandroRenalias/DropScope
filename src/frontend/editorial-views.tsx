@@ -9,6 +9,7 @@ import { Target } from "@phosphor-icons/react/dist/csr/Target";
 import { GoogleTrendsComparisonTimeline } from "./google-trends-comparison-timeline.js";
 import { PageHead, roleIcon } from "./research-office.js";
 import { ReviewOffice } from "./review-office.js";
+import { TribunalRoom } from "./tribunal-room.js";
 import { attemptChain, humanizeType, stateText } from "./research-model.js";
 import { displayResearchCopy } from "./research-presentation.js";
 import type { MissionEvent } from "../contracts.js";
@@ -132,10 +133,7 @@ export function DecisionView(props: DecisionViewProps) {
   const { projection, view } = props;
   if (view === "floor") return null;
   if (view === "agent") return <AgentDesk {...props} />;
-  if (view === "tribunal") {
-    const room = projection.decisionViews.tribunalRoom;
-    return <section className="decision-view tribunal-view" aria-label="Tribunal Room"><SectionHeader title="Recorded policy result" description="Compare the venture case, ruin case, and deterministic recommendation." />{room ? <><div className="verdict-banner"><span>Recorded recommendation</span><strong>{room.result.recommendation}</strong><small>Candidate {room.result.candidateId} · sequence {room.recordedAtSequence}</small></div><div className="tribunal-columns"><article className="claim-column venture-claim"><span>Argument 01</span><h2>Venture case</h2><p>{room.result.ventureClaimIds.join(", ") || "No venture claims recorded."}</p></article><article className="claim-column ruin-claim"><span>Argument 02</span><h2>Ruin case</h2><p>{room.result.ruinClaimIds.join(", ") || "No ruin claims recorded."}</p></article></div><section className="reason-record"><span>Decision basis</span><h2>Recorded reasoning</h2><p>{room.result.reasons.map((reason) => reason.explanation).join(" ")}</p></section></> : <EmptyState title="No tribunal result" copy="No TribunalCompleted event in this replay." />}</section>;
-  }
+  if (view === "tribunal") return <TribunalRoom projection={projection} />;
   return <ReviewOffice projection={projection} history={props.history} />;
 }
 

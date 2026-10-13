@@ -101,3 +101,8 @@ export function revisionPath(history: MissionEvent[]): { requested: boolean; ste
   const firstOpen = flags.indexOf(false);
   return { requested, steps: labels.map((label, index) => ({ label, state: flags[index] ? "done" : index === firstOpen ? "current" : "pending" })) };
 }
+
+/** Beam tilt in degrees for the tribunal scale: positive lowers the ruin side, negative the venture side. */
+export function scaleAngle(ventureClaims: number, ruinClaims: number): number {
+  return Math.max(-18, Math.min(18, (ruinClaims - ventureClaims) * 6));
+}

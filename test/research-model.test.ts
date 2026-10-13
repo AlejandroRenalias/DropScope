@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { officeHistories, projectOffice } from "../src/frontend/office-projection.js";
-import { attemptChain, defaultSelection, describeChange, humanizeType, layoutTasks, nodeTitle, revisionPath, uniqueAgents } from "../src/frontend/research-model.js";
+import { attemptChain, defaultSelection, describeChange, humanizeType, layoutTasks, nodeTitle, revisionPath, scaleAngle, uniqueAgents } from "../src/frontend/research-model.js";
 
 const prefix = (scenario: keyof typeof officeHistories, length: number) => projectOffice(officeHistories[scenario].slice(0, length));
 
@@ -115,5 +115,18 @@ describe("revision path", () => {
     const upTo = (type: string) => events.slice(0, events.findIndex((event) => event.type === type) + 1);
     expect(revisionPath(upTo("RevisionRequested")).steps.map((step) => step.state)).toEqual(["done", "done", "current", "pending"]);
     expect(revisionPath(upTo("FocusedReauditCompleted")).steps.map((step) => step.state)).toEqual(["done", "done", "done", "current"]);
+  });
+});
+
+describe("tribunal scale", () => {
+  it("tilts toward the heavier case and stays balanced when equal", () => {
+    expect(scaleAngle(1, 1)).toBe(0);
+    expect(scaleAngle(3, 0)).toBeLessThan(0);
+    expect(scaleAngle(0, 2)).toBeGreaterThan(0);
+  });
+
+  it("caps the tilt so the beam never flips", () => {
+    expect(scaleAngle(9, 0)).toBe(-18);
+    expect(scaleAngle(0, 9)).toBe(18);
   });
 });

@@ -95,6 +95,7 @@ export type ImportNoteCode = z.infer<typeof importNoteCodeSchema>;
 
 // Section 12: closed error codes.
 export const importErrorCodeSchema = z.enum([
+  "E_SYNTAX",
   "E_EMPTY",
   "E_MULTIPLE_TRACES",
   "E_TRACE_NOT_FOUND",

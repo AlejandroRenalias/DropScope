@@ -135,7 +135,7 @@ Input: 32 MiB per file, 64 MiB per import; JSON depth 64, checked while scanning
 
 ## 12. Error codes
 
-`E_EMPTY`, `E_MULTIPLE_TRACES`, `E_TRACE_NOT_FOUND`, `E_CONFLICTING_DUPLICATE`, `E_NUMBER`, `E_ENUM`, `E_ANYVALUE`, `E_UNICODE`, `E_ID`, `E_LIMIT`, `E_PATH`, `E_FILE_KIND`, `E_EXISTS_DIFFERENT`, `E_INVALID_LOG`, `E_PLATFORM`. Each carries a stage name and, for parse errors, a byte position.
+`E_SYNTAX` (malformed JSON, a BOM, trailing bytes, a duplicate property name), `E_EMPTY`, `E_MULTIPLE_TRACES`, `E_TRACE_NOT_FOUND`, `E_CONFLICTING_DUPLICATE`, `E_NUMBER`, `E_ENUM`, `E_ANYVALUE`, `E_UNICODE`, `E_ID`, `E_LIMIT`, `E_PATH`, `E_FILE_KIND`, `E_EXISTS_DIFFERENT`, `E_INVALID_LOG`, `E_PLATFORM`. Each carries a stage name and, for parse errors, a byte position.
 
 ## 13. Versioning and migration
 

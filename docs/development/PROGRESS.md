@@ -73,3 +73,4 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 ### Build log (2026-10-13)
 
 - The user accepted ADR-027 revision 3 and asked to start building. Step 1 done: Zod schemas for the run events in `src/run-events.ts` (spec sections 3, 5, 12), with 11 tests in `test/run-events.test.ts`. Typecheck clean. Next: the OTLP/JSON importer (spec sections 1 to 4, 6), then the reducer, CLI and fixtures tests, then independent review.
+- Step 2a done: strict JSON parser (`src/strict-json.ts`, `src/run-import-error.ts`; spec 1.1, 1.2, 10): byte-level, no recursion, rejects BOM, trailing bytes, duplicate keys, bad UTF-8 and unpaired surrogates, enforces depth, node, element, key, string and number limits, keeps number lexemes as text. 13 tests. The spec had no code for plain syntax errors, so `E_SYNTAX` was added to spec section 12 and to the schema. Next: OTLP structure validation (spec 1.3 to 1.7, phase 2).

@@ -1,6 +1,6 @@
-# DropScope Seven-Day Roadmap and MVP Definition
+# DropScope Roadmap and MVP Definition
 
-Status: the direction in [`PROPOSAL_AGENT_RUN_FORENSICS.md`](PROPOSAL_AGENT_RUN_FORENSICS.md) is approved; the demand test was skipped on 2026-10-13 (learning project, limited time), so building proceeds directly. The day-by-day dates below are indicative only; see `HANDOFF_NEXT_SESSION.md` for the current first-build slice. It replaces the earlier roadmap (Codex as MVP runtime), which was never pushed. Window: 2026-10-13 to 2026-10-19; the sprint exception ends at 00:00 on 2026-10-20 (the user's local time) unless the user extends it. This is a development plan only. It does not amend the frozen plan, any ADR or any policy; the product direction takes effect only through the ADRs named below. Progress is recorded in [`PROGRESS.md`](PROGRESS.md).
+Status: the direction in [`PROPOSAL_AGENT_RUN_FORENSICS.md`](PROPOSAL_AGENT_RUN_FORENSICS.md) is approved; the demand test was skipped on 2026-10-13 (learning project, limited time), so building proceeds directly. The day-by-day dates below are indicative only; see `HANDOFF_NEXT_SESSION.md` for the current first-build slice. It replaces the earlier roadmap (Codex as MVP runtime), which was never pushed. The day plan below is a seven-day work estimate (2026-10-13 to 2026-10-19). That is separate from the sprint exception, which the user extended on 2026-10-13 to 00:00 on 2026-10-31 (the user's local time); see `AGENTS.md`. This is a development plan only. It does not amend the frozen plan, any ADR or any policy; the product direction takes effect only through the ADRs named below. Progress is recorded in [`PROGRESS.md`](PROGRESS.md).
 
 ## MVP definition
 
@@ -40,7 +40,7 @@ If the work slips, cut in this order: demo-domain visual checks, then the budget
 
 ## After the cut line (v1, about 3 to 4 more days)
 
-Run diff, then claim check (only if real traces carry content), then release prep. Running past 2026-10-20 needs a decision on extending the sprint exception; the engineering gates apply either way.
+Run diff, then claim check (only if real traces carry content), then release prep. Running past the sprint exception's end (2026-10-31) needs another decision from the user; the engineering gates apply either way.
 
 ## Other open items
 

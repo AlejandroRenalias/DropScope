@@ -1,6 +1,6 @@
 # Working principles (lessons to reuse on other projects)
 
-Short rules that came out of real work on this repository. They are guidance for the lead agent and the user, not product policy.
+Short rules that came out of real work on this repository. They are advisory guidance for the lead agent and the user, not product policy. They cannot replace, waive or widen the approval and review rules in `AGENTS.md` and `DEVELOPMENT_WORKFLOW.md`; where they seem to conflict, those rules win. For example, "a first pass, not a verdict" never means a required review finding may be left unresolved, and "ask before outward-facing actions" does not turn routine read-only fetches from GitHub into approval requests.
 
 ## 1. Check demand before building, when the goal is a product
 

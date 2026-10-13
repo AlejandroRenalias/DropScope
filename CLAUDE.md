@@ -13,7 +13,7 @@ npm run build       # vite build
 npm run test:e2e    # Playwright; frontend changes only
 ```
 
-CI runs `npm ci`, `typecheck`, and `test` on Ubuntu. Run `build` and `test:e2e` locally for frontend work. `playwright.config.ts` uses the `chrome` channel, so Chrome must be installed. When visual snapshots exist (currently only on the backup branch) they are `win32`-specific; review any diff before accepting it, and never run `--update-snapshots` just to get green.
+CI runs `npm ci`, `typecheck`, and `test` on Ubuntu. Run `build` and `test:e2e` locally for frontend work. `playwright.config.ts` uses the `chrome` channel, so Chrome must be installed. This checkout contains nine `win32` visual baselines under `e2e/editorial-command-desk.spec.ts-snapshots/`; they are Windows-specific, so review any diff before accepting it, and never run `--update-snapshots` just to get green.
 
 ## Working rules
 
@@ -23,7 +23,7 @@ CI runs `npm ci`, `typecheck`, and `test` on Ubuntu. Run `build` and `test:e2e` 
 - Product architecture is frozen: `DROPSCOPE_FINAL_PROJECT_PLAN.md`, `docs/architecture/`, `docs/adr/`, and `docs/policies/` change only via a superseding ADR and user approval.
 - "Terra", "Luna" and "Active Commander" in older Codex-era records (for example `docs/development/USAGE_LOG.md`) mean the lead agent and workers; the gates they describe still apply.
 - Record progress in `docs/development/PROGRESS.md`, not in `USAGE_LOG.md`.
-- Write to the user following "Communication with the user" in `AGENTS.md` (plain words, terms explained). Read `docs/development/WORKING_PRINCIPLES.md` at the start of a session; it holds reusable lessons, including checking demand before building when a project is meant for other people.
+- Write to the user following "Communication with the user" in `AGENTS.md` (plain words, terms explained). Read `docs/development/WORKING_PRINCIPLES.md` at the start of a session; it holds reusable lessons, including checking demand before building when a project is meant for other people. That file is advisory only: it cannot replace, waive or widen the approval and review rules in `AGENTS.md` and `docs/development/DEVELOPMENT_WORKFLOW.md`, and where it seems to conflict with them, those rules win.
 
 ## Environment
 

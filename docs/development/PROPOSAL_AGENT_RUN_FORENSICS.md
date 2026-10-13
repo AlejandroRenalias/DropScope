@@ -30,7 +30,7 @@ Estimates are working days including review and approval waits, for one lead age
 | 6. Release prep | Demo corpus, docs and positioning, final gates. | 1 d |
 | **Full v1** | Phases 0 to 6. | **10 to 11 d** |
 
-The MVP fits the sprint window (ends 00:00 on 2026-10-20) only with no slip. Full v1 does not, so decide whether to extend the sprint exception. Expiry changes little in practice: every gate stays, and only the paused learning workflow and the "kept" explanation and report duties would lapse unless extended. I would keep writing both either way.
+The MVP fit the original sprint window (which ended at 00:00 on 2026-10-20) only with no slip, so on 2026-10-13 the user extended the sprint exception to 2026-10-31 and will re-decide when the MVP is reached (see `AGENTS.md`). Full v1 may still run past that date. Expiry changes little in practice: every gate stays, the learning workflow stays paused unless the user resumes it, and the plain-language communication rule and the progress reports in `PROGRESS.md` continue regardless.
 
 ## (c) First trace format and mapping
 

@@ -1,6 +1,6 @@
 # ADR-027: Run-event contract and trace import boundary
 
-**Status:** Proposed (draft revision 3, 2026-10-13). Not accepted. Needs the user's approval. Implementation is held until the user explicitly approves it, and no further independent review of this ADR is planned until the demand test supports implementing it.  
+**Status:** Accepted by the user on 2026-10-13 (revision 3). Implementation may proceed; the implementation (importer, reducer, persistence) needs independent review under `AGENTS.md`. No further review of the ADR text is planned.  
 **Date:** 2026-10-13  
 **Extends:** the frozen architecture baseline v1 (section 18 event persistence, section 21 runtime boundaries) with a second event family. It differs from baseline section 18 and `docs/schemas/contracts.md` only where listed under "Deliberate differences". It supersedes no ADR.  
 **Companion spec:** [`docs/schemas/run-event-contract-v1.md`](../schemas/run-event-contract-v1.md) holds the normative details (grammar, ordering algorithm, payload tables, privacy classification, limits, file rules). This ADR holds the decisions and the rules that must always hold. If they ever disagree, this ADR wins and the spec is corrected.

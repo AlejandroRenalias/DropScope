@@ -69,3 +69,7 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Visual snapshots are `win32`-only, e2e needs Chrome installed, and CI does not run e2e.
 - Replay chronology still shows raw event type names; Autopsy and Investigation reports were only checked through the existing e2e assertions, not visually.
 - `CLAUDE.md` still mentions "Terra" in an example line; changing it needs independent review under `AGENTS.md`.
+
+### Build log (2026-10-13)
+
+- The user accepted ADR-027 revision 3 and asked to start building. Step 1 done: Zod schemas for the run events in `src/run-events.ts` (spec sections 3, 5, 12), with 11 tests in `test/run-events.test.ts`. Typecheck clean. Next: the OTLP/JSON importer (spec sections 1 to 4, 6), then the reducer, CLI and fixtures tests, then independent review.

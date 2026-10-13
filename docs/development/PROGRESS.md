@@ -25,7 +25,7 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 
 ### In progress
 
-- Demand test prepared, not started: [`DEMAND_TEST_ONEPAGER.md`](DEMAND_TEST_ONEPAGER.md) (text to show plus an internal decision rule). No outreach happens without the user's approval.
+- Demand test skipped by the user on 2026-10-13 (learning project, not a main project, limited time): [`DEMAND_TEST_ONEPAGER.md`](DEMAND_TEST_ONEPAGER.md) and [`DEMAND_TEST_OUTREACH_DRAFTS.md`](DEMAND_TEST_OUTREACH_DRAFTS.md) are kept for reuse. The lesson (check demand first when the goal is a product) is in [`WORKING_PRINCIPLES.md`](WORKING_PRINCIPLES.md). Next session: see [`HANDOFF_NEXT_SESSION.md`](HANDOFF_NEXT_SESSION.md).
 - ADR-027 (run-event contract and trace import boundary), now revision 3 after two reviews, still Proposed, with a companion spec in [`docs/schemas/run-event-contract-v1.md`](../schemas/run-event-contract-v1.md): [`ADR-027`](../adr/ADR-027-run-event-contract-and-trace-import-boundary.md). Needs the user's approval and an independent review (Codex gpt-6.1-sol preferred, user approval required) before any code. ADR-026 (product direction) is reserved and not drafted.
 - Spike evidence is copied to `docs/development/spike-2026-10-13/` (unreviewed, not product code, not part of `src/`); no product code changed.
 - Open items unchanged: Replay chronology labels, visual check of the Failure Autopsy and Product Investigation reports.

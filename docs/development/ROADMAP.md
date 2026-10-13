@@ -1,6 +1,6 @@
 # DropScope Seven-Day Roadmap and MVP Definition
 
-Status: DRAFT, pending the user's approval of [`PROPOSAL_AGENT_RUN_FORENSICS.md`](PROPOSAL_AGENT_RUN_FORENSICS.md). It replaces the earlier roadmap (Codex as MVP runtime), which was never pushed. Window: 2026-10-13 to 2026-10-19; the sprint exception ends at 00:00 on 2026-10-20 (the user's local time) unless the user extends it. This is a development plan only. It does not amend the frozen plan, any ADR or any policy; the product direction takes effect only through the ADRs named below. Progress is recorded in [`PROGRESS.md`](PROGRESS.md).
+Status: the direction in [`PROPOSAL_AGENT_RUN_FORENSICS.md`](PROPOSAL_AGENT_RUN_FORENSICS.md) is approved; the demand test was skipped on 2026-10-13 (learning project, limited time), so building proceeds directly. The day-by-day dates below are indicative only; see `HANDOFF_NEXT_SESSION.md` for the current first-build slice. It replaces the earlier roadmap (Codex as MVP runtime), which was never pushed. Window: 2026-10-13 to 2026-10-19; the sprint exception ends at 00:00 on 2026-10-20 (the user's local time) unless the user extends it. This is a development plan only. It does not amend the frozen plan, any ADR or any policy; the product direction takes effect only through the ADRs named below. Progress is recorded in [`PROGRESS.md`](PROGRESS.md).
 
 ## MVP definition
 

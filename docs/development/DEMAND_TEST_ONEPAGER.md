@@ -1,4 +1,4 @@
-# Demand test: one-pager (DRAFT, do not publish or send without the user's approval)
+# Demand test: one-pager (DRAFT, NOT RUN: skipped on 2026-10-13 because this is a learning project; kept for reuse)
 
 Part 1 is the text to show to people. Part 2 is internal and must not be shown. Nothing here has been posted or sent.
 

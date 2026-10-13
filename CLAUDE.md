@@ -28,4 +28,4 @@ CI runs `npm ci`, `typecheck`, and `test` on Ubuntu. Run `build` and `test:e2e` 
 
 - Windows with the repo under OneDrive: avoid long-lived file locks (stop dev servers and Playwright runs when done).
 - Playwright and Vite may need to run outside the default sandbox; ask the user before running outside the sandbox. If a test fails for an environmental reason (missing browser, sandbox, network), report that separately from a real regression.
-- Project permissions live in `.claude/settings.json` (minimal allow-list). Put personal overrides in `.claude/settings.local.json` (gitignored).
+- Project permissions live in `.claude/settings.json` (a minimal allow-list; push, PR, workflow and release commands are set to ask so each needs your approval; destructive commands are denied). Put personal overrides in `.claude/settings.local.json` (gitignored).

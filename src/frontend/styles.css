@@ -20,12 +20,12 @@
   --signal-ink: #ffffff;
   --brand: #1d4ed8;
   --brand-strong: #1e40af;
-  --brand-mid: #3b6fe0;
+  --brand-mid: #1d4ed8;
   --brand-soft: #93b4f5;
   --brand-tint: #eaf0ff;
   --on-brand-soft: #dce6ff;
-  --success: #15803d;
-  --warning: #b45309;
+  --success: #0f172a;
+  --warning: #b91c1c;
   --danger: #b91c1c;
   --waiting: #64748b;
   --focus: #1d4ed8;
@@ -271,7 +271,7 @@ small { line-height: 1.5; }
 .mission-status.blocked, .state-label.blocked, .state-label.failed { color: var(--danger); }
 .mission-status.completed, .state-label.completed { color: var(--success); }
 .state-label.working { color: var(--signal); }
-.state-label.waiting { color: var(--warning); }
+.state-label.waiting { color: var(--waiting); }
 
 .scenario-switcher {
   display: flex;
@@ -337,7 +337,7 @@ small { line-height: 1.5; }
 .ledger-available small { color: var(--muted); font: 500 11px/1 Aptos, "Segoe UI Variable", sans-serif; letter-spacing: 0; }
 .ledger-measure { display: flex; height: 4px; margin-bottom: 15px; background: var(--rule); }
 .ledger-measure i.spent { background: var(--signal); }
-.ledger-measure i.committed { background: var(--warning); }
+.ledger-measure i.committed { background: var(--brand-soft); }
 .ledger-measure i.reserved { background: var(--muted); }
 .ledger-list { margin: 0; }
 .ledger-list div { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--rule); }
@@ -394,7 +394,7 @@ small { line-height: 1.5; }
 .tribunal-columns { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 74px); margin-top: 34px; }
 .tribunal-columns article { min-height: 170px; padding: 18px 0 26px; border-top: 1px solid var(--rule-strong); }
 .claim-column > span, .reason-record > span { color: var(--muted-quiet); font: 650 9px/1.2 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; }
-.claim-column.venture-claim { border-top-color: var(--success); }
+.claim-column.venture-claim { border-top-color: var(--brand); }
 .claim-column.ruin-claim { border-top-color: var(--danger); }
 .tribunal-columns h2, .reason-record h2 { margin: 10px 0; color: var(--paper); font-size: 18px; }
 .tribunal-columns p, .reason-record p { color: var(--paper-soft); font-size: 13px; line-height: 1.6; }

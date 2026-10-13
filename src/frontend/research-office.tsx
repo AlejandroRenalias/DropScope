@@ -98,7 +98,7 @@ function Roster({ agents, onApproval }: { agents: OfficeProjection["agents"]; on
 function BudgetGauge({ ledger }: { ledger: OfficeProjection["ledger"] }) {
   const radius = 78; const circumference = 2 * Math.PI * radius;
   const total = Math.max(ledger.total, 1);
-  const segments = [{ key: "spent", value: ledger.spent, color: "#1e3a8a" }, { key: "committed", value: ledger.committed, color: "#3b6fe0" }, { key: "reserved", value: ledger.reserved, color: "#93b4f5" }];
+  const segments = [{ key: "spent", value: ledger.spent, color: "#1d4ed8" }, { key: "committed", value: ledger.committed, color: "#8fb0f7" }, { key: "reserved", value: ledger.reserved, color: "#cbd9fb" }];
   let offset = 0;
   return <section className="rail-card budget-card ledger-panel" aria-labelledby="budget-title">
     <div className="eyebrow" id="budget-title">Mission budget · units</div>

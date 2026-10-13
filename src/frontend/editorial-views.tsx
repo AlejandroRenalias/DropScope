@@ -96,7 +96,7 @@ function AgentDesk(props: DecisionViewProps) {
   const [picked, setPicked] = useState<string>();
   const selected = agents.find((agent) => agent.attemptId === picked) ?? agents.find((agent) => agent.state === "COMPLETED") ?? agents[0];
   const chain = selected ? attemptChain(history, selected.attemptId) : [];
-  const palette = ["#1e3a8a", "#3b6fe0", "#93b4f5", "#5b8def", "#7aa2f7", "#a9c1f8"];
+  const palette = ["#1d4ed8", "#5b84ec", "#93b4f5", "#bcd0fa", "#dbe6fd", "#eef3fe"];
   return <section className="decision-view agent-view" aria-label="Agent Desk">
     <PageHead eyebrow="Agent Desk" title="Worker evidence and usage" description="Inspect source provenance, guarded actions, and recorded worker outcomes." aside={<span className="badge">{agents.length} worker attempt{agents.length === 1 ? "" : "s"}</span>} />
     {agents.length === 0 ? <section className="panel-card empty-state"><strong>No worker attempts</strong><p>No worker attempt is recorded in this replay yet.</p></section> : <div className="wc-grid">{agents.map((agent) => { const Mark = roleIcon(agent.role); const open = selected?.attemptId === agent.attemptId; return <article className={`panel-card wcard ${agent.state.toLowerCase()} ${open ? "open" : ""}`} key={agent.attemptId}>

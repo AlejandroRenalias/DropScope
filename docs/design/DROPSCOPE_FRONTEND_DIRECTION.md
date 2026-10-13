@@ -10,7 +10,7 @@ A modern, light research tool: white and cool-grey surfaces, near-navy text, and
 
 1. **Finding first.** The newest recorded finding is the most prominent element on the Research Office screen, with its owner and a provenance link.
 2. **Truthful labels.** Every screen says what it is: synthetic demo, recorded replay, or live local mission. Never imply market research that did not happen.
-3. **One accent.** Cobalt means brand, links, selection and the primary action. It never means a task state.
+3. **One accent, one alert.** Cobalt means brand, links, selection, live work and the primary action. Red appears only where attention is needed: blocking feedback, a policy block, a failure. Nothing else is coloured.
 4. **Plain words.** Labels describe what happened ("Evidence research started"), not mood.
 5. **Readable first.** Body text 16px, labels never below 13px, AA contrast for all text. Event numbers and units are information, not decoration.
 6. **Derived state only.** The UI renders replayed engine state and cannot bypass engine policies.
@@ -27,12 +27,11 @@ A modern, light research tool: white and cool-grey surfaces, near-navy text, and
 | `--canvas` | `#F5F7FB` | Page background |
 | `--surface` | `#FFFFFF` | Cards and panels |
 | `--rule` | `#E2E8F0` | Dividers and borders |
-| `--success` | `#15803D` | Completed |
-| `--warning` | `#B45309` | Needs attention, awaiting decision |
-| `--danger` | `#B91C1C` | Blocked, failed, conflict |
+| `--success` | `#0F172A` | Completed and done (dark navy, same as `--ink`; no green) |
+| `--warning` / `--danger` | `#B91C1C` | The single alert colour: blocking feedback, policy block, failure |
 | `--waiting` | `#64748B` | Waiting, not started |
 
-State is always shown by colour plus an icon or word, never colour alone. Colours are CSS variables so a dark theme later is a token swap. Text on the cobalt panel is white or `#DCE6FF` only. Contrast is verified when built.
+State is always shown by an icon or word plus colour, never colour alone. There is no green, amber or purple in the interface. Charts use cobalt and its tints only; budget segments are `#1D4ED8`, `#8FB0F7` and `#CBD9FB`. Colours are CSS variables so a dark theme later is a token swap. Text on the cobalt panel is white or `#DCE6FF` only. Contrast is verified when built.
 
 ## 4. Type and shape
 

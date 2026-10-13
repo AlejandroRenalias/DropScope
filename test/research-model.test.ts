@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { officeHistories, projectOffice } from "../src/frontend/office-projection.js";
-import { defaultSelection, describeChange, layoutTasks, nodeTitle, uniqueAgents } from "../src/frontend/research-model.js";
+import { attemptChain, defaultSelection, describeChange, humanizeType, layoutTasks, nodeTitle, uniqueAgents } from "../src/frontend/research-model.js";
 
 const prefix = (scenario: keyof typeof officeHistories, length: number) => projectOffice(officeHistories[scenario].slice(0, length));
 
@@ -72,5 +72,27 @@ describe("replay change description", () => {
     const last = officeHistories.BLOCKED.length;
     const change = describeChange(prefix("BLOCKED", last - 1), prefix("BLOCKED", last));
     expect(change.lines.some((line) => line.startsWith("Mission status:"))).toBe(true);
+  });
+});
+
+describe("worker provenance chain", () => {
+  it("lists the task authorization and every event of one attempt in recorded order", () => {
+    const chain = attemptChain(officeHistories.RUNNING, "workspace:a1");
+    expect(chain.map((step) => step.type)).toEqual(["TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted", "FindingSubmitted"]);
+    expect(chain.map((step) => step.sequence)).toEqual([...chain.map((step) => step.sequence)].sort((a, b) => a - b));
+    expect(chain.filter((step) => step.final).map((step) => step.type)).toEqual(["FindingSubmitted"]);
+    expect(chain.at(-1)!.summary).toContain("Workspace demand mapped.");
+  });
+
+  it("does not leak events from other attempts and handles unknown attempts", () => {
+    const evidence = attemptChain(officeHistories.RUNNING, "workflow:a1");
+    expect(evidence.every((step) => step.sequence > 1)).toBe(true);
+    expect(evidence.some((step) => step.type === "FindingSubmitted")).toBe(false);
+    expect(attemptChain(officeHistories.RUNNING, "missing:a1")).toEqual([]);
+  });
+
+  it("humanizes event type names", () => {
+    expect(humanizeType("TaskStarted")).toBe("Task started");
+    expect(humanizeType("SubscriptionWorkerExecutionOutcomeRecorded")).toBe("Subscription worker execution outcome recorded");
   });
 });

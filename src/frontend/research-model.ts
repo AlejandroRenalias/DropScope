@@ -1,5 +1,6 @@
+import type { MissionEvent } from "../contracts.js";
 import type { AgentState, OfficeProjection } from "./office-projection.js";
-import { displayResearchCopy } from "./research-presentation.js";
+import { displayResearchCopy, summarizeResearchEvent } from "./research-presentation.js";
 
 export type Task = OfficeProjection["tasks"][number];
 
@@ -68,4 +69,23 @@ export function describeChange(previous: OfficeProjection | null, next: OfficePr
     if (previous.mission.status !== next.mission.status) lines.push(`Mission status: ${previous.mission.status.toLowerCase()} → ${next.mission.status.toLowerCase()}`);
   }
   return { lines, taskIds };
+}
+
+export function humanizeType(type: string): string {
+  const text = type.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export interface ChainStep { sequence: number; type: string; summary: string; final: boolean }
+
+/** The recorded events that belong to one worker attempt, in order, starting from its task authorization. */
+export function attemptChain(history: MissionEvent[], attemptId: string): ChainStep[] {
+  const scheduled = history.find((event) => event.type === "TaskScheduled" && (event.payload as { attemptId?: string }).attemptId === attemptId);
+  const taskId = scheduled ? (scheduled.payload as { taskId?: string }).taskId : undefined;
+  return history
+    .filter((event) => {
+      const payload = event.payload as Record<string, unknown>;
+      return payload.attemptId === attemptId || (event.type === "TaskAuthorized" && taskId !== undefined && payload.taskId === taskId);
+    })
+    .map((event) => ({ sequence: event.sequenceNumber, type: event.type, summary: summarizeResearchEvent(event), final: event.type === "FindingSubmitted" || event.type === "SubscriptionWorkerExecutionOutcomeRecorded" }));
 }

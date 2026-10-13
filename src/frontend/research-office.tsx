@@ -16,7 +16,7 @@ type Icon = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill";
 
 const stageNames = ["Researching", "Debating", "Reviewing", "Report"] as const;
 
-function roleIcon(role: string | null): Icon {
+export function roleIcon(role: string | null): Icon {
   const value = (role ?? "").toLowerCase();
   if (value.includes("evidence")) return MagnifyingGlass;
   if (value.includes("operations")) return Factory;

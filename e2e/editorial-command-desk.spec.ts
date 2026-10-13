@@ -320,3 +320,26 @@ test("final report leads with the verdict, ranking, held-out reasons and a score
   await expect(report.locator(".rp-next")).toContainText("deepen validation for deskflow-alpha");
   expect(await report.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
+
+test("agent desk shows worker cards, a selectable provenance chain and usage by worker", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Agent Desk", exact: true }).click();
+  const desk = page.getByRole("region", { name: "Agent Desk" });
+  await expect(desk.locator(".wcard")).toHaveCount(3);
+  await expect(desk).toContainText("3 worker attempts");
+  await expect(desk.locator(".wcard.completed")).toContainText("Workspace demand mapped.");
+  await expect(desk.locator(".wcard.working").first()).toContainText("No finding recorded yet.");
+  const chain = desk.getByRole("region", { name: /Provenance chain/ });
+  await expect(chain).toContainText("Market Researcher");
+  await expect(chain.locator(".chain li")).toHaveCount(5);
+  await expect(chain.locator(".chain li.final")).toContainText("Finding submitted");
+
+  await desk.locator(".wcard.working").first().getByRole("button", { name: "Show provenance chain" }).click();
+  await expect(chain).toContainText("Evidence Researcher");
+  await expect(chain.locator(".chain li")).toHaveCount(4);
+  await expect(chain.locator(".chain li.final")).toHaveCount(0);
+
+  await expect(desk.getByRole("img", { name: /Market Researcher 25, Evidence Researcher 30, Operations Researcher 20, 65 available of 140/ })).toBeVisible();
+  await expect(desk.locator(".ops-none")).toContainText("No guarded actions are available for this mission.");
+  expect(await desk.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+});

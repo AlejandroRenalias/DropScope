@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { MissionEvent } from "../contracts.js";
 import { officeHistories, projectOffice, replayEvents, type OfficeProjection, type OfficeScenario, type ReplayEventCategory } from "./office-projection.js";
 import { Constellation, PageHead } from "./research-office.js";
-import { describeChange, uniqueAgents } from "./research-model.js";
+import { describeChange, humanizeType, uniqueAgents } from "./research-model.js";
 import { summarizeResearchEvent } from "./research-presentation.js";
 import type { LocalMissionDto } from "./runtime-client.js";
 
@@ -13,11 +13,6 @@ const categories: Array<{ id: ReplayEventCategory; label: string }> = [
   { id: "review", label: "Review" },
   { id: "failure", label: "Failure" },
 ];
-
-function humanize(type: string): string {
-  const text = type.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 export function MissionReplay({ scenario, setScenario, activeHistory, history, position, setPosition }: { scenario: OfficeScenario; setScenario: (value: OfficeScenario) => void; activeHistory?: LocalMissionDto; history: MissionEvent[]; position: number; setPosition: (value: number) => void }) {
   const [filters, setFilters] = useState<ReplayEventCategory[]>(categories.map((category) => category.id));
@@ -59,7 +54,7 @@ export function MissionReplay({ scenario, setScenario, activeHistory, history, p
       </section>
       <section className="panel-card event-card" aria-labelledby="event-card-title">
         <div className="eyebrow" id="event-card-title">Event {bounded} · {current?.category}</div>
-        <h2>{event ? humanize(event.type) : "No event"}</h2>
+        <h2>{event ? humanizeType(event.type) : "No event"}</h2>
         {event && <p className="event-summary">{summarizeResearchEvent(event)}</p>}
         <div className="eyebrow">What changed</div>
         <ul className="deltas">{change.lines.length ? change.lines.map((line) => <li key={line}>{line}</li>) : <li className="none">No visible change to the research state. The event is recorded for the history.</li>}</ul>

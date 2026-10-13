@@ -556,3 +556,41 @@
 .reason-list p { max-width: 90ch; margin: 4px 0 6px; color: #334155; }
 .tribunal-meta { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 @media (max-width: 900px) { .court { grid-template-columns: 1fr; } .verdict-column { order: -1; padding: 16px 8px; } .side.venture, .side.ruin { clip-path: none; } }
+
+/* First-mission setup and mission controls panel */
+.command-panel { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px 40px; align-items: start; }
+.command-panel.first-mission { padding: 28px 32px; border-top: 1px solid var(--rule); border-left: 4px solid var(--brand); }
+.command-panel .runtime-identity span { color: var(--muted); font: 600 13px/1.3 "IBM Plex Sans", system-ui, sans-serif; }
+.command-panel .runtime-identity strong { color: var(--paper); font: 600 14px/1.4 "IBM Plex Mono", ui-monospace, monospace; }
+.command-panel .runtime-identity small { color: var(--muted); font-size: 13px; }
+.first-mission .runtime-identity span { color: var(--brand); font: 600 13px/1.2 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .06em; }
+.first-mission .runtime-identity strong { max-width: 18ch; color: var(--paper); font: 600 clamp(26px, 2.6vw, 36px)/1.1 "IBM Plex Sans", system-ui, sans-serif; letter-spacing: -.02em; }
+.first-mission .runtime-identity small { max-width: 52ch; margin-top: 12px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.command-panel .runtime-actions { grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.command-panel .fixture-field { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.command-panel .fixture-field label { color: var(--paper-soft); font-size: 14px; font-weight: 600; }
+.command-panel .fixture-field small { grid-column: 1; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.command-panel .runtime-actions select { min-height: 44px; padding: 8px 12px; border-radius: 8px; font-size: 15px; }
+.command-panel .runtime-buttons { flex-wrap: wrap; gap: 10px; }
+.command-panel .runtime-actions button { min-height: 44px; padding: 8px 18px; border-radius: 8px; font-size: 15px; }
+.command-panel .runtime-actions .primary-action { border-color: var(--brand); background: var(--brand); color: #fff; font-weight: 600; }
+.command-panel .runtime-actions .primary-action:hover:not(:disabled) { background: var(--brand-strong); color: #fff; }
+.mission-route { counter-reset: step; gap: 12px; border: 0; }
+.mission-route > span { counter-increment: step; position: relative; gap: 4px; padding: 14px 16px 14px 56px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface-soft); }
+.mission-route > span:first-child { padding-left: 56px; border-left: 1px solid var(--rule); }
+.mission-route > span::before { content: counter(step); position: absolute; left: 16px; top: 14px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--brand); color: #fff; font: 600 14px/1 "IBM Plex Sans", system-ui, sans-serif; }
+.mission-route strong { color: var(--paper); font-size: 15px; font-weight: 600; }
+.mission-route small { color: var(--muted); font-size: 13px; }
+.runtime-start-note { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.runtime-start-note code { padding: 3px 8px; border-radius: 6px; background: var(--brand-tint); border-color: #c9d8f8; color: var(--brand-strong); font: 600 13px/1.2 "IBM Plex Mono", ui-monospace, monospace; }
+.runtime-start-disclosure { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
+.runtime-start-disclosure summary { cursor: pointer; color: var(--brand); font-weight: 600; }
+.command-panel .prototype-settings { grid-column: 1 / -1; }
+@media (max-width: 1000px) { .command-panel, .command-panel.first-mission { grid-template-columns: minmax(0, 1fr); padding: 22px 20px; } .mission-route { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .mission-route { grid-template-columns: minmax(0, 1fr); } }
+.mission-route > span, .mission-route > span:nth-child(n) { padding-left: 56px; border-left: 1px solid var(--rule); }
+.command-panel .prototype-settings { gap: 10px 12px; }
+.command-panel .prototype-settings .scenario-switcher { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 0; }
+.command-panel .prototype-settings .scenario-switcher > span, .command-panel .prototype-settings .scenario-switcher label { color: var(--muted); font-size: 13px; font-weight: 600; }
+.command-panel .prototype-settings button { min-height: 36px; padding: 6px 14px; border-radius: 8px; font-size: 13px; letter-spacing: 0; }
+.command-panel .prototype-settings .scenario-switcher button[aria-pressed="true"], .command-panel .prototype-settings .scenario-switcher button.active { border-color: var(--brand); background: var(--brand-tint); color: var(--brand-strong); font-weight: 600; }

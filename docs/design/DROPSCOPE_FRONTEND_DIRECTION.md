@@ -1,337 +1,82 @@
 # DropScope Frontend Direction
 
-**Status:** Approved visual direction for Milestone 1B  
-**Decision date:** 2026-09-07  
-**Scope:** Visual language, interaction character, and the first Research Office slice  
-**Does not change:** Product behavior, engine policy, event contracts, permissions, or the frozen interface surfaces
+Status: approved by the owner on 2026-10-13. This replaces the earlier illustrated pixel-office direction (see git history for the retired version). It governs presentation only; product architecture, policies and the engine are unchanged.
 
-## 1. Design read
+## 1. Direction
 
-Reading this as a desktop-first research operations product for a solo AI-native builder, with a professional retro-futurist control-room language, an expressive pixel-art robot layer, and a modern accessible product interface.
+A modern, light research tool: white and cool-grey surfaces, near-navy text, and one strong cobalt blue for the brand and primary actions. The page leads with the finding, keeps the evidence, budget and event history one glance away, and labels everything honestly (synthetic fixture, recorded replay, not market research). Personality comes from confident type and one bold blue panel. There is no illustrated agent or pixel art.
 
-Initial design dials:
+## 2. Principles
 
-- `DESIGN_VARIANCE: 6` - distinctive and spatial, but organized
-- `MOTION_INTENSITY: 4` - visible activity and feedback without constant movement
-- `VISUAL_DENSITY: 6` - operationally useful without becoming a cramped cockpit
+1. **Finding first.** The newest recorded finding is the most prominent element on the Research Office screen, with its owner and a provenance link.
+2. **Truthful labels.** Every screen says what it is: synthetic demo, recorded replay, or live local mission. Never imply market research that did not happen.
+3. **One accent, one alert.** Cobalt means brand, links, selection, live work and the primary action. Red appears only where attention is needed: blocking feedback, a policy block, a failure. Nothing else is coloured.
+4. **Plain words.** Labels describe what happened ("Evidence research started"), not mood.
+5. **Readable first.** Body text 16px, labels never below 13px, AA contrast for all text. Event numbers and units are information, not decoration.
+6. **Derived state only.** The UI renders replayed engine state and cannot bypass engine policies.
 
-The intended balance is approximately:
+## 3. Palette
 
-- 70% professional research application
-- 20% pixel-art atmosphere and character
-- 10% playful motion
+| Token | Value | Use |
+|---|---|---|
+| `--brand` | `#1D4ED8` | Primary actions, links, selection, the hero finding panel |
+| `--brand-strong` | `#1E40AF` | Hover and pressed |
+| `--brand-tint` | `#EAF0FF` | Selected rows, subtle fills |
+| `--ink` | `#0F172A` | Primary text, optional dark accent |
+| `--muted` | `#475569` | Secondary text |
+| `--canvas` | `#F5F7FB` | Page background |
+| `--surface` | `#FFFFFF` | Cards and panels |
+| `--rule` | `#E2E8F0` | Dividers and borders |
+| `--success` | `#0F172A` | Completed and done (dark navy, same as `--ink`; no green) |
+| `--warning` / `--danger` | `#B91C1C` | The single alert colour: blocking feedback, policy block, failure |
+| `--waiting` | `#64748B` | Waiting, not started |
 
-These percentages describe design emphasis, not a mechanical scoring formula.
+State is always shown by an icon or word plus colour, never colour alone. There is no green, amber or purple in the interface. Charts use cobalt and its tints only; budget segments are `#1D4ED8`, `#8FB0F7` and `#CBD9FB`. Colours are CSS variables so a dark theme later is a token swap. Text on the cobalt panel is white or `#DCE6FF` only. Contrast is verified when built.
 
-## 2. Core visual idea
+## 4. Type and shape
 
-DropScope is a living research command center presented as a friendly illustrated office. It is not a generic SaaS dashboard and it is not a management game.
+- **Type:** IBM Plex Sans for text and IBM Plex Mono for IDs and event numbers. Large display size only for the finding headline and the page title.
+- **Shape:** 8px radius cards, 1px rules instead of heavy shadows, 4px spacing grid. Square corners only for the hero finding panel.
+- **Motion:** minimal; focus rings and short state transitions, respecting reduced motion.
 
-The user gives a research organization a mission and watches the Commander and specialists execute it. The interface must make the real system understandable: who is working, what they are doing, which work can happen concurrently, what evidence exists, what failed, where agents disagree, and how the budget is being used.
+## 5. Research Office layout
 
-Use this separation consistently:
+**Top section (slim bar plus stage stepper).** One 56px bar: logo, the six screens, and a "Mission controls" menu on the right. Below it, the title row with a status chip, and a horizontal four-step progress track (Researching, Debating, Reviewing, Report) with connectors; the current step is filled in cobalt. The synthetic or replay notice is one thin banner under the stepper.
 
-> Pixel art belongs to agents, the office environment, and activity visualization. Modern product UI belongs to information, navigation, controls, evidence, and reports.
+```
+[logo] Research Office  Agent Desk  Tribunal  Review  Report  Replay      [Mission controls v]
+Crosscurrent Workspace Market   (Recorded replay - event 15)
+(1 Researching)----(2 Debating)----(3 Reviewing)----(4 Report)
+Synthetic demo, recorded replay. Illustrative inputs, not market research.
+```
 
-The pixel layer must communicate real state. It must not be decorative mascots pasted onto ordinary dashboard cards.
+**Budget and activity (no permanent right rail).** A one-line ledger under the title: a stacked bar of spent, committed and reserved against the total, with the numbers and the free amount. Activity is a collapsible timeline card below the finding, showing the latest five events with "All events" to expand.
 
-## 3. Atmosphere
+```
+Budget  [########||||||.........]  Spent 25 - Committed 50 - Reserved 0 - Free 65 of 140
+```
 
-The visual world should feel like an older imagined version of the future:
+**Screen order, top to bottom**
 
-- compact robot workers with screen faces;
-- recognizable workstations and equipment;
-- slightly chunky, deliberately pixelated environmental art;
-- dark charcoal and deep navy surfaces rather than pure black;
-- restrained cool highlights, illuminated monitors, and practical status lighting;
-- warm character moments inside a serious research tool;
-- careful, contemporary typography for all readable information.
+1. Top bar and title with stepper.
+2. One-line ledger.
+3. **Finding panel:** full-width cobalt block, white text, headline, owner, task ID and "View provenance".
+4. **Research tasks:** a simple list with state badges; show the dependency graph only with three or more tasks.
+5. **Inputs in perspective:** candidate score table with exact fixture values, neutral bars, and the "No ranking implied" note.
+6. Activity timeline.
+7. Footer provenance note.
 
-The target is retro-futurist, not cyberpunk. Avoid a spaceship covered in neon, excessive holograms, scanlines, glitch effects, and glowing borders.
+The other five screens (Agent Desk, Tribunal Room, Review Office, Final Report, Mission Replay) use the same tokens and components and are polished after the Research Office.
 
-## 4. The product must still feel professional
+## 6. Responsive and accessibility
 
-Research content takes priority over visual play. Reports, evidence, warnings, budgets, confidence, and review results must be easy to scan and compare.
+- Breakpoints 1280, 768 and 375. At 768 the stepper stays; at 375 it becomes "Step 1 of 4" with a menu.
+- Keyboard order follows reading order; visible focus rings in `--brand`.
+- Status never relies on colour alone; interactive targets are at least 40px tall.
+- Verify with the Playwright overflow checks and a contrast check before accepting snapshots.
 
-- Use a modern sans-serif for normal UI text.
-- A restrained monospace may be used for event identifiers, timestamps, numeric values, and technical metadata.
-- Do not use pixel fonts for paragraphs, forms, navigation, reports, or tables.
-- Maintain WCAG AA contrast for normal text and controls.
-- Use a consistent spacing, radius, border, and elevation system.
-- Use semantic color for actual status, not decoration.
-- Never hide a failure, rejection, retry, disagreement, or budget warning to keep the office looking clean.
+## 7. Process
 
-Dark-first is approved for the initial slice. Use semantic color tokens so a future light theme remains possible, but do not expand the first slice merely to add theme switching.
-
-## 5. Palette and material rules
-
-The first implementation should propose exact token values within this family:
-
-- **Base:** cool charcoal or deep navy, never pure `#000000`.
-- **Raised surfaces:** one or two slightly lighter cool neutrals.
-- **Primary text:** softened off-white, never pure `#ffffff` everywhere.
-- **Secondary text:** cool gray with accessible contrast.
-- **Primary accent:** one restrained electric blue or cyan family.
-- **Semantic colors:** green for success, amber for warning, red for failure, and a distinct neutral treatment for idle or unavailable.
-
-Semantic colors are permitted in addition to the primary accent because they encode real operational state. Do not turn every agent into an unrelated rainbow. Agent identity should mainly come from silhouette, equipment, face, badge, and small controlled color details.
-
-Avoid:
-
-- AI-purple gradients;
-- generic glassmorphism;
-- outer neon glows;
-- pure-black panels;
-- heavy shadows around every region;
-- a different accent color on every screen;
-- decorative colored dots that do not represent state.
-
-## 6. Shape, depth, and layout language
-
-The application is a spatial office surrounded by precise information surfaces.
-
-- Use one restrained radius system. Panels may be softly squared, not bubbly.
-- Use cards only where containment or elevation communicates a real relationship.
-- Prefer zones, dividers, alignment, and negative space over a grid of identical floating boxes.
-- Controls must look tactile and intentional, but not like arcade buttons.
-- Pixel-art areas may use crisp stepped edges and sprite silhouettes. Normal UI must remain resolution-independent and sharp.
-- Render pixel assets with nearest-neighbor scaling and integer scale factors whenever practical so they do not blur.
-
-The Research Office should have an intentional visual hierarchy:
-
-1. the mission and its current phase;
-2. the Commander and active organization;
-3. the work graph and agent states;
-4. budget, alerts, and event detail;
-5. secondary navigation and utilities.
-
-## 7. Robot art direction
-
-Robots should be original pixel-art characters inspired only by the broad qualities in the user's references. Do not trace or reproduce the supplied examples.
-
-Shared robot language:
-
-- compact body and readable silhouette;
-- screen face with a small set of expressive states;
-- one coherent pixel grid and outline weight;
-- limited palette per sprite;
-- enough detail to recognize the role at normal UI size;
-- no realistic human faces;
-- no emoji used as a substitute for character art.
-
-The Commander should be visually recognizable without relying only on a label. Possible signals include a slightly taller silhouette, command headset or antenna, broader display, central workstation, or restrained command accent.
-
-Specialists should share the same robot family while differing through role equipment and small silhouette changes. Examples include research sensors, evidence displays, analytic instruments, safety markings, or review tools.
-
-Robot identity must never imply different permissions or evidence standards. Product policy remains authoritative.
-
-### Required visual states
-
-Each robot system must support at least:
-
-- idle;
-- assigned;
-- actively working;
-- waiting on a dependency;
-- blocked or requiring approval;
-- failed;
-- completed;
-- interrupted;
-- under review or revising, when relevant.
-
-Do not create a full game-animation system in the first slice. A base sprite plus small state-specific face, pose, equipment, or status changes is enough.
-
-## 8. Meaningful motion
-
-Every animation must explain hierarchy, feedback, or system state.
-
-Appropriate examples:
-
-- a working robot types or operates a monitor;
-- an idle robot enters a subtle low-power pose;
-- a blocked robot and its workstation show a restrained warning state;
-- a task handoff travels from one workstation to another;
-- multiple active robots visibly demonstrate concurrent work;
-- completion produces a brief confirmation response;
-- the Commander receives a result or assigns a task;
-- Replay advances the office through recorded event states.
-
-Avoid:
-
-- constant bouncing or floating;
-- animation added only because it looks impressive;
-- parallax, magnetic controls, or scroll hijacking in operational screens;
-- large particle effects;
-- automatic sound;
-- rapid glitch effects;
-- animation that implies work not present in the event-derived state.
-
-Animate `transform` and `opacity` where possible. Honor `prefers-reduced-motion`; the complete product must remain understandable when motion is disabled.
-
-## 9. Gamification boundary
-
-DropScope may feel alive, but it must not reward research as if it were a game.
-
-Do not add:
-
-- XP or levels;
-- coins or fictional currencies;
-- loot, unlocks, streaks, or achievements;
-- health, mana, or energy bars;
-- arbitrary scores that are not part of DropScope's real evidence model;
-- winner celebrations that exaggerate uncertain research;
-- game mechanics that encourage spending more research budget.
-
-The permitted gamification is representational: characters, place, motion, and understandable activity. It must not alter decisions or incentives.
-
-## 10. Milestone 1B surfaces
-
-Preserve the frozen information architecture.
-
-### Mission Lobby
-
-Create or load a mission, select a fixture or mission type, configure geography and budget, and open completed missions. It should feel like entering the research facility, but forms and mission history remain conventional and readable.
-
-### Research Office
-
-The main spatial surface. It contains the Commander area, specialist desks, task dependencies, agent states, usage, failures and approvals, and a live event feed.
-
-### Agent Desk
-
-A focused detail surface for bounded instructions, current work, evidence, claims, confidence, contradictions, usage, and history. It is a workbench, not a profile or collectible-character screen.
-
-### Tribunal Room
-
-A structured debate surface for the advocate, prosecutor, Commander questions, challenges, and unresolved disputes. Visual staging may reinforce opposing roles, but the content must remain comparable and precise.
-
-### Review Office
-
-A comparison surface for blind-reviewer ranking, Commander ranking, divergence, blocking feedback, and revision response. It must clearly preserve reviewer independence.
-
-### Final Report
-
-A professional research document. Pixel art should be minimal here so evidence, limitations, safety status, confidence, and next experiments dominate.
-
-### Mission Replay
-
-A chronological reconstruction of recorded events. It should update both the office state and the event detail without inventing activity between events.
-
-## 11. First bounded slice: Research Office
-
-Do not implement every Milestone 1B surface at once. First build one high-quality Research Office vertical slice using event-derived representative data.
-
-Minimum slice content:
-
-- application frame and restrained navigation;
-- mission name and current phase;
-- central Commander workstation;
-- two or three specialist workstations;
-- original robot visuals with distinct roles;
-- clearly distinguishable idle, working, blocked or failed, and completed states;
-- a task dependency area that shows ordering and concurrency;
-- budget reserve, committed usage, and consumed usage;
-- failure and approval visibility;
-- live event feed or selected-event detail;
-- a path into Replay or a small replay control if already supported by scope.
-
-The slice must use real engine contracts or an explicitly labeled projection fixture shaped from those contracts. Do not invent attractive metrics that DropScope does not produce.
-
-## 12. Responsive behavior
-
-The primary target is desktop because the office needs spatial room. The interface must still remain usable in a narrow desktop window and on mobile.
-
-- On wide screens, the office may be spatial with a contextual side rail.
-- On narrower screens, collapse into a clear vertical sequence: mission, Commander, active agents, work graph, budget and alerts, events.
-- Do not shrink the entire office like an unreadable game canvas.
-- Preserve touch targets, keyboard navigation, focus visibility, and readable text.
-- Do not make hover the only way to reveal status or controls.
-
-## 13. Empty, loading, failure, and recovery states
-
-The first slice is incomplete unless it demonstrates more than the successful running state.
-
-- **Empty:** explain how to start or load a mission.
-- **Loading:** use stable skeletons or reserved areas matching the final layout.
-- **Failure:** show which task or agent failed and whether unrelated work continues.
-- **Blocked:** show the dependency, approval, or policy reason.
-- **Interrupted and recovered:** preserve visible history rather than pretending uninterrupted success.
-- **No eligible candidates:** present a legitimate research outcome, not a broken or disappointing empty page.
-
-## 14. Explicit anti-slop rules
-
-Reject a concept that relies on any of these:
-
-- a conventional dashboard made from equal rounded cards;
-- a robot image placed beside otherwise generic SaaS boxes;
-- AI-purple gradients or blue-purple outer glows;
-- fake charts, fake percentages, or fake activity;
-- oversized marketing headings inside the product;
-- generic `Step 1`, `Step 2`, and `Step 3` labels;
-- excessive pills and uppercase micro-labels;
-- glass panels everywhere;
-- an arcade font for normal UI;
-- pixelating the entire application;
-- decorative terminal text, weather, coordinates, or version stamps;
-- inconsistent corner radii or icon families;
-- hidden failures or overly positive success theater;
-- placeholder copy that sounds like marketing instead of research operations;
-- inaccessible low-contrast secondary text;
-- animations with no event or interaction meaning.
-
-## 15. Asset and provenance rules
-
-- Create original robot and environment assets for DropScope.
-- Do not copy the user's visual references. They establish mood only.
-- Do not commit temporary clipboard images to the public repository.
-- Store final assets in an intentional, documented asset directory.
-- Record how generated or third-party assets were produced and confirm their repository use is permitted.
-- Avoid CSS-div drawings pretending to be finished pixel art.
-- Keep source sprites or generation inputs when they are needed for consistent future characters and states.
-
-## 16. Visual checkpoint and acceptance
-
-Before expanding to other screens, Terra must show the user the Research Office at these states:
-
-1. a mission with at least two concurrent active agents;
-2. a mission with a blocked or failed task while unrelated work remains visible;
-3. a completed mission state;
-4. a narrower-window layout;
-5. reduced-motion behavior or a clear verification of it.
-
-The checkpoint passes only if:
-
-- the user recognizes it as a research office rather than a generic dashboard;
-- the pixel robots feel integrated into the work environment;
-- the result feels professional before it feels playful;
-- the Commander and specialists are immediately distinguishable;
-- the interface communicates real mission state without explanation;
-- concurrency, dependencies, failure, and budget state are legible;
-- typography and controls remain crisp and accessible;
-- the design does not depend on copied reference art;
-- no engine policy can be bypassed through the interface;
-- the user approves the visual language before it is propagated.
-
-## 17. Implementation constraints for Terra
-
-- Treat this as a clean visual start. No frontend implementation exists in the inspected checkout, and the rejected concept is not a repository baseline to preserve.
-- Preserve the React, TypeScript, and Vite direction already frozen for Milestone 1B.
-- Before adding a UI or animation dependency, inspect `package.json`, choose one coherent accessible foundation, and explain the choice briefly.
-- The anti-slop frontend skill is a quality and art-direction aid, not the product UI architecture. It explicitly does not specialize in dashboards or multi-step applications.
-- Use its relevant rules for typography, palette discipline, hierarchy, motion, responsiveness, accessibility, and avoiding generic AI output.
-- Do not import its landing-page patterns blindly into the Research Office.
-- Keep UI state derived from engine events and projections. The frontend must not import policy authority into visual components or create a second source of truth.
-- Keep implementation credit-efficient. Build the single slice, verify it, and stop at the visual checkpoint.
-
-## 18. Audit note for the rejected concept
-
-No frontend source or preserved concept artifact was present in the inspected repository at the time this direction was written. Therefore there is nothing to refactor or preserve visually.
-
-Terra should treat the rejected concept as evidence of patterns to retire:
-
-- generic box-first composition;
-- insufficiently integrated character art;
-- weak hierarchy or spacing;
-- unearned futuristic effects;
-- a polished-template appearance without a DropScope-specific world.
-
-If Terra still has a screenshot or artifact in its task context, it should compare it against Sections 2, 6, 7, 14, and 16 before implementation and report only which parts, if any, are worth retaining.
+- Visual snapshots are regenerated only after the image diffs are reviewed with the owner.
+- No product-policy, engine or contract changes.
+- Anything not specified here follows the principles above.

@@ -131,20 +131,3 @@ export function FinalReport({ events, fixtureId }: { events?: LocalMissionDto["e
 function ReportContext({ title, copy, note, items }: { title: string; copy: string; note?: string; items: string[] }) {
   return <section className="report-context"><h2>{title}</h2><p>{copy}</p>{note && <small>{note}</small>}<ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></section>;
 }
-
-export function MissionReplay({ scenario, setScenario, activeHistory }: { scenario: OfficeScenario; setScenario: (value: OfficeScenario) => void; activeHistory?: LocalMissionDto }) {
-  const [position, setPosition] = useState(officeHistories[scenario].length);
-  const [filters, setFilters] = useState<ReplayEventCategory[]>(["task", "agent", "budget", "review", "failure"]);
-  const history = activeHistory?.events ?? officeHistories[scenario];
-  useEffect(() => { setPosition(history.length); }, [activeHistory?.missionId, scenario, history.length]);
-  const boundedPosition = Math.min(position, history.length);
-  const records = replayEvents(history).filter((item) => filters.includes(item.category));
-  let projection: OfficeProjection | null = null;
-  let error: string | null = null;
-  try { projection = projectOffice(history.slice(0, boundedPosition)); } catch (caught) { error = caught instanceof Error ? caught.message : "This event prefix cannot be projected."; }
-  const toggle = (category: ReplayEventCategory) => setFilters((current) => current.includes(category) ? current.filter((item) => item !== category) : [...current, category]);
-  return <section className="decision-view replay-view" aria-label="Mission Replay">
-    <SectionHeader title="Reconstruct the office timeline" description={`${activeHistory ? `Persisted local mission ${activeHistory.missionId}.` : `Selected synthetic ${scenario.toLowerCase()} history.`} Filters change the list only; mission state never changes.`} aside={<strong className="replay-position">Event {boundedPosition} / {history.length}</strong>} />
-    <div className="replay-layout"><aside className="replay-inspector"><header><span>Timeline controls</span><small>Projection only</small></header><label htmlFor="replay-position">Timeline position</label><input id="replay-position" type="range" min="1" max={history.length} value={Math.max(1, boundedPosition)} onChange={(event) => setPosition(Number(event.currentTarget.value))} /><div className="filter-row" role="group" aria-label="Event category filters">{(["task", "agent", "budget", "review", "failure"] as ReplayEventCategory[]).map((category) => <button key={category} className={filters.includes(category) ? "selected" : ""} onClick={() => toggle(category)}>{category}</button>)}</div>{error ? <p className="inline-error">Prefix unavailable: {error}</p> : projection && <div className="replay-snapshot"><span>Projected snapshot</span><strong>{projection.mission.phase}</strong><dl><div><dt>Workers</dt><dd>{projection.agents.length}</dd></div><div><dt>Spent</dt><dd>{projection.ledger.spent}</dd></div><div><dt>Events</dt><dd>{projection.events.length}</dd></div></dl></div>}<div className="replay-scenarios"><span>{activeHistory ? "Demo fallback histories" : "History"}</span>{(Object.keys(officeHistories) as OfficeScenario[]).map((name) => <button className={scenario === name ? "selected" : ""} key={name} onClick={() => { setScenario(name); setPosition(officeHistories[name].length); }}>{name}</button>)}</div></aside><section className="replay-chronology" aria-labelledby="replay-chronology-title"><header className="surface-heading"><div><span>Recorded sequence</span><h2 id="replay-chronology-title">Event chronology</h2></div><small>{records.length} visible</small></header><div className="event-list replay-events">{records.map((event) => <article className={`event ${event.sequence <= boundedPosition ? "replayed" : ""}`} key={event.sequence}><b>{String(event.sequence).padStart(2, "0")}</b><span><strong>{event.type}</strong><small>{event.category} · {event.detail}</small></span><button onClick={() => setPosition(event.sequence)}>Inspect</button></article>)}</div></section></div>
-  </section>;
-}

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType } from "react";
+import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { Check } from "@phosphor-icons/react/dist/csr/Check";
 import { Factory } from "@phosphor-icons/react/dist/csr/Factory";
@@ -10,11 +10,10 @@ import type { MissionEvent } from "../contracts.js";
 import type { OfficeView } from "./editorial-views.js";
 import type { AgentDeskRecord, AgentState, OfficeProjection } from "./office-projection.js";
 import { displayResearchCopy, summarizeResearchEvent } from "./research-presentation.js";
+import { defaultSelection, layoutTasks, nodeTitle, stateText, uniqueAgents, type Task } from "./research-model.js";
 
-type Task = OfficeProjection["tasks"][number];
 type Icon = ComponentType<{ size?: number; weight?: "regular" | "bold" | "fill"; "aria-hidden"?: boolean }>;
 
-const stateText: Record<AgentState, string> = { COMPLETED: "Completed", WORKING: "Working", WAITING: "Waiting", BLOCKED: "Blocked" };
 const stageNames = ["Researching", "Debating", "Reviewing", "Report"] as const;
 
 function roleIcon(role: string | null): Icon {
@@ -30,46 +29,6 @@ function sentence(value: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function nodeTitle(task: Task): string {
-  if (task.role) return task.role.replace(/ Researcher$/, "");
-  const copy = displayResearchCopy(task.label);
-  return copy.length > 26 ? `${copy.slice(0, 25)}…` : copy;
-}
-
-/** Layer tasks by dependency depth so prerequisites sit left of the work that needs them. */
-export function layoutTasks(tasks: Task[]): Array<{ task: Task; level: number; x: number; y: number }> {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const levels = new Map<string, number>();
-  const levelOf = (task: Task, trail: Set<string>): number => {
-    const known = levels.get(task.id);
-    if (known !== undefined) return known;
-    if (trail.has(task.id)) return 0;
-    trail.add(task.id);
-    const parents = task.dependencyIds.map((id) => byId.get(id)).filter((parent): parent is Task => Boolean(parent));
-    const level = parents.length ? Math.max(...parents.map((parent) => levelOf(parent, trail))) + 1 : 0;
-    trail.delete(task.id);
-    levels.set(task.id, level);
-    return level;
-  };
-  tasks.forEach((task) => levelOf(task, new Set()));
-  const columns = Math.max(0, ...tasks.map((task) => levels.get(task.id) ?? 0)) + 1;
-  const perLevel = new Map<number, Task[]>();
-  tasks.forEach((task) => { const level = levels.get(task.id) ?? 0; perLevel.set(level, [...(perLevel.get(level) ?? []), task]); });
-  return tasks.map((task) => {
-    const level = levels.get(task.id) ?? 0;
-    const siblings = perLevel.get(level)!;
-    const index = siblings.indexOf(task);
-    const step = columns === 1 ? 0 : Math.min(30, 74 / (columns - 1));
-    const x = 50 + (level - (columns - 1) / 2) * step;
-    const y = siblings.length === 1 ? 46 : 22 + (50 * index) / (siblings.length - 1);
-    return { task, level, x, y };
-  });
-}
-
-function defaultSelection(tasks: Task[]): string | undefined {
-  return (tasks.find((task) => task.state === "BLOCKED") ?? tasks.find((task) => task.state === "WORKING") ?? [...tasks].reverse().find((task) => task.state === "COMPLETED") ?? tasks[0])?.id;
-}
-
 function Stepper({ projection }: { projection: OfficeProjection }) {
   const status = projection.mission.status;
   const current = status === "COMPLETED" ? stageNames.length : 0;
@@ -83,7 +42,7 @@ function Stepper({ projection }: { projection: OfficeProjection }) {
   </ol>;
 }
 
-function Constellation({ tasks, selected, onSelect, working, status }: { tasks: Task[]; selected?: string; onSelect: (id: string) => void; working: number; status: OfficeProjection["mission"]["status"] }) {
+export function Constellation({ tasks, selected, onSelect, working, status, snapshot = false, eyebrow = "Research constellation", title = "Task dependencies", changed }: { tasks: Task[]; selected?: string; onSelect: (id: string) => void; working: number; status: OfficeProjection["mission"]["status"]; snapshot?: boolean; eyebrow?: string; title?: string; changed?: ReadonlySet<string> }) {
   const laid = useMemo(() => layoutTasks(tasks), [tasks]);
   const positions = new Map(laid.map((item) => [item.task.id, item]));
   const edges = laid.flatMap(({ task, x, y }) => task.dependencyIds.flatMap((id) => {
@@ -94,21 +53,21 @@ function Constellation({ tasks, selected, onSelect, working, status }: { tasks: 
     return [{ key: `${id}->${task.id}`, kind, d: `M${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}` }];
   }));
   const ordered = [...laid].sort((a, b) => a.level - b.level);
-  return <div className="constellation-body">
+  return <div className={`constellation-body ${snapshot ? "snapshot" : ""}`}>
     <div className="stage-head">
-      <div><div className="eyebrow">Research constellation</div><h2 className="stage-title">Task dependencies</h2></div>
-      <div className="big" aria-live="polite">{status === "COMPLETED" ? <Check size={44} weight="bold" aria-hidden /> : working}<small>{status === "COMPLETED" ? "mission complete" : status === "BLOCKED" ? "policy block" : working === 1 ? "researcher working" : "researchers working in parallel"}</small></div>
+      <div><div className="eyebrow">{eyebrow}</div><h2 className="stage-title">{title}</h2></div>
+      {!snapshot && <div className="big" aria-live="polite">{status === "COMPLETED" ? <Check size={44} weight="bold" aria-hidden /> : working}<small>{status === "COMPLETED" ? "mission complete" : status === "BLOCKED" ? "policy block" : working === 1 ? "researcher working" : "researchers working in parallel"}</small></div>}
     </div>
     {laid.length === 0 ? <p className="stage-empty">No tasks are recorded in this replay yet.</p> : <>
       <div className="map" role="group" aria-label="Task dependency map">
         <svg viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true"><circle cx="500" cy="260" r="190" className="ring dotted" /><circle cx="500" cy="260" r="330" className="ring" />{edges.map((edge) => <path key={edge.key} className={`edge ${edge.kind}`} d={edge.d} vectorEffect="non-scaling-stroke" />)}</svg>
         {laid.map(({ task, x, y }) => { const Mark = roleIcon(task.role); return <button type="button" key={task.id} className={`cnode ${task.state.toLowerCase()} ${selected === task.id ? "selected" : ""}`} style={{ left: `${x}%`, top: `${y}%` }} aria-pressed={selected === task.id} aria-label={`${nodeTitle(task)}: ${stateText[task.state]}`} onClick={() => onSelect(task.id)}>
-          <span className="cnode-mark">{task.state === "COMPLETED" ? <Check size={26} weight="bold" aria-hidden /> : task.state === "BLOCKED" ? <Warning size={24} weight="bold" aria-hidden /> : <Mark size={24} weight="bold" aria-hidden />}</span>
+          <span className="cnode-mark">{task.state === "COMPLETED" ? <Check size={26} weight="bold" aria-hidden /> : task.state === "BLOCKED" ? <Warning size={24} weight="bold" aria-hidden /> : <Mark size={24} weight="bold" aria-hidden />}{changed?.has(task.id) && <span className="just-changed">just changed</span>}</span>
           <span className="cnode-copy"><small>{task.role ? "Research" : "Next checkpoint"}</small><strong>{nodeTitle(task)}</strong><em>{stateText[task.state]}{task.state === "WORKING" ? ` · ${task.cost} units` : ""}</em></span>
         </button>; })}
       </div>
       <ol className="mnodes" aria-label="Task dependencies">{ordered.map(({ task }) => <li key={task.id}><button type="button" className={`mnode ${task.state.toLowerCase()} ${selected === task.id ? "selected" : ""}`} aria-pressed={selected === task.id} onClick={() => onSelect(task.id)}><b aria-hidden="true" /><span><small>{task.role ? "Research" : "Next checkpoint"}{task.dependencyIds.length ? " · depends on earlier tasks" : ""}</small><strong>{nodeTitle(task)}</strong><em>{stateText[task.state]}{task.state === "WORKING" ? ` · ${task.cost} units` : ""}</em></span></button></li>)}</ol>
-      <div className="map-legend"><span>Select a node to inspect its task.</span><span><span className="key"><i /> Active dependency</span><span className="key"><i className="dashed" /> Pending dependency</span></span></div>
+      {!snapshot && <div className="map-legend"><span>Select a node to inspect its task.</span><span><span className="key"><i /> Active dependency</span><span className="key"><i className="dashed" /> Pending dependency</span></span></div>}
     </>}
   </div>;
 }
@@ -203,7 +162,37 @@ function EarlierFindings({ records }: { records: AgentDeskRecord[] }) {
   </section>;
 }
 
-export function ResearchOffice({ projection, agents, onApproval, onEvidence, onNavigate, synthetic, history }: { projection: OfficeProjection; agents: OfficeProjection["agents"]; onApproval: () => void; onEvidence: () => void; onNavigate: (view: OfficeView) => void; synthetic: boolean; history: MissionEvent[] }) {
+export function PageHead({ eyebrow, title, description, aside }: { eyebrow: string; title: string; description: string; aside?: ReactNode }) {
+  return <div className="pg-head"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{aside}</div>;
+}
+
+/** Persistent cockpit: every screen keeps the mission rail, researcher roster, budget and activity visible. */
+export function CommandFrame({ label, projection, history, onApproval, onNavigate, floor = false, children }: { label?: string; projection: OfficeProjection; history: MissionEvent[]; onApproval: () => void; onNavigate: (view: OfficeView) => void; floor?: boolean; children: ReactNode }) {
+  const agents = uniqueAgents(projection);
+  const completedTasks = projection.tasks.filter((task) => task.state === "COMPLETED").length;
+  const Heading = floor ? "h1" : "h2";
+  const inner = <>
+    <aside className="rail left-rail" aria-label="Mission status">
+      <section className="rail-card mission-card" aria-labelledby="mission-title">
+        <div className="eyebrow">Mission</div>
+        <Heading id="mission-title" className="mission-name">{projection.mission.name}</Heading>
+        <span className={`chip ${projection.mission.status.toLowerCase()}`}>{projection.mission.phase}</span>
+        <Stepper projection={projection} />
+        <p className="research-completion">{completedTasks} of {projection.tasks.length} recorded tasks completed</p>
+      </section>
+      <Roster agents={agents} onApproval={onApproval} />
+      <p className="rail-card note read-only"><strong>Read-only.</strong> This view replays recorded engine events. It cannot change mission data or policy.</p>
+    </aside>
+    <div className="center">{children}</div>
+    <aside className="rail right-rail" aria-label="Budget and activity">
+      <BudgetGauge ledger={projection.ledger} />
+      <Activity history={history} onReplay={() => onNavigate("replay")} />
+    </aside>
+  </>;
+  return label ? <section className="command-center" aria-label={label}>{inner}</section> : <div className="command-center">{inner}</div>;
+}
+
+export function ResearchOfficeCenter({ projection, agents, onApproval, onEvidence, onNavigate, synthetic }: { projection: OfficeProjection; agents: OfficeProjection["agents"]; onApproval: () => void; onEvidence: () => void; onNavigate: (view: OfficeView) => void; synthetic: boolean }) {
   const [picked, setPicked] = useState<string>();
   const taskIds = projection.tasks.map((task) => task.id);
   const selectedId = picked && taskIds.includes(picked) ? picked : defaultSelection(projection.tasks);
@@ -212,34 +201,16 @@ export function ResearchOffice({ projection, agents, onApproval, onEvidence, onN
   const latest = records.at(-1);
   const earlier = records.slice(0, -1);
   const working = agents.filter((agent) => agent.state === "WORKING").length;
-  const completedTasks = projection.tasks.filter((task) => task.state === "COMPLETED").length;
   const selectedRecord = selected ? projection.decisionViews.agentDesk.find((record) => record.task === selected.label && record.state === "COMPLETED") : undefined;
-  return <section className="command-center" aria-label="Research Office floor">
-    <aside className="rail left-rail" aria-label="Mission status">
-      <section className="rail-card mission-card" aria-labelledby="mission-title">
-        <div className="eyebrow">Mission</div>
-        <h1 id="mission-title">{projection.mission.name}</h1>
-        <span className={`chip ${projection.mission.status.toLowerCase()}`}>{projection.mission.phase}</span>
-        <Stepper projection={projection} />
-        <p className="research-completion">{completedTasks} of {projection.tasks.length} recorded tasks completed</p>
-      </section>
-      <Roster agents={agents} onApproval={onApproval} />
-      <p className="rail-card note read-only"><strong>Read-only.</strong> This view replays recorded engine events. It cannot change mission data or policy.</p>
-    </aside>
-    <main className="center">
-      <section className="stage panel-card work-graph" aria-label="Research constellation">
-        <Constellation tasks={projection.tasks} selected={selectedId} onSelect={setPicked} working={working} status={projection.mission.status} />
-        <Inspector task={selected} record={selectedRecord} onApproval={onApproval} />
-      </section>
-      <div className="below">
-        <section className="finding-slot findings-panel"><FindingCard record={latest} synthetic={synthetic} onEvidence={onEvidence} /></section>
-        <Decisions projection={projection} onNavigate={onNavigate} />
-      </div>
-      <EarlierFindings records={earlier} />
-    </main>
-    <aside className="rail right-rail" aria-label="Budget and activity">
-      <BudgetGauge ledger={projection.ledger} />
-      <Activity history={history} onReplay={() => onNavigate("replay")} />
-    </aside>
-  </section>;
+  return <>
+    <section className="stage panel-card work-graph" aria-label="Research constellation">
+      <Constellation tasks={projection.tasks} selected={selectedId} onSelect={setPicked} working={working} status={projection.mission.status} />
+      <Inspector task={selected} record={selectedRecord} onApproval={onApproval} />
+    </section>
+    <div className="below">
+      <section className="finding-slot findings-panel"><FindingCard record={latest} synthetic={synthetic} onEvidence={onEvidence} /></section>
+      <Decisions projection={projection} onNavigate={onNavigate} />
+    </div>
+    <EarlierFindings records={earlier} />
+  </>;
 }

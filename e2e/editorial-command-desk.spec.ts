@@ -248,3 +248,55 @@ for (const width of [1440, 768, 375]) {
     await page.screenshot({ path: testInfo.outputPath(`long-findings-${width}.png`), fullPage: true, animations: "disabled" });
   });
 }
+
+test("every screen keeps the mission rails and budget visible", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const surface of ["Agent Desk", "Tribunal Room", "Review Office", "Final Report", "Mission Replay"]) {
+    await page.getByRole("button", { name: surface, exact: true }).click();
+    await expect(page.getByRole("complementary", { name: "Mission status" }), surface).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Budget and activity" }), surface).toBeVisible();
+    await expect(page.getByRole("region", { name: "Mission budget · units" }), surface).toContainText("140");
+    await expect(page.locator(".source-label"), surface).toHaveText("Synthetic demo · recorded replay");
+  }
+});
+
+test("mission replay scrubs the constellation, rails and top bar together", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
+  const replay = page.getByRole("region", { name: "Mission Replay" });
+  const budget = page.getByRole("region", { name: "Mission budget · units" });
+  await expect(replay).toContainText(/Event 16 \/ 16/);
+  await expect(page.locator(".event-counter")).toHaveText("Event 16 / 16");
+  await expect(budget).toContainText("65");
+
+  await replay.getByRole("button", { name: "Event 8, agent" }).click();
+  await expect(replay).toContainText(/Event 8 \/ 16/);
+  await expect(page.locator(".event-counter")).toHaveText("Event 8 / 16");
+  await expect(replay.getByRole("region", { name: "Mission state at this event" })).toContainText("State as of event 8");
+  await expect(replay.getByRole("heading", { name: "Finding submitted" })).toBeVisible();
+  await expect(replay.locator(".deltas")).toContainText("Market: Working → Completed");
+  await expect(replay.locator(".just-changed")).toHaveCount(1);
+  await expect(budget).toContainText("115");
+  await expect(page.getByRole("complementary", { name: "Mission status" }).locator(".team-member")).toHaveCount(1);
+  await expect(page.locator(".live-status")).toContainText("No researchers working");
+
+  const slider = replay.getByLabel("Timeline position");
+  await slider.focus();
+  await slider.press("ArrowRight");
+  await expect(replay).toContainText(/Event 9 \/ 16/);
+  await slider.press("End");
+  await expect(replay).toContainText(/Event 16 \/ 16/);
+  await expect(budget).toContainText("65");
+
+  await replay.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(replay.getByRole("button", { name: "Review", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(replay.locator(".replay-events .event")).toHaveCount(14);
+  await replay.locator(".replay-events .event").first().getByRole("button", { name: "Inspect" }).click();
+  await expect(replay).toContainText(/Event 1 \/ 16/);
+  await replay.getByText("Show raw payload").click();
+  await expect(replay.locator(".raw pre")).toContainText("totalBudget");
+
+  await replay.getByRole("button", { name: "COMPLETED", exact: true }).click();
+  await expect(replay).toContainText(/Event 28 \/ 28/);
+  await expect(page.locator(".live-status")).toContainText("Mission complete");
+});

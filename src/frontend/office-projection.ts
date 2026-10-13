@@ -18,7 +18,7 @@ export interface DecisionViews { agentDesk: AgentDeskRecord[]; missionUsageSumma
 export interface OfficeProjection { sourceLabel: string; mission: { name: string; phase: string; status: OfficeScenario }; ledger: { total: number; reserved: number; committed: number; spent: number; available: number }; agents: AgentDeskRecord[]; tasks: Array<{ id: string; label: string; state: AgentState; dependencies: string; dependencyIds: string[]; role: string | null; cost: number }>; events: Array<{ sequence: number; type: string; detail: string }>; decisionViews: DecisionViews; }
 export type ReplayEventCategory = "task" | "agent" | "budget" | "review" | "failure";
 export interface ReplayEventRecord { sequence: number; type: string; category: ReplayEventCategory; detail: string; }
-export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; autopsy: { conclusion: string; evidenceThatCouldChangeConclusion: string[] } | null; investigation: { autopsyConclusion: string; opposingEvidence: string[] } | null; externalSignalContext: GoogleTrendsEvidence | null; comparisonSignalContext: GoogleTrendsComparisonEvidence | null; }
+export interface FinalReportProjection { sourceLabel: string; fixtureId: string; outcome: CandidateReport["outcome"]; priorities: Array<FixtureCandidateEvaluation & { researchPriorityScore: number }>; heldOut: CandidateReport["heldOut"]; reviewerVerdict: string; customerProblemEvidence: number; evidenceQuality: number; trendDurability: number; advertisingSaturation: number; operationalRisk: number; failureRisk: number; safetyGate: string; evidenceSummary: { supporting: string[]; opposing: string[] }; nextStep: string; autopsy: { conclusion: string; evidenceThatCouldChangeConclusion: string[] } | null; investigation: { autopsyConclusion: string; opposingEvidence: string[] } | null; externalSignalContext: GoogleTrendsEvidence | null; comparisonSignalContext: GoogleTrendsComparisonEvidence | null; }
 const missionId = "crosscurrent-workspace-market";
 const sourceLabel = "Static demo history replayed through the existing MissionState reducer. It is not live engine data.";
 const timestamp = (n: number) => `2026-01-01T00:00:${String(n).padStart(2, "0")}.000Z`;
@@ -154,6 +154,7 @@ export function projectFinalReport(events?: MissionEvent[], fixtureId = "crosscu
     reviewerVerdict: review?.result.verdict ?? "NO_RECORDED_REVIEW",
     customerProblemEvidence: representative.customerProblemEvidenceScore,
     evidenceQuality: representative.evidenceQualityScore,
+    trendDurability: representative.trendDurabilityScore,
     advertisingSaturation: representative.advertisingSaturationScore,
     operationalRisk: representative.operationalRiskScore,
     failureRisk: representative.failureRiskScore,

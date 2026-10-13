@@ -23,7 +23,6 @@ import {
 } from "./runtime-client.js";
 import {
   DecisionView,
-  FinalReport,
   WorkspaceNavigation,
   navigation,
   type OfficeView,
@@ -31,6 +30,7 @@ import {
 import { CommandFrame, ResearchOfficeCenter } from "./research-office.js";
 import { uniqueAgents } from "./research-model.js";
 import { MissionReplay } from "./mission-replay.js";
+import { FinalReport } from "./report-view.js";
 
 type RuntimeState = "idle" | "loading" | "success" | "error";
 

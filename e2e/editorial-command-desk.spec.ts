@@ -300,3 +300,23 @@ test("mission replay scrubs the constellation, rails and top bar together", asyn
   await expect(replay).toContainText(/Event 28 \/ 28/);
   await expect(page.locator(".live-status")).toContainText("Mission complete");
 });
+
+test("final report leads with the verdict, ranking, held-out reasons and a score profile", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Final Report", exact: true }).click();
+  const report = page.getByRole("region", { name: "Final Report" });
+  await expect(report.getByRole("heading", { name: "Recorded opportunity priorities" })).toBeVisible();
+  const hero = report.getByRole("article", { name: "Report headline" });
+  await expect(hero).toContainText("deskflow-alpha leads the priorities.");
+  await expect(hero).toContainText("Reviewer verdict · Revise");
+  await expect(hero).toContainText("Allowed");
+  await expect(hero).toContainText("4 candidates");
+  await expect(report.locator(".rp-rank li")).toHaveCount(3);
+  await expect(report.locator(".rp-rank li").first()).toContainText("86");
+  await expect(report.locator(".rp-held li")).toHaveCount(4);
+  await expect(report.locator(".rp-held").first()).toContainText("RISK_GATE_NOT_ALLOWED");
+  await expect(report.getByRole("img", { name: /Score profile: Customer problem 91/ })).toBeVisible();
+  await expect(report.locator(".rp-vs")).toContainText("Advertising saturation 24/100");
+  await expect(report.locator(".rp-next")).toContainText("deepen validation for deskflow-alpha");
+  expect(await report.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+});

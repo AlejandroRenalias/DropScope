@@ -279,3 +279,12 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Tests: 7 unit tests for the fingerprint, 2 for the variant diff, 1 drift test, and 8 end-to-end tests in `e2e/run-diff.spec.ts` (needs a second run first; demo against demo is identical; the variant's differences and the jump; a real run file and a refused bad file; hostile titles as plain text; a phone width; two pictures).
 - Validation: typecheck clean; build succeeds; 724 unit tests pass (3 skipped); 67 end-to-end tests pass. No change to events, schemas, the saved run format, `schemaVersion` or `IMPORTER.version`.
 - Pending: independent review, required because `run-diff.ts` (correctness-sensitive, reviewed in four rounds earlier) changed. Brief: `REVIEW_BRIEF_RUN_DIFF_SCREEN.md`, commit under review `7b1d076`. Then push and a pull request, which need the user's approval.
+
+### Review record: run diff screen, round 1 (commit `7b1d076`)
+
+- Review: Codex gpt-6.1-sol, read-only. Verdict APPROVE WITH CHANGES, 1 medium and 1 low finding, no rejection. It also checked an 8 MiB string, malformed surrogates, 37 old-versus-new command report comparisons and all five demo generator outputs: no differences. The lead agent reproduced both findings before changing anything.
+- P2: opening a folded group of matching steps drew every step in it (two identical 5,000-step runs drew 5,000 rows) because the 300-row cap counted fold lines, not the steps inside. Fixed: the cap is now one shared budget in the new pure module `src/frontend/run-diff-layout.ts`; the notice says how many steps are not shown.
+- P3: the hash padding size used 32-bit shifts, which go negative at 2,147,483,584 bytes (outside accepted file sizes, but wrong). Fixed: `paddedSize` uses ordinary arithmetic.
+- Test gaps closed: layout tests (the 300 boundary, 5,000 matching steps opened, one shared budget, hidden counts), padded size past 2^31, and two whole-output report tests. Seven planted bugs in the new code were caught; two planted report-format bugs were caught.
+- Validation: typecheck clean; build succeeds; 734 unit tests pass (3 skipped); 67 end-to-end tests pass (no visual baseline changed).
+- This is the second implementation attempt on this workstream (build, then this repair). Pending: a short independent review of the delta (brief: `REVIEW_BRIEF_RUN_DIFF_SCREEN_ROUND2.md`, commit under review `3ed26a9`).

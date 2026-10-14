@@ -291,3 +291,9 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Major 1: the boundary did not cover original inputs, copies (sync, backups), the replay screen's browser memory, the real resolved path, or overriding rights (administrator, backup privilege, shared folders). Major 2: "all attempts must fail" cannot tell a real access denial from a wrong path, a missing file or a declined prompt. Minor: the draft said "we reproduced this" although our check only printed a built path and read no file.
 - Repair (text only, `docs/adr/ADR-028-...md`): decisions 2, 3 and 6 rewritten as described in `REVIEW_BRIEF_ADR_028_ROUND2.md`; the summary's evidence sentence corrected. No code or settings changed. Still a draft; ADR-027 and the spec are not edited.
 - Pending: short independent review of the delta (brief: `REVIEW_BRIEF_ADR_028_ROUND2.md`), then the user's approval of ADR-028.
+
+### Review record: ADR-028, round 2 (commit `43a6f0c`) and acceptance of the review
+
+- Review: Codex gpt-6.1-sol, read-only, delta only. Verdict APPROVE, no findings. All three round 1 findings confirmed closed (copies and indirect access, evidence of enforcement, overstated reproduction); no new contradiction; supersession still limited to the admission condition. It could not check actual isolation, permissions, paths or whether existing data is entirely synthetic.
+- **Outcome: the ADR-028 draft text is independently reviewed.** Rounds: settings rule (rejected, 2 major), ADR draft round 1 (rejected, 2 major and 1 minor), ADR draft round 2 (approved). ADR-028 is still a DRAFT until the user accepts it; real traces remain excluded.
+- Pending: the user's decision to accept ADR-028; then the follow-ups listed in it (correct ADR-027 decision 9 and spec section 11 item 2, update the handoff); push and pull request only with the user's approval.

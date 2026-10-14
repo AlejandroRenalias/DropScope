@@ -7,7 +7,7 @@
 import { RUN_EVENT_SCHEMA_VERSION, runEventSchema, type Field, type RunEvent, type StepKind } from "./run-events.js";
 import { ALLOWLIST, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
 import { ImportError } from "./run-import-error.js";
-import { MAX_OUTPUT_EVENTS } from "./run-emit.js";
+import { MAX_OUTPUT_EVENTS } from "./run-limits.js";
 
 export type RunState = {
   sequenceNumber: number;

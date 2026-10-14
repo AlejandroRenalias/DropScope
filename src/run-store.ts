@@ -5,34 +5,19 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { canonicalJson } from "./canonical.js";
-import { MAX_RUN_LOG_BYTES } from "./run-emit.js";
+import { MAX_RUN_LOG_BYTES } from "./run-limits.js";
+import { parseRunLog } from "./run-log-format.js";
 import { defaultChecks, defaultRunsDirectory, ensureRunsDirectory, readInputFile, syncedRootWarning, type PlatformChecks } from "./run-files.js";
 import { ImportError } from "./run-import-error.js";
 import type { RunEvent } from "./run-events.js";
 import { validateRunHistory } from "./run-reducer.js";
-import { parseStrictJson } from "./strict-json.js";
 
-export { MAX_RUN_LOG_BYTES };
-// A persisted line is read with caps that account for the tagged form, which nests about three levels deeper
-// per level of input JSON, and for one line (the header) carrying every context.
-const RUN_LOG_LINE_LIMITS = {
-  maxBytes: MAX_RUN_LOG_BYTES,
-  maxDepth: 256,
-  maxNodes: 20_000_000,
-  maxElements: 100_000,
-  maxKeyBytes: 1024,
-  maxStringBytes: 16 * 1024 * 1024,
-  maxNumberLexeme: 256,
-};
+export { MAX_RUN_LOG_BYTES, parseRunLog };
 const TEMP_PREFIX = ".dropscope-tmp-";
 // A temporary file counts as stale after ten minutes. Removing younger ones could delete the file of an
 // import that is still running (spec 11.4 says stale files are removed at the next import start).
 const STALE_TEMP_MS = 10 * 60 * 1000;
 const STAGE = "store";
-
-const invalid = (reason: string): never => {
-  throw new ImportError("E_INVALID_LOG", "read-log", null, reason);
-};
 
 // One event per line, canonical JSON, LF only, final newline, UTF-8 without a BOM.
 export function serializeRunLog(events: readonly RunEvent[]): Uint8Array {
@@ -47,36 +32,6 @@ export function serializeRunLog(events: readonly RunEvent[]): Uint8Array {
     lines.push(line);
   }
   return new Uint8Array(Buffer.concat(lines, total));
-}
-
-// Reads a run log: every line must parse strictly, match the schema, be in canonical form, and the whole
-// history must satisfy the reducer's admission rules. Any deviation fails closed.
-export function parseRunLog(bytes: Uint8Array): RunEvent[] {
-  if (bytes.length === 0 || bytes.length > MAX_RUN_LOG_BYTES) return invalid("SIZE");
-  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return invalid("BOM");
-  if (bytes[bytes.length - 1] !== 0x0a) return invalid("NO_FINAL_NEWLINE");
-  if (bytes.includes(0x0d)) return invalid("CARRIAGE_RETURN");
-  let text: string;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
-  } catch {
-    return invalid("UTF8");
-  }
-  const lines = text.slice(0, -1).split("\n");
-  const events: unknown[] = [];
-  lines.forEach((line, index) => {
-    if (line.length === 0) invalid(`BLANK_LINE ${index + 1}`);
-    let value: unknown;
-    try {
-      parseStrictJson(new TextEncoder().encode(line), "read-log", RUN_LOG_LINE_LIMITS);
-      value = JSON.parse(line);
-    } catch {
-      return invalid(`LINE_SYNTAX ${index + 1}`);
-    }
-    if (canonicalJson(value) !== line) invalid(`LINE_NOT_CANONICAL ${index + 1}`);
-    events.push(value);
-  });
-  return validateRunHistory(events);
 }
 
 export function readRunLog(file: string, checks: PlatformChecks = defaultChecks()): RunEvent[] {

@@ -14,6 +14,7 @@ import { canonicalJson, compareUtf8, sha256Hex } from "./canonical.js";
 import type { ImportNoteDraft, NormalLog, NormalSpan, NormalizedRun } from "./trace-normalize.js";
 import type { ParsedAttribute, ParsedContext } from "./otlp-structure.js";
 import { ImportError } from "./run-import-error.js";
+import { MAX_OUTPUT_EVENTS, MAX_RUN_LOG_BYTES } from "./run-limits.js";
 import { ALLOWLIST, KNOWN_CONTENT_KEYS, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
 import {
   runEventListSchema, RUN_EVENT_SCHEMA_VERSION,
@@ -23,8 +24,7 @@ import {
 export const IMPORTER = { id: "dropscope-otlp-json", version: "4" } as const;
 export const DEFAULT_CONVENTION_VERSION = "1.37.0";
 export const LIMITS_VERSION = "1-provisional";
-export const MAX_OUTPUT_EVENTS = 1_000_000;
-export const MAX_RUN_LOG_BYTES = 128 * 1024 * 1024;
+export { MAX_OUTPUT_EVENTS, MAX_RUN_LOG_BYTES };
 const MAX_SCAN_CHARS = 65_536;
 
 export type EmitInput = { role: "spans" | "logs"; byteLength: number; sha256: string; enumNamesAccepted: number };

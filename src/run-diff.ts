@@ -258,9 +258,10 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
     if (p.kind === "onlyB") return { status: "onlyB", a: null, b: sb[p.j], changes: [] };
     const pa = parentOf(sa[p.i], indexA);
     const pb = parentOf(sb[p.j], indexB);
-    // When the runs were too different to line up in full, a parent that sits in the unlined part has no known
-    // partner, so the nesting of its children is unknown, not changed.
-    const unresolved = !fullyAligned && ((pa !== -1 && !partner.has(pa)) || (pb !== -1 && !partnerBack.has(pb)));
+    // When the runs were too different to line up in full, some parents have no partner. The nesting is unknown
+    // only when both parents are real steps and neither has a partner. Every other case is proved: one step top-level
+    // and the other not, or one parent paired with a step that is not the other run's parent.
+    const unresolved = !fullyAligned && pa !== -1 && pb !== -1 && !partner.has(pa) && !partnerBack.has(pb);
     if (unresolved) unverifiedNesting += 1;
     const sameParent = unresolved || (pa === -1 ? pb === -1 : partner.get(pa) === pb);
     const changes = compareSteps(sa[p.i], sb[p.j], factsA.get(sa[p.i].stepId) as StepFacts, factsB.get(sb[p.j].stepId) as StepFacts, sameParent);

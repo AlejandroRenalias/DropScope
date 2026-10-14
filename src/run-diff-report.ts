@@ -73,7 +73,7 @@ export function totalsLines(a: RunTotals, b: RunTotals): string[] {
 export function diffCaveats(result: DiffResult): string[] {
   const notes = [DIFF_NOTE, NOT_COMPARED_NOTE, "Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference."];
   if (!result.fullyAligned) notes.push("The runs were too different to line up in full, so everything between their shared start and shared end is listed as removed and added.");
-  if (result.unverifiedNesting > 0) notes.push(`${group(result.unverifiedNesting)} step(s) have a parent that fell in the part that could not be lined up, so whether their nesting changed was not checked.`);
+  if (result.unverifiedNesting > 0) notes.push(`${group(result.unverifiedNesting)} step(s) sit under parents that fell in the part that could not be lined up in either run, so whether their nesting changed was not checked.`);
   if (result.contentComparable) notes.push("Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.");
   else notes.push("Neither run recorded any step content, so only structure, outcome and token counts were compared.");
   const missing = result.totals.a.stepsMissingTokens + result.totals.b.stepsMissingTokens;

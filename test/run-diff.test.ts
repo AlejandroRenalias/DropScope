@@ -339,9 +339,72 @@ describe("run diff: review round 2", () => {
     expect(r.fullyAligned).toBe(false);
     const tail = r.items.find((i) => i.a?.title === "Tool call: tail");
     expect(tail?.changes).toEqual([]);
-    expect(r.unverifiedNesting).toBeGreaterThan(0);
+    expect(r.unverifiedNesting).toBe(1);
     expect(diffReportLines(r, { a: "x", b: "y" }).join("\n")).toContain("whether their nesting changed was not checked");
   }, 60_000);
+
+  describe("nesting when the runs are too different to line up", () => {
+    const n = 2100;
+    const many = (prefix: string, parent: number | undefined, from: number) =>
+      Array.from({ length: n }, (_v, i) => tool(from + i, `${prefix}${i}`, parent));
+
+    it("reports a change that is proved because one step is top-level and the other is not, in both directions", () => {
+      const side = (prefix: string, first: string, tailTop: boolean) => [
+        tool(0, first), tool(1, "p"), ...many(prefix, 1, 2), tool(2 + n, "tail", tailTop ? undefined : 1),
+      ];
+      const a = model(side("a", "firstA", false));
+      const b = model(side("b", "firstB", true));
+      for (const r of [diffRuns(a, b), diffRuns(b, a)]) {
+        expect(r.fullyAligned).toBe(false);
+        const tail = r.items.find((i) => (i.a ?? i.b)?.title === "Tool call: tail");
+        expect(tail?.changes.map((c) => c.code)).toEqual(["PARENT"]);
+        expect(r.unverifiedNesting).toBe(0);
+      }
+    });
+
+    it("reports a change that is proved because one parent is paired and the other run's parent is not", () => {
+      // Steps are compared in tree order. Both runs start with the shared step "p" and end with the shared step "tail".
+      // In run A the tail is the last child of "p" (a paired parent); in run B it is a child of the last step only run B has.
+      const a = model([tool(0, "p"), ...many("a", 0, 1), tool(1 + n, "tail", 0)]);
+      const b = model([tool(0, "p"), ...many("b", 0, 1), tool(1 + n, "tail", n)]);
+      for (const r of [diffRuns(a, b), diffRuns(b, a)]) {
+        expect(r.fullyAligned).toBe(false);
+        const tail = r.items.find((i) => (i.a ?? i.b)?.title === "Tool call: tail");
+        expect(tail?.changes.map((c) => c.code)).toEqual(["PARENT"]);
+        expect(r.unverifiedNesting).toBe(0);
+      }
+    });
+
+    it("counts each step whose nesting could not be checked, so two children of one unmatched parent count twice", () => {
+      const side = (prefix: string, first: string, parentName: string) => [
+        tool(0, first), ...many(prefix, undefined, 1), tool(1 + n, parentName),
+        tool(2 + n, "t1", 1 + n), tool(3 + n, "t2", 1 + n),
+      ];
+      const r = diffRuns(model(side("a", "firstA", "pA")), model(side("b", "firstB", "pB")));
+      expect(r.fullyAligned).toBe(false);
+      expect(r.items.filter((i) => i.status === "same").length).toBe(2);
+      expect(r.unverifiedNesting).toBe(2);
+    });
+  });
+
+  it("compares repeated content in one log record in order", () => {
+    const logModel = (values: string[]) => {
+      const base = eventsOf([span(0, [sAttr("gen_ai.operation.name", "chat")])],
+        [{ traceId: T, spanId: id(0), timeUnixNano: ns(0.1), observedTimeUnixNano: ns(0.1), body: { stringValue: "x" } }]);
+      const at = base.findIndex((e) => e.type === "ContentRecorded");
+      const copies = values.map((v) => {
+        const copy = structuredClone(base[at]) as (typeof base)[number] & { payload: { value: unknown } };
+        copy.payload.value = { v: { t: "s", v } };
+        return copy;
+      });
+      const all = structuredClone([...base.slice(0, at), ...copies, ...base.slice(at + 1)]).map((e, k) => ({ ...e, sequenceNumber: k + 1 })) as typeof base;
+      const end = all[all.length - 1];
+      if (end.type === "RunEnded") end.payload.eventCount = all.length;
+      return buildRunModel(parseRunLog(serializeRunLog(all)));
+    };
+    expect(diffRuns(logModel(["early", "final"]), logModel(["final", "early"])).identical).toBe(false);
+    expect(diffRuns(logModel(["early", "final"]), logModel(["early", "final"])).identical).toBe(true);
+  });
 
   it("still reports a real moved parent when the runs line up in full", () => {
     const agent = span(0, [sAttr("gen_ai.operation.name", "invoke_agent"), sAttr("gen_ai.agent.name", "boss")]);
@@ -357,6 +420,14 @@ describe("run diff: review round 2", () => {
     expect(r.fullyAligned).toBe(true);
     const search = r.items.find((i) => i.a?.title === "Tool call: search");
     expect(search?.changes.map((c) => c.code)).toEqual(["PARENT"]);
+    expect(r.unverifiedNesting).toBe(0);
+  });
+
+  it("reports a changed parent when both parents are different steps and the runs line up in full", () => {
+    const r = diffRuns(model([tool(0, "pA"), tool(1, "child", 0)]), model([tool(0, "pB"), tool(1, "child", 0)]));
+    expect(r.fullyAligned).toBe(true);
+    const child = r.items.find((i) => i.a?.title === "Tool call: child");
+    expect(child?.changes.map((c) => c.code)).toEqual(["PARENT"]);
     expect(r.unverifiedNesting).toBe(0);
   });
 

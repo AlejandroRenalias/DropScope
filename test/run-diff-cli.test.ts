@@ -113,3 +113,30 @@ describe("diff command: structured output limits", () => {
     expect(small.differencesOmitted).toBe(0);
   }, 60_000);
 });
+
+describe("diff command: nesting that could not be checked", () => {
+  it("includes the exact count in the structured output and in the text report", () => {
+    const n = 2100;
+    const spanOf = (i: number, name: string, parent?: number) => ({
+      traceId: "1".repeat(32), spanId: id(i), ...(parent === undefined ? {} : { parentSpanId: id(parent) }), name: `s${i}`,
+      startTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n).toString(), endTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n + 500_000_000n).toString(),
+      attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } }, { key: "gen_ai.tool.name", value: { stringValue: name } }],
+    });
+    const write = (name: string, prefix: string, first: string, parentName: string) => {
+      const spans = [
+        spanOf(0, first), ...Array.from({ length: n }, (_v, i) => spanOf(1 + i, `${prefix}${i}`)), spanOf(1 + n, parentName),
+        spanOf(2 + n, "t1", 1 + n), spanOf(3 + n, "t2", 1 + n),
+      ];
+      const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })), contentMode: "FULL" });
+      const file = path.join(root, `${name}.runlog.jsonl`);
+      fs.writeFileSync(file, serializeRunLog(events));
+      return file;
+    };
+    const a = write("a8", "a", "firstA", "pA");
+    const b = write("b8", "b", "firstB", "pB");
+    const json = JSON.parse(run(["diff", a, b, "--json"]).out);
+    expect(json.fullyAligned).toBe(false);
+    expect(json.unverifiedNesting).toBe(2);
+    expect(run(["diff", a, b]).out).toContain("2 step(s) sit under parents");
+  }, 60_000);
+});

@@ -32,7 +32,7 @@ Conventions: "fail closed" means the import stops with a closed error code (sect
 3. Fields that hold user data use the field form: `{"v": tagged}` when verbatim, `{"w": {"n": byteLength, "h": sha256}}` when withheld.
 4. Canonical span identity is the serialization of the span with all of its fields, together with the SHA-256 of the serialization of its context (resource and scope, with every field kept in section 5, including dropped counts and unknown fields). A context shared by many spans is serialized and hashed once. Two spans with the same span id and the same identity collapse to one, with `DUPLICATE_SPAN_COLLAPSED` (count). Two spans with the same span id and different identities fail closed (`E_CONFLICTING_DUPLICATE`). Identical log records (all fields plus context) collapse with `DUPLICATE_LOG_COLLAPSED` (count). Differing logs stay distinct.
 5. Each attribute and event keeps its source ordinal (index in its list). Ordinals are a final tie-breaker only where a rule below says so.
-6. `artifactId` is SHA-256 over the serialization of: the selected trace id; each input's role and sha256 in role order; `contentMode`; importer id and version; `limitsVersion`; the convention version. `runId` is the trace id. Permuting spans or log records within an input changes the input hash and therefore `artifactId`, not `runId`.
+6. `artifactId` is SHA-256 over the serialization of: the selected trace id; each input's role and sha256 in role order; `contentMode`; importer id and version; `limitsVersion`; the convention version; `schemaVersion`. `runId` is the trace id. Permuting spans or log records within an input changes the input hash and therefore `artifactId`, not `runId`.
 
 ## 4. Order
 

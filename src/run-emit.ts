@@ -397,6 +397,7 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     traceId: run.traceId,
     inputs: [...options.inputs].sort((a, b) => compareString(a.role, b.role)).map((i) => ({ role: i.role, sha256: i.sha256 })),
     contentMode: options.contentMode, importer: IMPORTER, limitsVersion: LIMITS_VERSION, conventionVersion,
+    schemaVersion: RUN_EVENT_SCHEMA_VERSION,
   }));
   const started: Draft = {
     type: "RunStarted",

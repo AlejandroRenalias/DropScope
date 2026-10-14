@@ -55,7 +55,7 @@ Conventions: "fail closed" means the import stops with a closed error code (sect
 | `StepStarted` | `stepId`; `parentStepId` or null; `contextId`; `kind` (`LLM_CALL`, `TOOL_CALL`, `AGENT`, `OTHER`); `operationName` (Field or null; null only when the span has no operation attribute); `name` Field; `label` (derived string, section 6.4); `otlpKind`; `startNs`; `traceState` Field; `flags`; `droppedAttributesCount`; `droppedEventsCount`; `droppedLinksCount`; `attributes` (list as above, excluding fields moved to `ContentRecorded`); `links` (list of Field); `unknownFields` Field or null. |
 | `StepEnded` | `stepId`; `endNs` or null; `endEffectiveNs`; `statusCode` (0, 1, 2; 2 is error); `statusMessage` Field; `events [{ordinal, timeNs, name: Field, attributes, droppedAttributesCount}]`. |
 | `UsageRecorded` | `stepId`; `inputTokens` and `outputTokens`, each a decimal string or null (null means absent). Emitted only for `LLM_CALL` steps with at least one usable metric. |
-| `ContentRecorded` | `stepId` or null; `logOrdinal` or null (exactly one of the two is set); `channel` (`SPAN_ATTRIBUTE`, `LOG_RECORD`); `field` (one of the five known content names verbatim, else the literal `gen_ai.other` with the key in `fieldKey` Field); `ordinal`; `value` Field. |
+| `ContentRecorded` | `stepId` or null; `logOrdinal` or null (exactly one of the two is set; `SPAN_ATTRIBUTE` needs `stepId`, `LOG_RECORD` needs `logOrdinal`); `channel` (`SPAN_ATTRIBUTE`, `LOG_RECORD`); `field` (one of the five known content names verbatim, else the literal `gen_ai.other` with the key in `fieldKey` Field); `ordinal`; `value` Field. A log record body is recorded with `field` `gen_ai.other`, `fieldKey` the verbatim string `log.body`, and `ordinal` 0; log attributes moved to content use their attribute ordinal plus one, so ordinal 0 on the `LOG_RECORD` channel is always the body. |
 | `LogRecorded` | `logOrdinal` (position in log order); `stepId` or null; `contextId`; `timeNs`; `observedTimeNs`; `severityNumber`; `severityText` Field; `flags`; `eventName` Field; `droppedAttributesCount`; `attributes` (excluding content fields). The body is recorded as `ContentRecorded`. |
 | `ImportNote` | `code`; `stepId` or null; `detail` per the table in 7. Details contain only codes, counts, ids and enumerated names, never user keys or values. |
 | `RunEnded` | `eventCount`. |
@@ -106,8 +106,8 @@ Kinds: `gen_ai.operation.name` of `chat`, `text_completion`, `generate_content` 
 | `USAGE_NOT_SUMMED` | usage attributes on a non-LLM span or on a log record | `count` |
 | `UNUSABLE_USAGE` | a usage value is not a non-negative safe integer, or duplicate usage keys disagree | `count` |
 | `ENUM_NAME_ACCEPTED` | enum given as a name | `count` per input |
-| `SCHEMA_URL_ABSENT`, `SCHEMA_URL_MISMATCH` | per context | `contextId` |
-| `WITHHELD_ATTRIBUTE` | attributes withheld in `HASH_ONLY` | `count`, `bytes` per step |
+| `SCHEMA_URL_ABSENT`, `SCHEMA_URL_MISMATCH` | per context: the scope schema URL, else the resource schema URL, is absent, or differs from `https://opentelemetry.io/schemas/<conventionVersion>` | `contextId` |
+| `WITHHELD_ATTRIBUTE` | attributes withheld in `HASH_ONLY` | `count` (attribute entries with at least one withheld part, in the step's attributes and its span events), `bytes` (sum of the withheld parts' byte lengths), per step |
 | `SECRET_PATTERN_COUNT` | scanner found patterns | counts per pattern class, once per run |
 
 ## 8. Usage and state

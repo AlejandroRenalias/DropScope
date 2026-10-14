@@ -1,5 +1,7 @@
 # Install and Run DropScope Locally
 
+> **Note.** This page describes the original mission replay. DropScope now centers on agent run forensics: start with the [README](../README.md) and the [guided tour](GUIDED_TOUR.md).
+
 DropScope is a local-first learning project. These steps run the browser interface and its loopback mission runtime on your own computer; they do not deploy a service, contact Google, or start a worker.
 
 ## Prerequisites

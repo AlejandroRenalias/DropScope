@@ -3,6 +3,7 @@ import { parseBudgetPolicy, replayBudget, type BudgetPolicyInput } from "../budg
 import type { RunEvent } from "../run-events.js";
 import { BudgetReplayPanel } from "./budget-replay-panel.js";
 import { ClaimCheckPanel } from "./claim-check-panel.js";
+import { RunDiffPanel } from "./run-diff-panel.js";
 import { PageHead } from "./research-office.js";
 import {
   categoryOf, describeRunEvent, describeStateChange, eventStepId, formatDuration, formatNumber, runEventCategories, stepStatusAt,
@@ -130,6 +131,8 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
     <BudgetReplayPanel model={model} input={budgetInput} setInput={setBudgetInput} errors={parsedBudget.errors} result={budget} position={bounded} setPosition={setPosition} />
 
     <ClaimCheckPanel model={model} setPosition={setPosition} />
+
+    <RunDiffPanel model={model} sourceLabel={sourceLabel} setPosition={setPosition} />
 
     <div className="replay-grid rr-grid">
       <section className="panel-card rr-steps" aria-labelledby="rr-steps-title">

@@ -181,6 +181,25 @@ describe("run diff: the built-in demo runs", () => {
   });
 });
 
+describe("run diff: the demo variant", () => {
+  const load = (name: string) => buildRunModel(parseRunLog(new Uint8Array(fs.readFileSync(new URL(`../src/frontend/assets/${name}`, import.meta.url)))));
+  it("differs from the demo kept with content: the second refund fails and the final answer says so", () => {
+    const r = diffRuns(load("demo-run-full.runlog.jsonl"), load("demo-run-variant.runlog.jsonl"));
+    expect(r.identical).toBe(false);
+    expect(r.counts).toMatchObject({ onlyA: 0, onlyB: 0 });
+    expect(r.counts.changed).toBe(2);
+    expect(r.first?.changes.map((c) => c.code)).toContain("STATUS");
+    expect(r.totals.a.failedSteps).toBe(1);
+    expect(r.totals.b.failedSteps).toBe(2);
+  });
+
+  it("cannot be compared on content with the demo kept as fingerprints only without losing the structural difference", () => {
+    const r = diffRuns(load("demo-run.runlog.jsonl"), load("demo-run-variant.runlog.jsonl"));
+    expect(r.identical).toBe(false);
+    expect(r.counts.changed).toBe(2);
+  });
+});
+
 // ---- review round 1: things that must NOT compare as identical ----
 describe("run diff: review round 1", () => {
   type Raw = Record<string, unknown>;

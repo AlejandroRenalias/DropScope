@@ -53,14 +53,13 @@ On Windows PowerShell, `npm.cmd` works in place of `npm` if script policies get 
 
 ## What the answers do and do not mean
 
-DropScope is careful about what it claims. These limits are part of the design, not fine print.
+DropScope reports what a recording says. It cannot see inside the agent, and it never guesses. Five things to keep in mind:
 
-- **It shows what was recorded, not what the model knew.** The state at a step is rebuilt from the trace. It is never the model's hidden context. If the trace has no prompts or tool results, DropScope says so instead of guessing.
-- **"Supported" means "appears in the recording", never "true".** The same words can mean something else in context ("accepted" also appears in "not accepted"). The claim check only looks for the exact texts you list, in the content one step recorded. It never uses a model to judge.
-- **Budget replay is a what-if.** DropScope never controls an agent. It re-applies the limits you typed to numbers the trace recorded. A real guard cannot know a call's cost before the call runs, so the replay says "would have stopped" and lists what was already running.
-- **A difference means the recordings differ, not that either run is right.** Steps are matched by what they are (kind, operation, model, tool or agent name) in order, not by their ids. How long each step took is not treated as a difference, because two honest runs never take exactly as long.
-- **By default a run file keeps no prompts or answers.** It keeps sizes and fingerprints (SHA-256) only. The claim check needs a run imported with `--full`, which keeps the content. Run files stay on your computer: do not share or commit them.
-- **The demos are invented.** The demo order, customer text and numbers are made up. They show how the tool behaves, not how any real agent behaves.
+1. **It shows the recording, not the agent's mind.** "State at step 24" means "what the trace had written down by step 24". If the trace never recorded the prompts, DropScope says "not recorded" instead of filling the gap.
+2. **"Supported" means the words are in the recording. It does not mean the claim is true.** Example: the claim "the refund was accepted" is supported if the recording contains the word "accepted". But "not accepted" contains it too.
+3. **Budget replay is a "what if".** DropScope does not control any agent. It takes the limit you type and checks it against the numbers the run recorded. A real guard cannot know what a model call will cost until the call has finished, so the answer says "would have stopped here" and lists what was already running.
+4. **"Differ" means the two recordings are not the same. It does not say which one is right.** How long each step took is ignored, because two honest runs never take exactly the same time.
+5. **By default a saved run keeps no prompts or answers.** It keeps only their size and a fingerprint (a short code worked out from the text, so two texts can be compared without keeping either). The claim check needs the text, so import with `--full` for it. Run files stay on your computer: do not share or commit them. The demo runs here are invented.
 
 ## Where files go, and what runs on your computer
 

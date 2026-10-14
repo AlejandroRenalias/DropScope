@@ -1,11 +1,14 @@
 // Regression tests for the findings of the final whole-project review (Opus 5.5 and Sol 6.1, commit 99bc048).
 import fs from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { checkClaims, type Claim } from "../src/claim-check.js";
+import { explainLoadError } from "../src/frontend/load-error.js";
 import { buildRunModel, describeNote } from "../src/frontend/run-replay-model.js";
 import { runCli } from "../src/run-cli.js";
 import { diffRuns } from "../src/run-diff.js";
+import { ImportError } from "../src/run-import-error.js";
 import { importTraceBytes } from "../src/run-import.js";
+import { safeResolve } from "../src/run-files.js";
 import { parseRunLog } from "../src/run-log-format.js";
 
 const BASE = 1_700_000_000_000_000_000n;
@@ -35,6 +38,13 @@ describe("claim check: a tool name that the run file withheld", () => {
     expect(checkClaims(events, [claim({ tool: "lookup", mustContain: ["x"] })]).results[0]).toMatchObject({ verdict: "CANNOT_CHECK" });
   });
 
+  it("keeps a definite too-late answer when the nameless step recorded its content only after the cutoff", () => {
+    const events = runOf(["lookup", "tool with spaces"], "HASH_ONLY");
+    const contentEvents = events.filter((e) => e.type === "ContentRecorded").map((e) => e.sequenceNumber);
+    const cutoff = contentEvents[0] - 1; // before the readable tool's content, so everything arrives too late
+    expect(checkClaims(events, [claim({ tool: "lookup", atEvent: cutoff })]).results[0]).toMatchObject({ verdict: "NOT_SUPPORTED", reason: "TOO_LATE" });
+  });
+
   it("still says not supported for a missing tool when every tool name in the run is readable", () => {
     expect(checkClaims(runOf(["lookup"], "HASH_ONLY"), [claim({ tool: "nothing" })]).results[0]).toMatchObject({ verdict: "NOT_SUPPORTED", reason: "NO_MATCHING_STEP" });
   });
@@ -52,6 +62,19 @@ describe("run diff: tool use is counted by the recorded tool name", () => {
     const r = diffRuns(buildRunModel(runOf([`${long}x`], "FULL")), buildRunModel(runOf([`${long}y`], "FULL")));
     expect(r.counts.onlyA).toBe(1);
     expect(r.tools.map((t) => [t.a, t.b])).toEqual([[0, 1], [1, 0]]);
+  });
+
+  it("counts every tool name a step records, so a changed second name is still a difference", () => {
+    const twoNames = (second: string) => {
+      const span = {
+        traceId: "1".repeat(32), spanId: "0000000000000001", name: "s", startTimeUnixNano: ns(0), endTimeUnixNano: ns(1),
+        attributes: [attr("gen_ai.operation.name", "execute_tool"), attr("gen_ai.tool.name", "0 hidden"), attr("gen_ai.tool.name", second)],
+      };
+      return buildRunModel(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] })), contentMode: "HASH_ONLY" }));
+    };
+    const r = diffRuns(twoNames("lookup"), twoNames("write"));
+    expect(r.tools.length).toBe(2);
+    expect(diffRuns(twoNames("lookup"), twoNames("lookup")).tools).toEqual([]);
   });
 
   it("keeps the real totals when a run is too large to compare", () => {
@@ -93,6 +116,32 @@ describe("the secret-text note tells the truth about the content mode", () => {
     expect(describeNote("SECRET_PATTERN_COUNT", { email: 1 }, "FULL")).toContain("was kept");
     const full = buildRunModel(parseRunLog(fs.readFileSync(new URL("../src/frontend/assets/demo-run-full.runlog.jsonl", import.meta.url))));
     expect(full.notes.find((n) => n.code === "SECRET_PATTERN_COUNT")?.text).not.toContain("not kept");
+  });
+});
+
+describe("path rules, resolved form", () => {
+  it.skipIf(process.platform !== "win32")("refuses a relative path that resolves onto a network share, before any file-system call", () => {
+    const cwd = vi.spyOn(process, "cwd").mockReturnValue(String.raw`\\server\share\project`);
+    const touched = vi.spyOn(fs, "lstatSync");
+    try {
+      let reason = "";
+      try { safeResolve("a/b", true); } catch (error) { reason = `${(error as ImportError).code}:${(error as ImportError).reason}`; }
+      expect(reason).toBe("E_PATH:UNC_OR_DEVICE_PATH");
+      expect(touched).not.toHaveBeenCalled();
+    } finally {
+      cwd.mockRestore();
+      touched.mockRestore();
+    }
+  });
+});
+
+describe("load errors say what happened", () => {
+  it("tells apart a full-content file holding withheld values from a withheld-content file holding plaintext", () => {
+    const fullWithWithheld = explainLoadError(new ImportError("E_INVALID_LOG", "reduce", null, "WITHHELD_IN_FULL_RUN at event 3"));
+    const hashWithPlaintext = explainLoadError(new ImportError("E_INVALID_LOG", "reduce", null, "CONTENT_NOT_WITHHELD at event 3"));
+    expect(fullWithWithheld).toContain("keeps its content but holds withheld values");
+    expect(hashWithPlaintext).toContain("claims to hide its content but does not");
+    expect(fullWithWithheld).not.toBe(hashWithPlaintext);
   });
 });
 

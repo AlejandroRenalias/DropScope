@@ -72,6 +72,16 @@ const fingerprintOf = (field: FieldLike): string => {
   return `${new TextEncoder().encode(text).length}:${sha256HexPure(text)}`;
 };
 
+/** Every value of an attribute name, in order, as one string: a name recorded twice counts as both. */
+function attributeFingerprints(attributes: Array<{ key: FieldLike; value: FieldLike }>, name: string): string {
+  const all: string[] = [];
+  for (const a of attributes) {
+    const key = a.key as { v?: { t?: string; v?: unknown } };
+    if (key.v?.t === "s" && key.v.v === name) all.push(fingerprintOf(a.value));
+  }
+  return all.length === 0 ? "-" : all.join("+");
+}
+
 function attributeFingerprint(attributes: Array<{ key: FieldLike; value: FieldLike }>, name: string): string {
   for (const a of attributes) {
     const key = a.key as { v?: { t?: string; v?: unknown } };
@@ -99,7 +109,7 @@ function factsByStep(model: RunModel): Map<string, StepFacts> {
         p.kind, p.label, p.operationName === null ? "-" : fingerprintOf(p.operationName),
         attributeFingerprint(p.attributes, "gen_ai.tool.name"), attributeFingerprint(p.attributes, "gen_ai.agent.name"),
       ]);
-      facts.set(p.stepId, { signature, tool: attributeFingerprint(p.attributes, "gen_ai.tool.name"), message: "", content: new Map(), logRecords: [] });
+      facts.set(p.stepId, { signature, tool: attributeFingerprints(p.attributes, "gen_ai.tool.name"), message: "", content: new Map(), logRecords: [] });
     } else if (event.type === "StepEnded") {
       const f = facts.get(event.payload.stepId);
       if (f) f.message = fingerprintOf(event.payload.statusMessage);

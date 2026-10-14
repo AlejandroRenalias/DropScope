@@ -370,9 +370,13 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
   const unnamedTools = ordered.filter((step) => step.toolWithheld);
   const results: ClaimResult[] = claims.map((claim) => {
     const result = checkOne(claim);
-    // A step whose tool name was withheld might be the one this claim names, so "not supported" cannot be said.
-    if (result.verdict === "NOT_SUPPORTED" && claim.stepId === null && unnamedTools.length > 0) {
-      return { ...result, verdict: "CANNOT_CHECK" as const, reason: "TOOL_NAME_WITHHELD" as const, stepId: unnamedTools[0].stepId };
+    // A step whose tool name was withheld might be the one this claim names, so "not supported" cannot be said. Only a
+    // step that recorded the claimed field by the claim's cutoff event could have supported it; a nameless step whose
+    // content came later (or never) changes nothing.
+    if (result.verdict === "NOT_SUPPORTED" && claim.stepId === null) {
+      const limit = claim.atEvent ?? Number.MAX_SAFE_INTEGER;
+      const possible = unnamedTools.find((step) => (step.content.get(CLAIM_FIELD_NAME[claim.field]) ?? []).some((item) => item.sequence <= limit));
+      if (possible !== undefined) return { ...result, verdict: "CANNOT_CHECK" as const, reason: "TOOL_NAME_WITHHELD" as const, stepId: possible.stepId };
     }
     return result;
   });

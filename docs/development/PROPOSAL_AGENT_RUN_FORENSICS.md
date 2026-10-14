@@ -1,6 +1,6 @@
 # Proposal: DropScope as agent run forensics
 
-Status: DRAFT for the user's approval (2026-10-13). Nothing here is built. The frozen plan, architecture baseline, ADRs and policies are unchanged until the ADRs in section (e) are approved. This proposal withdraws the earlier approved roadmap (Codex as MVP runtime, "ADR-026 for more guarded Codex tasks"); that roadmap was never pushed.
+Status: historical. This was a draft for the user's approval (2026-10-13); it was approved and phases 0 to 3 are built (see `HANDOFF_NEXT_SESSION.md` and `PROGRESS.md`). The text below is the original proposal and is not updated: for example, the run file has no run-level status (`RunEnded` carries only `eventCount`), so the `RunEnded (status)` mapping below was not built. The frozen plan, architecture baseline, ADRs and policies are unchanged until the ADRs in section (e) are approved. This proposal withdraws the earlier approved roadmap (Codex as MVP runtime, "ADR-026 for more guarded Codex tasks"); that roadmap was never pushed.
 
 ## (a) Product definition
 

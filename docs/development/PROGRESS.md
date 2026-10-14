@@ -396,3 +396,10 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Planted bugs, all caught now: restore the old claim rule (cutoff ignored), first tool name only, drop the resolved-path check, restore the old load-error sentence, and remove the stale-read guard in each of the three panels (3, 3 and 2 browser tests fail).
 - Validation: typecheck clean; build succeeds; 757 unit tests pass (3 skipped); 77 end-to-end tests pass (picture baselines unchanged). No change to `IMPORTER.version`, `schemaVersion` or any demo file.
 - Pending: the user decides whether a further short review of this repair is wanted (the two-attempt limit is now used); push and pull request need the user's approval.
+
+### Wording corrections to ADR-027, the contract and the proposal (2026-10-15)
+
+- Approved by the user in chat (these documents are frozen unless the user approves). Wording only; no decision, rule or code changed.
+- ADR-027 decision 4: byte-identical output is now stated precisely (events after the header and the final state do not depend on span order; the header, `artifactId` and file name do, as spec section 3 already said). Decision 8: the input is read by the strict parser and structure check; Zod validates events. Decision 9: points to spec 11.1 for which checks run before the open.
+- Contract: status line now "Accepted"; 6.6 no longer promises linear time without qualification; 11.1 says the path and attribute checks run before the open.
+- Proposal: marked historical; notes that `RunEnded` has no run-level status.

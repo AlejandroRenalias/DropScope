@@ -4,11 +4,9 @@ DropScope is a local, offline tool for looking back at a recorded AI agent run. 
 
 None of these features makes a model call or a network request. Everything is computed from a file on your computer, in the same way every time, so someone else can check your answer.
 
-See it in action (built-in demo run):
-
 ![Animation of the Replay screen: the timeline slider moves from event 1 to event 22, where a failed refund shows as a red bar, the "Step failed" panel explains the failure, and comparing with the demo variant highlights the first difference between the two runs.](docs/images/replay-demo.gif)
 
-> **Status.** DropScope is a software-engineering **learning project**, not a product. It runs on Windows only for now (every command refuses other systems). Every run shown in this repository is invented demo data. Real traces are deliberately kept out until a real access boundary exists: see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md). There is no release, package or hosted service.
+> **Status.** DropScope runs on Windows only for now (every command refuses other systems). Every run shown in this repository is invented demo data. Real traces are deliberately kept out until a real access boundary exists: see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md). There is no release, package or hosted service.
 
 ## A small example
 

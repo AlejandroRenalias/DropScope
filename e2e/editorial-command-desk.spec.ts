@@ -314,7 +314,7 @@ test("final report leads with the verdict, ranking, held-out reasons and a score
   await expect(report.locator(".rp-rank li")).toHaveCount(3);
   await expect(report.locator(".rp-rank li").first()).toContainText("86");
   await expect(report.locator(".rp-held li")).toHaveCount(4);
-  await expect(report.locator(".rp-held").first()).toContainText("RISK_GATE_NOT_ALLOWED");
+  await expect(report.locator(".rp-held").first()).toContainText("Risk gate not allowed");
   await expect(report.getByRole("img", { name: /Score profile: Customer problem 91/ })).toBeVisible();
   await expect(report.locator(".rp-vs")).toContainText("Advertising saturation 24/100");
   await expect(report.locator(".rp-next")).toContainText("deepen validation for deskflow-alpha");

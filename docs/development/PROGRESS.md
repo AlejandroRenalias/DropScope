@@ -269,6 +269,46 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 
 - Update (2026-10-14): PR #49 (run diff) was merged into `main` with the user's approval as merge commit `6339838`, pinned to the exact head `99e08c5` (CI `verify` passed on it). The source branch was kept. Still pending: the `.claude/settings.json` rule for the runs folder, an optional screen for run diff, and the small UI checks.
 
+### Runs folder read rule (2026-10-14)
+
+- Request: ADR-027 decision 9 requires a rule denying development-agent reads of the saved runs folder before real traces are admitted. This is an agent-permission change, so independent review is required (`AGENTS.md`).
+- Change (only `.claude/settings.json`): `deny` for `Read(~/AppData/Local/DropScope/**)` and `Read(~/AppData/Local/Packages/*/LocalCache/Local/DropScope/**)` (the Claude desktop app is packaged and redirects `%LOCALAPPDATA%` to the Packages copy, which exists on this machine), `deny` for shell commands matching `*DropScope*runs*` (Bash and PowerShell), and `ask` for `npm run forensics*` (it reads and prints the default runs folder).
+- Evidence: in the same session a Read of a file under the Packages path, a Glob of the nominal path and a Bash `ls` of the Packages folder were all refused. This covers Claude Code only; Codex has its own settings, which this repository does not control.
+- Known limits: file-tool rules are not an operating-system sandbox, and shell text patterns are best effort (another spelling of the path may slip through).
+- Pending: independent review (brief: `REVIEW_BRIEF_RUNS_FOLDER_DENY.md`), the user's approval, push and merge.
+
+### Review record: runs folder read rule, round 1 (commit `fe675ef`)
+
+- Review: Codex gpt-6.1-sol, read-only. Verdict REJECT, 2 major findings. Syntax, precedence (deny, ask, allow) and the `ask` rule were found correct; the overblocking of any shell command that names both "DropScope" and "runs" (for example `git log --grep`) was judged acceptable.
+- Major 1, shell bypass: text patterns need the literal words, so a script that builds the path from pieces, wildcards, `cd` plus relative paths, `npm.cmd run forensics` or running `src/run-cli.ts` directly is not matched. Reproduced by the lead agent: `node -e` joining `'Drop'+'Scope'` and `'r'+'uns'` ran without being blocked (it printed the path only; no run file was read). Cause is structural: the rule is a check inside the agent tool, not an operating-system boundary.
+- Major 2, Codex not covered: the commit configures Claude Code only.
+- Decision (user, 2026-10-14): option A. Keep the rule as an extra precaution, keep real traces excluded until a real boundary exists (for example a separate Windows account), and draft a superseding ADR for approval. Done: `docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md` (DRAFT, not accepted). This was the first implementation attempt; the rule itself is unchanged.
+- Pending: short independent review of ADR-028 and of the honest wording (brief: `REVIEW_BRIEF_ADR_028.md`), then the user's approval of ADR-028. ADR-027 and the spec are not edited until then.
+
+### Review record: ADR-028, round 1 (commit `25cb543`) and a third attempt approved by the user
+
+- Review: Codex gpt-6.1-sol, read-only. Verdict REJECT: 2 major, 1 minor. The lead agent checked all three against the draft and agreed. Because the settings rule was attempt 1 and the ADR draft attempt 2, a repair was attempt 3, so the lead agent stopped and asked. User decision (2026-10-14): option A, one more documentation-only repair and a short re-review; any further finding goes back to the user.
+- Major 1: the boundary did not cover original inputs, copies (sync, backups), the replay screen's browser memory, the real resolved path, or overriding rights (administrator, backup privilege, shared folders). Major 2: "all attempts must fail" cannot tell a real access denial from a wrong path, a missing file or a declined prompt. Minor: the draft said "we reproduced this" although our check only printed a built path and read no file.
+- Repair (text only, `docs/adr/ADR-028-...md`): decisions 2, 3 and 6 rewritten as described in `REVIEW_BRIEF_ADR_028_ROUND2.md`; the summary's evidence sentence corrected. No code or settings changed. Still a draft; ADR-027 and the spec are not edited.
+- Pending: short independent review of the delta (brief: `REVIEW_BRIEF_ADR_028_ROUND2.md`), then the user's approval of ADR-028.
+
+### Review record: ADR-028, round 2 (commit `43a6f0c`) and acceptance of the review
+
+- Review: Codex gpt-6.1-sol, read-only, delta only. Verdict APPROVE, no findings. All three round 1 findings confirmed closed (copies and indirect access, evidence of enforcement, overstated reproduction); no new contradiction; supersession still limited to the admission condition. It could not check actual isolation, permissions, paths or whether existing data is entirely synthetic.
+- **Outcome: the ADR-028 draft text is independently reviewed.** Rounds: settings rule (rejected, 2 major), ADR draft round 1 (rejected, 2 major and 1 minor), ADR draft round 2 (approved). ADR-028 is still a DRAFT until the user accepts it; real traces remain excluded.
+- Pending: the user's decision to accept ADR-028; then the follow-ups listed in it (correct ADR-027 decision 9 and spec section 11 item 2, update the handoff); push and pull request only with the user's approval.
+
+- Update (2026-10-14): the user accepted ADR-028. Status line set to Accepted; ADR-027 decision 9 and spec section 11 item 2 now point to it with one sentence each; the handoff "Still open" entry rewritten. No code changed. These cross-reference edits are mechanical and the ADR text they point to was independently reviewed, so no further review.
+
+### UI visual check (2026-10-14)
+
+- Requested by the user (handoff item 4): look at the original Mission Replay, the Failure Autopsy report and the Product Investigation report, and fix what looked wrong. Frontend presentation only; no change to events, schemas, the saved run format, `schemaVersion` or `IMPORTER.version`. No independent review required (`AGENTS.md`: presentation work).
+- Found and fixed: (1) the Mission Replay chronology showed raw event names (`MissionCreated`) and "X recorded in replay" sentences; it now shows plain names ("Mission created"), with the raw name on hover (`src/frontend/mission-replay.tsx`, `office-projection.ts`). (2) Held-out reason codes in the final report were all caps and broke mid-word ("CONFLI CT"); they now read as sentences, with the raw code on hover (`report-view.tsx`, `command-center.css`). (3) The task card under the constellation collapsed its title column to 7 pixels at about 1280 px wide, so text overlapped; the card now wraps (`command-center.css`, measured before and after in the browser). Product Investigation had no other problems; Failure Autopsy's other oddities (a raw task name in the activity feed, tiny radar labels) are left as they are.
+- Tests: seven e2e checks that pinned raw names or codes now expect the plain wording (Mission Replay checks look inside the chronology list). A first e2e run had 8 failures: two visual diffs and six from the pinned names plus knock-on failures between specs; unchanged `main` passed all 59.
+- Visual baselines (win32), each reviewed by the user before updating: `final-report`, `clean-research-mobile`, `mission-replay`. A first tuning of the card made the 1440 px page differ; the final layout leaves the 1440 px page baseline unchanged. Regenerating the first two also rewrote `mission-replay`; it was restored, shown, and only then updated after approval.
+- Validation: typecheck clean; 716 unit tests pass (3 skipped); build succeeds; 59 end-to-end tests pass.
+- Pending: push and pull request (need the user's approval).
+
 ### Run diff screen (2026-10-14)
 
 - Requested by the user (handoff item 3). The run diff, until now a command only, is now a card on the Replay screen ("Compare with another run", under "Imported agent run", below the claim check). Run A is the run open above; run B is a second run file, the demo variant, or the demo kept with content. It shows the verdict and counts, a side-by-side list of steps (Run A, Run B, what differs), a "Go to event" button that moves run A's replay, the tools whose use differs, a totals table and the same caveats as the command. Runs of two or more matching steps fold into one line you can open. One amber highlight marks every difference; a text chip names its kind. Everything runs in the browser; titles are plain text.

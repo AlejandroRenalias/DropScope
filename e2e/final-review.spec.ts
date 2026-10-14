@@ -20,11 +20,17 @@ test.afterAll(async () => {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const held: Array<() => void> = [];
-    (window as unknown as { __held: Array<() => void> }).__held = held;
+    const w = window as unknown as { __held: Array<() => void>; __finished: number };
+    w.__held = held;
+    w.__finished = 0;
     const original = File.prototype.arrayBuffer;
     File.prototype.arrayBuffer = async function (this: File) {
-      if (this.name.startsWith("hold-")) await new Promise<void>((resolve) => { held.push(resolve); });
-      return original.call(this);
+      const isHeld = this.name.startsWith("hold-");
+      if (isHeld) await new Promise<void>((resolve) => { held.push(resolve); });
+      const bytes = await original.call(this);
+      // Counted just before the page's own code continues with the bytes, so a test knows the read really finished.
+      if (isHeld) w.__finished += 1;
+      return bytes;
     };
   });
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -42,10 +48,13 @@ async function openRunReplay(page: Page) {
 
 const waitHeld = (page: Page, count: number) =>
   page.waitForFunction((n) => (window as unknown as { __held: unknown[] }).__held.length === n, count);
+// Releases a held read, waits until that read has really finished, then waits for the page to process the result
+// (two frames and a task), so a screen that wrongly applies the old result has had every chance to show it.
 async function release(page: Page, index: number) {
+  const before = await page.evaluate(() => (window as unknown as { __finished: number }).__finished);
   await page.evaluate((i) => (window as unknown as { __held: Array<() => void> }).__held[i](), index);
-  // Give the released read time to finish and (wrongly) update the screen; a correct screen ignores it.
-  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 400)));
+  await page.waitForFunction((n) => (window as unknown as { __finished: number }).__finished >= n, before + 1);
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 50)))));
 }
 
 const MARKER = "UNIQUE-PRIVATE-MARKER-7f3a91";
@@ -147,6 +156,17 @@ test.describe("final review: an older read never overwrites a newer choice", () 
     await expect(panel.getByRole("textbox")).not.toHaveValue(/heldclaim/);
   });
 
+  test("claims panel: a held claims file never replaces text typed afterwards", async ({ page }) => {
+    const replay = await openRunReplay(page);
+    const panel = claimsBox(replay);
+    const held = JSON.stringify({ claims: [{ id: "heldclaim", text: "t", tool: "lookup_order", mustContain: ["x"] }] });
+    await panel.locator(".cc-file-button input").setInputFiles(file("hold-claims.json", Buffer.from(held), "application/json"));
+    await waitHeld(page, 1);
+    await panel.getByRole("textbox").fill("typed by the user");
+    await release(page, 0);
+    await expect(panel.getByRole("textbox")).toHaveValue("typed by the user");
+  });
+
   test("claims panel: a held file that is not valid text shows no error after a newer action", async ({ page }) => {
     const replay = await openRunReplay(page);
     const panel = claimsBox(replay);
@@ -158,10 +178,29 @@ test.describe("final review: an older read never overwrites a newer choice", () 
   });
 });
 
-// Everything the page could have kept: web storage, cookies, every record of every database, every cached response.
+// Everything the page could have kept: web storage, cookies, window.name, history.state, every record of every database
+// (including the bytes inside Blob, File and ArrayBuffer values), every cached response, service worker registrations.
 async function storedText(page: Page): Promise<string> {
   return page.evaluate(async () => {
+    const decoder = new TextDecoder();
+    const seen = new Set<unknown>();
+    // Turns any stored value into text, reading the bytes of binary values (JSON.stringify would show them as {}).
+    async function flatten(value: unknown, depth = 0): Promise<string> {
+      if (value === null || value === undefined) return "";
+      if (typeof value !== "object") return String(value);
+      if (seen.has(value) || depth > 20) return "";
+      seen.add(value);
+      if (value instanceof Blob) return `${(value as File).name ?? ""} ${await value.text()}`;
+      if (value instanceof ArrayBuffer) return decoder.decode(value);
+      if (ArrayBuffer.isView(value)) return decoder.decode(value as ArrayBufferView);
+      const parts: string[] = [];
+      for (const [key, inner] of value instanceof Map ? value.entries() : Object.entries(value)) {
+        parts.push(String(key), await flatten(inner, depth + 1));
+      }
+      return parts.join(" ");
+    }
     const parts: string[] = [JSON.stringify({ ...localStorage }), JSON.stringify({ ...sessionStorage }), document.cookie];
+    parts.push(window.name, await flatten(history.state));
     const databases = (await indexedDB.databases?.()) ?? [];
     for (const info of databases) {
       parts.push(String(info.name));
@@ -176,7 +215,7 @@ async function storedText(page: Page): Promise<string> {
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => reject(request.error);
         });
-        parts.push(JSON.stringify(records));
+        for (const record of records) parts.push(await flatten(record));
       }
       db.close();
     }
@@ -189,29 +228,39 @@ async function storedText(page: Page): Promise<string> {
         if (response) parts.push(await response.clone().text());
       }
     }
-    parts.push(JSON.stringify((await navigator.serviceWorker?.getRegistrations?.()) ?? []));
+    for (const registration of (await navigator.serviceWorker?.getRegistrations?.()) ?? []) parts.push(registration.scope);
     return parts.join("\n");
   });
 }
 
 test.describe("final review: uploaded content is not kept by the browser", () => {
-  test("the scan can see a marker hidden in a database record and a cached response (positive control)", async ({ page }) => {
-    await page.evaluate(async (marker) => {
-      await new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open("control", 1);
-        request.onupgradeneeded = () => { request.result.createObjectStore("records", { autoIncrement: true }); };
-        request.onsuccess = () => {
-          const tx = request.result.transaction("records", "readwrite");
-          tx.objectStore("records").add({ hidden: marker });
-          tx.oncomplete = () => { request.result.close(); resolve(); };
-        };
-        request.onerror = () => reject(request.error);
-      });
-      await (await caches.open("control")).put("/control", new Response(marker));
-    }, MARKER);
-    const text = await storedText(page);
-    expect(text.split(MARKER).length - 1).toBe(2);
-  });
+  // Each place a private copy could hide must be visible to the scan, or a "nothing found" result means nothing.
+  const inDatabase = (name: string, store: string, value: string) => `new Promise((resolve, reject) => {
+    const request = indexedDB.open("${name}", 1);
+    request.onupgradeneeded = () => { request.result.createObjectStore("${store}", { autoIncrement: true }); };
+    request.onsuccess = () => {
+      const tx = request.result.transaction("${store}", "readwrite");
+      tx.objectStore("${store}").add(${value});
+      tx.oncomplete = () => { request.result.close(); resolve(); };
+    };
+    request.onerror = () => reject(request.error);
+  })`;
+  const hideIn: Record<string, string> = {
+    "a database record": inDatabase("control", "records", "{ hidden: MARKER }"),
+    "a File stored in a database": inDatabase("control-file", "files", '{ upload: new File([MARKER], "upload.bin") }'),
+    "bytes stored in a database": inDatabase("control-bytes", "bytes", "new TextEncoder().encode(MARKER)"),
+    "a cached response": '(async () => { await (await caches.open("control")).put("/control", new Response(MARKER)); })()',
+    "window.name": "(window.name = MARKER)",
+    "history.state": '(history.replaceState({ held: MARKER }, ""))',
+    "localStorage": '(localStorage.setItem("control", MARKER))',
+    "sessionStorage": '(sessionStorage.setItem("control", MARKER))',
+  };
+  for (const [place, code] of Object.entries(hideIn)) {
+    test(`the scan can see a marker hidden in ${place} (positive control)`, async ({ page }) => {
+      await page.evaluate(`(async () => { const MARKER = ${JSON.stringify(MARKER)}; await ${code}; })()`);
+      expect(await storedText(page)).toContain(MARKER);
+    });
+  }
 
   test("uploads to all three panels leave nothing behind, before and after a reload", async ({ page }) => {
     const messages: string[] = [];

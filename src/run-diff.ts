@@ -72,14 +72,14 @@ const fingerprintOf = (field: FieldLike): string => {
   return `${new TextEncoder().encode(text).length}:${sha256HexPure(text)}`;
 };
 
-/** Every value of an attribute name, in order, as one string: a name recorded twice counts as both. */
+/** Every value of an attribute name as one string, sorted so the order they were recorded in does not matter; a name recorded twice counts twice. */
 function attributeFingerprints(attributes: Array<{ key: FieldLike; value: FieldLike }>, name: string): string {
   const all: string[] = [];
   for (const a of attributes) {
     const key = a.key as { v?: { t?: string; v?: unknown } };
     if (key.v?.t === "s" && key.v.v === name) all.push(fingerprintOf(a.value));
   }
-  return all.length === 0 ? "-" : all.join("+");
+  return all.length === 0 ? "-" : all.sort().join("+");
 }
 
 function attributeFingerprint(attributes: Array<{ key: FieldLike; value: FieldLike }>, name: string): string {

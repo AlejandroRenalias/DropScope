@@ -45,6 +45,18 @@ describe("claim check: a tool name that the run file withheld", () => {
     expect(checkClaims(events, [claim({ tool: "lookup", atEvent: cutoff })]).results[0]).toMatchObject({ verdict: "NOT_SUPPORTED", reason: "TOO_LATE" });
   });
 
+  it("keeps the doubt when the nameless step never recorded the claimed field", () => {
+    const span = {
+      traceId: "1".repeat(32), spanId: "0000000000000001", name: "s", startTimeUnixNano: ns(0), endTimeUnixNano: ns(1),
+      attributes: [attr("gen_ai.operation.name", "execute_tool"), attr("gen_ai.tool.name", "tool with spaces")],
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] }));
+    for (const mode of ["HASH_ONLY", "FULL"] as const) {
+      const events = importTraceBytes({ spans: bytes, contentMode: mode });
+      expect(checkClaims(events, [claim({ mustContain: ["x"] })]).results[0].verdict, mode).toBe("CANNOT_CHECK");
+    }
+  });
+
   it("still says not supported for a missing tool when every tool name in the run is readable", () => {
     expect(checkClaims(runOf(["lookup"], "HASH_ONLY"), [claim({ tool: "nothing" })]).results[0]).toMatchObject({ verdict: "NOT_SUPPORTED", reason: "NO_MATCHING_STEP" });
   });
@@ -75,6 +87,18 @@ describe("run diff: tool use is counted by the recorded tool name", () => {
     const r = diffRuns(twoNames("lookup"), twoNames("write"));
     expect(r.tools.length).toBe(2);
     expect(diffRuns(twoNames("lookup"), twoNames("lookup")).tools).toEqual([]);
+  });
+
+  it("does not depend on the order in which a step recorded its tool names, but counts repeats", () => {
+    const names = (list: string[]) => {
+      const span = {
+        traceId: "1".repeat(32), spanId: "0000000000000001", name: "s", startTimeUnixNano: ns(0), endTimeUnixNano: ns(1),
+        attributes: [attr("gen_ai.operation.name", "execute_tool"), ...list.map((n) => attr("gen_ai.tool.name", n))],
+      };
+      return buildRunModel(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] })), contentMode: "FULL" }));
+    };
+    expect(diffRuns(names(["lookup", "alpha", "beta"]), names(["lookup", "beta", "alpha"])).tools).toEqual([]);
+    expect(diffRuns(names(["lookup", "alpha"]), names(["lookup", "alpha", "alpha"])).tools.length).toBe(2);
   });
 
   it("keeps the real totals when a run is too large to compare", () => {

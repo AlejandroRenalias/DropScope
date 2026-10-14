@@ -370,12 +370,15 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
   const unnamedTools = ordered.filter((step) => step.toolWithheld);
   const results: ClaimResult[] = claims.map((claim) => {
     const result = checkOne(claim);
-    // A step whose tool name was withheld might be the one this claim names, so "not supported" cannot be said. Only a
-    // step that recorded the claimed field by the claim's cutoff event could have supported it; a nameless step whose
-    // content came later (or never) changes nothing.
+    // A step whose tool name was withheld might be the one this claim names, so "not supported" cannot be said. The
+    // only nameless step that changes nothing is one whose content for the claimed field is KNOWN to come after the
+    // claim's cutoff event; a step that never recorded the field is unread, so it keeps the doubt (rule 5).
     if (result.verdict === "NOT_SUPPORTED" && claim.stepId === null) {
       const limit = claim.atEvent ?? Number.MAX_SAFE_INTEGER;
-      const possible = unnamedTools.find((step) => (step.content.get(CLAIM_FIELD_NAME[claim.field]) ?? []).some((item) => item.sequence <= limit));
+      const possible = unnamedTools.find((step) => {
+        const items = step.content.get(CLAIM_FIELD_NAME[claim.field]) ?? [];
+        return items.length === 0 || items.some((item) => item.sequence <= limit);
+      });
       if (possible !== undefined) return { ...result, verdict: "CANNOT_CHECK" as const, reason: "TOOL_NAME_WITHHELD" as const, stepId: possible.stepId };
     }
     return result;

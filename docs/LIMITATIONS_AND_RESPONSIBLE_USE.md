@@ -1,6 +1,6 @@
 # Limitations and Responsible Use
 
-DropScope is a local-first software-engineering learning project. It demonstrates an event-sourced research workflow using deterministic fixtures, replayable mission histories, and explicitly guarded boundaries.
+DropScope is a local-first software-engineering learning project with two parts. The main part is **agent run forensics**: a local, offline tool that imports a recorded AI agent run (an OTLP/JSON trace), saves a validated run file, and then shows what the run recorded at any step, re-applies a spending limit, checks claims against the recorded content, and compares two runs. The older part is an event-sourced research workflow (the "mission replay") built on deterministic fixtures, replayable mission histories, and explicitly guarded boundaries. The [README](../README.md) describes the first part.
 
 ## What DropScope Is Not
 
@@ -8,6 +8,16 @@ DropScope is a local-first software-engineering learning project. It demonstrate
 - It does not predict demand, profitability, product safety, regulatory status, supplier performance, or customer outcomes.
 - It is not an ecommerce automation system, a hosted service, or an unattended web-research bot.
 - A fixture outcome or holdout result is a test of software behavior, not evidence that a product should be sold.
+
+## What the Run Forensics Answers Do and Do Not Mean
+
+- DropScope reports what a recording says. It cannot see inside the agent, and it does not tell you whether the agent was right.
+- "Supported" in the claim check means the text you listed appears in the recording. It does not mean the claim is true.
+- Budget replay is a what-if: it re-applies a limit you type to the numbers the run recorded. It does not control or stop any agent.
+- "Differ" in the run diff means the recordings differ in what is compared (the README and the command list what is not compared). It does not say which run is right.
+- It has been tested on invented demo runs and on a few traces produced by instrumented libraries against a local stub server. **No real production trace has been analyzed.** Do not rely on it for audits, incident reports, compliance or legal evidence.
+- It runs on Windows only. Other operating systems are refused.
+- The forensics code makes no model calls and no explicit network requests; this is true by inspection of the code, and no automated test enforces it. One known exception: Windows can access a file on a mapped network drive before DropScope refuses it. The commands start the built-in Windows tools PowerShell and `icacls` to read file properties and lock the runs folder.
 
 ## Use Fixtures Responsibly
 
@@ -23,6 +33,8 @@ Changing a fixture is a controlled software test. It does not validate a new mar
 - Any new source, worker ability, data collection, scoring policy, publication workflow, or paid service needs a separately approved, bounded change.
 
 ## Data and Privacy
+
+Saved run files are written to `%LOCALAPPDATA%\DropScope\runs`, outside the repository. By default a run file keeps no prompts or answers, only their size and a fingerprint; a run imported with `--full` keeps the text. Fingerprints of predictable text can be guessed, so treat every run file as private: do not share it or commit it. **Do not import real agent traces into this project**: real traces can hold personal data and secrets, and the project has no real access boundary for them ([ADR-028](adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). All traces in the repository are invented.
 
 Local mission histories are stored under `.dropscope-data/` and are Git-ignored. Treat them as local project data: review them before copying or sharing, and delete them only when you intentionally want to discard those histories.
 

@@ -179,3 +179,114 @@ for (const width of [1440, 768, 375]) {
     expect(await noOverflow(page)).toBe(true);
   });
 }
+
+test.describe("budget replay", () => {
+  test("says plainly that it is a what-if and shows nothing until a limit is typed", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const replay = await openRunReplay(page);
+    const panel = replay.getByRole("region", { name: "Budget replay" });
+    await expect(panel).toContainText("Counterfactual");
+    await expect(panel).toContainText("DropScope never controls an agent");
+    await expect(panel).toContainText("Type one or more limits");
+    await expect(panel.getByRole("status")).toHaveCount(0);
+    await expect(replay.locator(".tick.rr-breach")).toHaveCount(0);
+  });
+
+  test("re-applies a token limit: names the event, marks the timeline, jumps there, and follows the scrubber", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const replay = await openRunReplay(page);
+    const panel = replay.getByRole("region", { name: "Budget replay" });
+    await panel.getByRole("button", { name: /Try an example/ }).click();
+    await expect(panel.getByRole("textbox", { name: "Total tokens" })).toHaveValue("4000");
+    const result = panel.locator(".bp-result");
+    await expect(result).toContainText("would have stopped this run at event 31 of 42");
+    await expect(result).toContainText("After Model call: chat sim-model-1 finished");
+    await expect(result).toContainText("over your limit of 4,000 tokens");
+    await expect(result).toContainText("What would not have happened");
+    await expect(result).toContainText("1 step would never have started");
+    await expect(result).toContainText("already running and could not have been recalled");
+    await expect(replay.locator(".tick.rr-breach")).toHaveCount(1);
+    await expect(replay.locator(".rr-breach-legend")).toContainText("event 31");
+
+    // Gauges follow the position: at the end the limit is over, in words as well as colour.
+    await expect(panel.locator(".bp-gauge.over")).toContainText("6,315 tokens of 4,000 tokens · over the limit");
+    await replay.getByLabel("Timeline position").fill("1");
+    await expect(panel.locator(".bp-gauge")).toContainText("0 tokens of 4,000 tokens");
+    await expect(panel.locator(".bp-gauge.over")).toHaveCount(0);
+
+    await panel.getByRole("button", { name: "Go to event 31" }).click();
+    await expect(replay).toContainText("Event 31 / 42");
+    await expect(panel.locator(".bp-gauge.over")).toContainText("4,065 tokens of 4,000 tokens · over the limit");
+  });
+
+  test("handles several limits, a time limit and a cost limit with your own prices", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const replay = await openRunReplay(page);
+    const panel = replay.getByRole("region", { name: "Budget replay" });
+    await panel.getByRole("textbox", { name: "Model calls" }).fill("2");
+    await panel.getByRole("textbox", { name: "Time limit (seconds)" }).fill("5");
+    await expect(panel.locator(".bp-result")).toContainText("would have stopped this run at event");
+    await expect(panel.locator(".bp-others")).toContainText("Model calls: exceeded at event");
+    await expect(panel.locator(".bp-others")).toContainText("Time: exceeded at event");
+
+    await panel.getByText("Add a cost limit").click();
+    await panel.getByRole("textbox", { name: "Cost limit" }).fill("0.01");
+    await panel.getByRole("textbox", { name: "Input price per million tokens" }).fill("3");
+    await panel.getByRole("textbox", { name: "Output price per million tokens" }).fill("15");
+    await expect(panel.locator(".bp-others")).toContainText("Cost: exceeded at event");
+    await expect(panel.locator(".bp-gauges")).toContainText("USD");
+    await panel.getByRole("button", { name: "Clear limits" }).click();
+    await expect(panel.locator(".bp-result")).toHaveCount(0);
+    await expect(replay.locator(".tick.rr-breach")).toHaveCount(0);
+  });
+
+  test("reports a run that fits, and explains bad input without guessing", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const replay = await openRunReplay(page);
+    const panel = replay.getByRole("region", { name: "Budget replay" });
+    const tokens = panel.getByRole("textbox", { name: "Total tokens" });
+    await tokens.fill("1,000,000");
+    await expect(panel.locator(".bp-result")).toContainText("No limit would have been exceeded");
+    await tokens.fill("abc");
+    await expect(panel.locator(".bp-errors")).toContainText("Total tokens must be a whole number");
+    await expect(panel.locator(".bp-result")).toHaveCount(0);
+    await tokens.fill("-5");
+    await expect(panel.locator(".bp-errors")).toContainText("whole number");
+    await tokens.fill("0");
+    await expect(panel.locator(".bp-result")).toContainText("would have stopped this run at event");
+    await panel.getByRole("textbox", { name: "Model calls" }).fill("1");
+    await tokens.fill("");
+    await panel.getByText("Add a cost limit").click();
+    await panel.getByRole("textbox", { name: "Cost limit" }).fill("1");
+    await expect(panel.locator(".bp-errors")).toContainText("needs both an input price and an output price");
+  });
+
+  test("works for a file you open, and says when token counts are missing", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const replay = await openRunReplay(page);
+    const T = "1".repeat(32);
+    const spans = [
+      { traceId: T, spanId: "00000000000000a1", name: "a", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000", attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }, { key: "gen_ai.usage.input_tokens", value: { intValue: "900" } }, { key: "gen_ai.usage.output_tokens", value: { intValue: "100" } }] },
+      { traceId: T, spanId: "00000000000000a2", name: "b", startTimeUnixNano: "2000000000", endTimeUnixNano: "3000000000", attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }] },
+    ];
+    const file = serializeRunLog(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })) }));
+    await page.locator(".file-button input").setInputFiles({ name: "missing-usage.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(file) });
+    const panel = replay.getByRole("region", { name: "Budget replay" });
+    await panel.getByRole("textbox", { name: "Total tokens" }).fill("500");
+    await expect(panel.locator(".bp-result")).toContainText("1,000 tokens, over your limit of 500 tokens");
+    await panel.getByText("What this does and does not tell you").click();
+    await expect(panel.locator(".bp-caveats")).toContainText("1 model call reported no token counts");
+  });
+
+  for (const width of [1440, 768, 375]) {
+    test(`has no horizontal overflow at ${width}px with a result showing`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const replay = await openRunReplay(page);
+      const panel = replay.getByRole("region", { name: "Budget replay" });
+      await panel.getByRole("button", { name: /Try an example/ }).click();
+      await expect(panel.locator(".bp-result")).toContainText("would have stopped");
+      await panel.getByText("What this does and does not tell you").click();
+      expect(await noOverflow(page)).toBe(true);
+    });
+  }
+});

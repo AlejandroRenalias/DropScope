@@ -28,3 +28,21 @@ test("captures the run replay surface", async ({ page }) => {
   await expect(replay.getByRole("heading", { name: "Step failed" })).toBeVisible();
   await expect(replay).toHaveScreenshot("run-replay.png", { animations: "disabled" });
 });
+
+test("captures the budget replay panel with a result", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.evaluate(() => window.localStorage.clear());
+  await page.reload();
+  await page.addStyleTag({ content: ".topbar { position: static !important; }" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
+  await page.getByRole("button", { name: "Imported agent run" }).click();
+  const replay = page.getByRole("region", { name: "Agent run replay" });
+  const panel = replay.getByRole("region", { name: "Budget replay" });
+  await panel.getByRole("button", { name: /Try an example/ }).click();
+  await expect(panel.locator(".bp-result")).toContainText("would have stopped this run at event 31 of 42");
+  await replay.getByLabel("Timeline position").fill("31");
+  await expect(panel.locator(".bp-gauge.over")).toContainText("4,065 tokens");
+  await expect(panel).toHaveScreenshot("budget-replay.png", { animations: "disabled" });
+});

@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from "react";
+import { parseBudgetPolicy, replayBudget, type BudgetPolicyInput } from "../budget-replay.js";
 import type { RunEvent } from "../run-events.js";
+import { BudgetReplayPanel } from "./budget-replay-panel.js";
 import { PageHead } from "./research-office.js";
 import {
   categoryOf, describeRunEvent, describeStateChange, eventStepId, formatDuration, formatNumber, runEventCategories, stepStatusAt,
@@ -37,9 +39,13 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
   const total = model.events.length;
   const bounded = Math.max(1, Math.min(position, total));
   const [filters, setFilters] = useState<RunEventCategory[]>(runEventCategories.map((c) => c.id));
+  const [budgetInput, setBudgetInput] = useState<BudgetPolicyInput>({});
   const ticksRef = useRef<HTMLDivElement>(null);
 
   const buckets = useMemo(() => buildBuckets(model.events), [model]);
+  const parsedBudget = useMemo(() => parseBudgetPolicy(budgetInput), [budgetInput]);
+  const budget = useMemo(() => (parsedBudget.policy ? replayBudget(model.events, parsedBudget.policy) : null), [parsedBudget, model]);
+  const breachEvent = budget?.first?.breachEvent ?? null;
   const state = useMemo(() => model.replay.stateAt(bounded), [model, bounded]);
   const previous = useMemo(() => (bounded > 1 ? model.replay.stateAt(bounded - 1) : null), [model, bounded]);
   const event = model.events[bounded - 1];
@@ -100,11 +106,13 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
           const isCurrent = index === currentBucket;
           const label = bucket.from === bucket.to ? `Event ${bucket.from}` : `Events ${bucket.from} to ${bucket.to}`;
           const dim = bucket.category !== "run" && !filters.includes(bucket.category);
-          return <button type="button" key={bucket.from} data-bucket={index} className={`tick rr-${bucket.failed ? "failed" : bucket.category} ${bucket.to <= bounded ? "past" : "future"} ${isCurrent ? "cur" : ""} ${dim ? "dim" : ""}`} tabIndex={isCurrent ? 0 : -1} aria-label={`${label}, ${bucket.failed ? "a step failed" : bucket.category}`} aria-current={isCurrent ? "step" : undefined} onClick={() => setPosition(bucket.to)}>{(index === 0 || index % numberEvery === 0 || isCurrent) && <span className="num" aria-hidden="true">{bucket.from}</span>}</button>;
+          const breachHere = breachEvent !== null && breachEvent >= bucket.from && breachEvent <= bucket.to;
+          return <button type="button" key={bucket.from} data-bucket={index} className={`tick rr-${bucket.failed ? "failed" : bucket.category} ${bucket.to <= bounded ? "past" : "future"} ${isCurrent ? "cur" : ""} ${dim ? "dim" : ""} ${breachHere ? "rr-breach" : ""}`} tabIndex={isCurrent ? 0 : -1} aria-label={`${label}, ${bucket.failed ? "a step failed" : bucket.category}${breachHere ? ", where your budget limit would have been passed" : ""}`} aria-current={isCurrent ? "step" : undefined} onClick={() => setPosition(bucket.to)}>{(index === 0 || index % numberEvery === 0 || isCurrent) && <span className="num" aria-hidden="true">{bucket.from}</span>}</button>;
         })}
       </div>
       <label className="sr-only" htmlFor="rr-position">Timeline position</label>
       <input id="rr-position" className="scrubber" type="range" min="1" max={total} value={bounded} aria-valuetext={`Event ${bounded} of ${total}, ${description.title}`} style={{ "--fill": `${total > 1 ? ((bounded - 1) / (total - 1)) * 100 : 100}%` } as React.CSSProperties} onChange={(e) => setPosition(Number(e.currentTarget.value))} />
+      {breachEvent !== null && <p className="rr-breach-legend"><i aria-hidden="true" /> Marked tick: where the budget limit you set would have been passed (event {breachEvent}).</p>}
       <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       <div className="timeline-tools">
         <div className="cats" role="group" aria-label="Event category filters">{runEventCategories.map((c) => <button type="button" key={c.id} className={`cat ${filters.includes(c.id) ? "on" : ""}`} aria-pressed={filters.includes(c.id)} onClick={() => toggle(c.id)}><i className={`dot rr-dot-${c.id}`} aria-hidden="true" />{c.label}</button>)}</div>
@@ -117,6 +125,8 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
       <div className="panel-card rr-stat"><span className="eyebrow">Content recorded</span><strong>{contentCount} <small>{stored ? "items stored" : "items withheld"}</small></strong><small className="rr-of">{state.logCount} log record{state.logCount === 1 ? "" : "s"}</small></div>
       <div className="panel-card rr-stat"><span className="eyebrow">Importer notes</span><strong>{notesSoFar} <small>so far</small></strong><small className="rr-of">{model.notes.length} in all</small></div>
     </section>
+
+    <BudgetReplayPanel model={model} input={budgetInput} setInput={setBudgetInput} errors={parsedBudget.errors} result={budget} position={bounded} setPosition={setPosition} />
 
     <div className="replay-grid rr-grid">
       <section className="panel-card rr-steps" aria-labelledby="rr-steps-title">

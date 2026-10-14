@@ -4,7 +4,7 @@ A new chat starts from a fresh clone and does not remember the previous conversa
 
 ## Where things stand
 
-- **Repository:** AlejandroRenalias/DropScope. Working branch: `claude/inspiring-ritchie-8n0iay` (base: `main` at `60ba704`). It is **pushed and clean**: nothing is half-built, no review is pending, no pull request is open. Last commit when this was written: `555bfba`.
+- **Repository:** AlejandroRenalias/DropScope. Working branch: `claude/inspiring-ritchie-8n0iay` (base: `main` at `60ba704`). It is **clean but NOT pushed**: the claim check commits (`e672c7c`, `fde454a`, `e0c9cdc`, `7f40bf2`, and the documentation commit after them) exist only on this machine; GitHub still has the branch as of `cef2db3`. Nothing is half-built, no review is pending, no pull request is open. Show the user what would be pushed and wait for approval.
 - **Do not touch:** the `codex/*` branches, `backup/codex-handoff-2026-10-13`, `claude/migration-config`. `.claude/launch.json` on the user's machine is theirs; never commit it.
 - **Direction:** DropScope is a **learning project** (the user's choice, repeated several times). The idea is "agent run forensics": a local, offline, deterministic auditor for AI agent runs. It imports an OTLP/JSON trace, saves a validated run file, rebuilds the recorded state at any step, and re-applies a budget to the run. Dropshipping is only the built-in demo domain. No live workers, no model calls, no API cost, no network.
 - **Sprint exception:** in effect until 2026-10-31 (see `AGENTS.md`). The learning workflow stays paused; the user decided not to resume it.
@@ -19,6 +19,7 @@ A new chat starts from a fresh clone and does not remember the previous conversa
 | Reducer (state at any step) | `src/run-reducer.ts` | validates every history, re-checks privacy on read |
 | Safe file access, write-once store, CLI | `src/run-files.ts`, `src/run-store.ts`, `src/run-log-format.ts`, `src/run-cli.ts` | Windows only in v1 (other platforms refuse); runs go to `%LOCALAPPDATA%\DropScope\runs` |
 | Replay screen for imported runs | `src/frontend/replay-screen.tsx`, `run-replay.tsx`, `run-replay-model.ts`, `run-replay.css`, `assets/demo-run.runlog.jsonl` | reads a run file in the browser with a file picker; the original mission replay is unchanged |
+| Claim check | `src/claim-check.ts`, `src/claim-report.ts`, `src/frontend/claim-check-panel.tsx`, `claims` command, `src/frontend/assets/demo-run-full.runlog.jsonl` | the user writes a claims file (`tool` or `stepId`, optional `field`, `mustContain`, `caseSensitive`, `atEvent`); verdicts Supported, Not supported, Cannot check. Only content a run file stored can be checked (default import withholds it, so those claims say "cannot check"); each text must sit inside one recorded value; work is bounded by a cost model (`CLAIM_LIMITS`). "Supported" means "appears in the recording", never "true". |
 | Budget replay (counterfactual) | `src/budget-replay.ts`, `src/budget-report.ts`, `src/frontend/budget-replay-panel.tsx`, `budget` command | exact whole-number arithmetic; wording is "would have stopped" |
 
 The spec is `docs/schemas/run-event-contract-v1.md` (amended several times with the user's approval; each change is recorded in `PROGRESS.md`). Product proposal: `docs/development/PROPOSAL_AGENT_RUN_FORENSICS.md`. Phases 0 to 3 of the proposal (the approved cut line) are done: import, state at any step, replay, budget replay.
@@ -31,14 +32,15 @@ npm run test:e2e                                    # Playwright; needs Chrome; 
 npm run forensics -- import <spans.json> [--logs <logs.json>] [--trace <id>] [--full]
 npm run forensics -- state <run file> [--at N]
 npm run forensics -- budget <run file> --max-total-tokens 4000 [--max-seconds 8 ...] [--json]
+npm run forensics -- claims <run file> --claims <claims.json> [--json]   # needs a run imported with --full to read content
 npx tsx test/fixtures/make-demo-run.ts              # regenerates the demo run (a test fails if it drifts)
 ```
 
-Last known results: typecheck clean, 604 unit tests (2 skipped), 49 end-to-end tests, build succeeds.
+Last known results: typecheck clean, 669 unit tests (2 skipped), 59 end-to-end tests, build succeeds.
 
 ## How reviews were done (repeat for new risky work)
 
-`AGENTS.md` requires independent read-only review for security, persistence, budget accounting, state transitions, untrusted input. The user runs **Codex gpt-6.1-sol** on their machine. The lead agent writes a brief file in `docs/development/` (see `REVIEW_BRIEF_*.md`: exact commit SHA, scope, areas to examine, decisions to judge, report format, no conclusions), gives the user a short prompt that makes Codex check `git rev-parse HEAD` first, and the user pastes the report back. The lead agent reproduces every finding before fixing it, groups fixes by theme, adds a regression test per finding, then asks for a short review of the delta. At most two implementation attempts per workstream, then stop and bring options to the user. Record each round in `PROGRESS.md`. Importer: 4 rounds. Budget replay: 2 rounds. Both ended approved.
+`AGENTS.md` requires independent read-only review for security, persistence, budget accounting, state transitions, untrusted input. The user runs **Codex gpt-6.1-sol** on their machine. The lead agent writes a brief file in `docs/development/` (see `REVIEW_BRIEF_*.md`: exact commit SHA, scope, areas to examine, decisions to judge, report format, no conclusions), gives the user a short prompt that makes Codex check `git rev-parse HEAD` first, and the user pastes the report back. The lead agent reproduces every finding before fixing it, groups fixes by theme, adds a regression test per finding, then asks for a short review of the delta. At most two implementation attempts per workstream, then stop and bring options to the user (for claim check the user approved a third attempt). Record each round in `PROGRESS.md`. Importer: 4 rounds. Budget replay: 2 rounds. Claim check: 3 rounds. All ended approved.
 
 ## Rules to keep
 
@@ -61,7 +63,7 @@ Last known results: typecheck clean, 604 unit tests (2 skipped), 49 end-to-end t
 
 - **`.claude/settings.json` rule** denying development-agent reads of `%LOCALAPPDATA%\DropScope\runs`. Required by ADR-027 before real traces are admitted; needs its own independent review and the user's approval.
 - **Pull request** to merge this branch into `main`: not opened; needs the user's approval.
-- **Next features from the proposal:** claim checking (is a claim supported by what the run captured?), then run diff (where did two runs diverge?). Neither is started. The proposal and `ROADMAP.md` dates are only indicative now.
+- **Next feature from the proposal:** run diff (where did two runs diverge?). Not started. Claim checking is done and reviewed. The proposal and `ROADMAP.md` dates are only indicative now.
 - Small UI items: the original Mission Replay still shows raw event names in its chronology; the Failure Autopsy and Product Investigation reports were never checked visually.
 - Optional: open run files from the runs folder without a file picker (would need a design decision about serving local files).
 

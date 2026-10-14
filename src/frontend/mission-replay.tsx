@@ -78,7 +78,7 @@ export function MissionReplay({ scenario, setScenario, activeHistory, history, p
 
     <section className="panel-card replay-chronology" aria-labelledby="replay-chronology-title">
       <header className="surface-heading"><div><span className="eyebrow">Recorded sequence</span><h2 id="replay-chronology-title">Event chronology</h2></div><small>{visible.length} visible</small></header>
-      <div className="event-list replay-events">{visible.map((record) => <article className={`event ${record.sequence <= bounded ? "replayed" : ""} ${record.sequence === bounded ? "current" : ""}`} key={record.sequence}><b>{String(record.sequence).padStart(2, "0")}</b><span><strong>{record.type}</strong><small>{record.category} · {record.detail}</small></span><button type="button" onClick={() => setPosition(record.sequence)}>Inspect</button></article>)}</div>
+      <div className="event-list replay-events">{visible.map((record) => <article className={`event ${record.sequence <= bounded ? "replayed" : ""} ${record.sequence === bounded ? "current" : ""}`} key={record.sequence}><b>{String(record.sequence).padStart(2, "0")}</b><span><strong title={record.type}>{humanizeType(record.type)}</strong><small>{record.category} · {record.detail}</small></span><button type="button" onClick={() => setPosition(record.sequence)}>Inspect</button></article>)}</div>
     </section>
   </section>;
 }

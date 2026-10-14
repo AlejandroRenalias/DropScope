@@ -54,7 +54,7 @@ export function FinalReport({ events, fixtureId }: { events?: LocalMissionDto["e
         <div className="eyebrow" id="rp-priority-title">Priority order</div>
         {report.priorities.length ? <ol className="rp-rank">{report.priorities.slice(0, 5).map((candidate, index) => <li key={candidate.candidateId}><span className="rp-n">{index + 1}</span><div><strong>{candidate.candidateId}</strong><div className="rp-bar"><i style={{ width: `${Math.max(0, Math.min(100, candidate.researchPriorityScore))}%` }} /></div></div><b>{candidate.researchPriorityScore}</b></li>)}</ol> : <p className="rp-empty">None cleared the recorded evidence gates.</p>}
         <div className="eyebrow rp-gap">Held out</div>
-        {report.heldOut.length ? <ul className="rp-held">{report.heldOut.map((candidate) => <li key={candidate.candidateId}><strong>{candidate.candidateId}</strong><span>{candidate.reasonCodes.map((code) => <em key={code}>{code}</em>)}</span></li>)}</ul> : <p className="rp-empty">No held-out candidates in this report.</p>}
+        {report.heldOut.length ? <ul className="rp-held">{report.heldOut.map((candidate) => <li key={candidate.candidateId}><strong>{candidate.candidateId}</strong><span>{candidate.reasonCodes.map((code) => <em key={code} title={code}>{sentence(code)}</em>)}</span></li>)}</ul> : <p className="rp-empty">No held-out candidates in this report.</p>}
       </section>
 
       <section className="panel-card" aria-labelledby="rp-profile-title">

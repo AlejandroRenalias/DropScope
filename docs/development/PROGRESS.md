@@ -417,3 +417,9 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 ### CI failure on pull request #57 (2026-10-15)
 
 - CI `verify` (Ubuntu) failed on one new test, `test/final-review-fixes.test.ts` "says a step number is out of range": the test built the demo file path from the file URL by stripping the leading slash, which is right on Windows (`C:/...`) and wrong on Linux (`/home/...` became a relative path, so the command could not read the file and exited 1 instead of 2). Test-only fault; the product code was right. Fixed by using `fileURLToPath`. This is the kind of platform difference the Windows-only tests also hide from CI (see the open items above); the other 754 tests passed there.
+
+### README demo animation (2026-10-15, public repository)
+
+- The user chose an animated GIF only (no still screenshot). Added `docs/images/replay-demo.gif` (14.9 s, 1000 x 563 px, 8 frames per second, 128 colors, 1.86 MB) under a "See it in action" line after the README intro. It shows the built-in demo run only: the Replay screen at event 1, the slider moving to the failed refund at event 22, the "Step failed" panel, then "Compare with the demo variant" and its first difference. The red runtime banner and the "Run file" card are scrolled out of view.
+- How it was made: Playwright drove the local dev server and took one settled screenshot per frame (stop-motion, so no screen-stream glitches and no extra ffmpeg download for Playwright); the installed ffmpeg turned the frames into the GIF. The recording script is not committed. The user approved the GIF before it was committed.
+- Validation: typecheck clean; 759 unit tests pass (3 skipped); build succeeds; 85 end-to-end tests pass (picture baselines unchanged). Docs and image only; no code, demo file, `IMPORTER.version` or `schemaVersion` change.

@@ -45,6 +45,13 @@ export function isJsonNumber(value: JsonValue): value is JsonNumber {
 }
 
 export function parseStrictJson(bytes: Uint8Array, stage: string, limits: JsonLimits = DEFAULT_JSON_LIMITS): JsonValue {
+  return parseStrictJsonCounted(bytes, stage, limits).value;
+}
+
+// Also reports how many nodes were parsed, so a caller can share one node budget across several files.
+export function parseStrictJsonCounted(
+  bytes: Uint8Array, stage: string, limits: JsonLimits = DEFAULT_JSON_LIMITS,
+): { value: JsonValue; nodes: number } {
   const fail = (code: "E_SYNTAX" | "E_UNICODE" | "E_LIMIT", at: number): never => {
     throw new ImportError(code, stage, at);
   };
@@ -275,5 +282,5 @@ export function parseStrictJson(bytes: Uint8Array, stage: string, limits: JsonLi
       }
     }
   }
-  return root;
+  return { value: root, nodes };
 }

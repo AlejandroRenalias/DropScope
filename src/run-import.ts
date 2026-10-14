@@ -3,7 +3,8 @@ import { sha256Hex } from "./canonical.js";
 import { parseLogsRequest, parseTraceRequest } from "./otlp-structure.js";
 import { emitRunEvents, type EmitInput } from "./run-emit.js";
 import type { ContentMode, RunEvent } from "./run-events.js";
-import { parseStrictJson } from "./strict-json.js";
+import { ImportError } from "./run-import-error.js";
+import { DEFAULT_JSON_LIMITS, parseStrictJsonCounted } from "./strict-json.js";
 import { normalizeRun } from "./trace-normalize.js";
 
 export type ImportRequest = {
@@ -13,9 +14,16 @@ export type ImportRequest = {
   selectTrace?: string;
 };
 
+// Spec section 10: 64 MiB per import in total, and 2,000,000 parsed nodes in total (not per file).
+export const MAX_IMPORT_BYTES = 64 * 1024 * 1024;
+
 export function importTraceBytes(request: ImportRequest): RunEvent[] {
-  const spansJson = parseStrictJson(request.spans, "parse-spans");
-  const logsJson = request.logs === undefined ? undefined : parseStrictJson(request.logs, "parse-logs");
+  if (request.spans.length + (request.logs?.length ?? 0) > MAX_IMPORT_BYTES) throw new ImportError("E_LIMIT", "import", null, "INPUT_TOTAL_BYTES");
+  const parsedSpans = parseStrictJsonCounted(request.spans, "parse-spans");
+  const spansJson = parsedSpans.value;
+  const logsJson = request.logs === undefined ? undefined : parseStrictJsonCounted(request.logs, "parse-logs", {
+    ...DEFAULT_JSON_LIMITS, maxNodes: DEFAULT_JSON_LIMITS.maxNodes - parsedSpans.nodes,
+  }).value;
   const spans = parseTraceRequest(spansJson, "structure-spans");
   const logs = logsJson === undefined ? undefined : parseLogsRequest(logsJson, "structure-logs");
 

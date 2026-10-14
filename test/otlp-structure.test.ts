@@ -142,9 +142,13 @@ describe("spans", () => {
     expect(spanCode({ weird: "x", __proto__x: 1 })).toBeNull();
   });
 
-  it("counts unknown envelope properties without storing them", () => {
+  it("counts unknown outer-wrapper properties and keeps resource and scope ones", () => {
     const request = json({ resourceSpans: [{ extra: 1, resource: { x: 1 }, scopeSpans: [{ scope: { y: 1 }, spans: [span()] }] }], more: 2 });
-    expect(parseTraceRequest(request).stats.envelopeUnknownCount).toBe(4);
+    const parsed = parseTraceRequest(request);
+    expect(parsed.stats.envelopeUnknownCount).toBe(2);
+    expect(parsed.contexts[0].unknownCount).toBe(2);
+    expect(parsed.contexts[0].resource.unknownFields).toEqual({ t: "k", v: [["x", { t: "i", v: "1" }]] });
+    expect(parsed.contexts[0].scope.unknownFields).toEqual({ t: "k", v: [["y", { t: "i", v: "1" }]] });
   });
 
   it("handles an empty request and wrong container types", () => {

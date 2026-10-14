@@ -5,14 +5,28 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { canonicalJson } from "./canonical.js";
-import { defaultChecks, defaultRunsDirectory, ensureRunsDirectory, readInputFile, type PlatformChecks } from "./run-files.js";
+import { MAX_RUN_LOG_BYTES } from "./run-emit.js";
+import { defaultChecks, defaultRunsDirectory, ensureRunsDirectory, readInputFile, syncedRootWarning, type PlatformChecks } from "./run-files.js";
 import { ImportError } from "./run-import-error.js";
 import type { RunEvent } from "./run-events.js";
 import { validateRunHistory } from "./run-reducer.js";
-import { DEFAULT_JSON_LIMITS, parseStrictJson } from "./strict-json.js";
+import { parseStrictJson } from "./strict-json.js";
 
-export const MAX_RUN_LOG_BYTES = 128 * 1024 * 1024;
+export { MAX_RUN_LOG_BYTES };
+// A persisted line is read with caps that account for the tagged form, which nests about three levels deeper
+// per level of input JSON, and for one line (the header) carrying every context.
+const RUN_LOG_LINE_LIMITS = {
+  maxBytes: MAX_RUN_LOG_BYTES,
+  maxDepth: 256,
+  maxNodes: 20_000_000,
+  maxElements: 100_000,
+  maxKeyBytes: 1024,
+  maxStringBytes: 16 * 1024 * 1024,
+  maxNumberLexeme: 256,
+};
 const TEMP_PREFIX = ".dropscope-tmp-";
+// A temporary file counts as stale after ten minutes. Removing younger ones could delete the file of an
+// import that is still running (spec 11.4 says stale files are removed at the next import start).
 const STALE_TEMP_MS = 10 * 60 * 1000;
 const STAGE = "store";
 
@@ -22,10 +36,17 @@ const invalid = (reason: string): never => {
 
 // One event per line, canonical JSON, LF only, final newline, UTF-8 without a BOM.
 export function serializeRunLog(events: readonly RunEvent[]): Uint8Array {
-  const text = events.map((event) => `${canonicalJson(event)}\n`).join("");
-  const bytes = new TextEncoder().encode(text);
-  if (bytes.length > MAX_RUN_LOG_BYTES) throw new ImportError("E_LIMIT", STAGE, null, "OUTPUT_TOO_LARGE");
-  return bytes;
+  // Each line is encoded as it is made and the running size is checked, so an oversized history fails
+  // before one huge string or array is allocated.
+  const lines: Buffer[] = [];
+  let total = 0;
+  for (const event of events) {
+    const line = Buffer.from(`${canonicalJson(event)}\n`, "utf8");
+    total += line.length;
+    if (total > MAX_RUN_LOG_BYTES) throw new ImportError("E_LIMIT", STAGE, null, "OUTPUT_TOO_LARGE");
+    lines.push(line);
+  }
+  return new Uint8Array(Buffer.concat(lines, total));
 }
 
 // Reads a run log: every line must parse strictly, match the schema, be in canonical form, and the whole
@@ -47,7 +68,7 @@ export function parseRunLog(bytes: Uint8Array): RunEvent[] {
     if (line.length === 0) invalid(`BLANK_LINE ${index + 1}`);
     let value: unknown;
     try {
-      parseStrictJson(new TextEncoder().encode(line), "read-log", DEFAULT_JSON_LIMITS);
+      parseStrictJson(new TextEncoder().encode(line), "read-log", RUN_LOG_LINE_LIMITS);
       value = JSON.parse(line);
     } catch {
       return invalid(`LINE_SYNTAX ${index + 1}`);
@@ -63,7 +84,7 @@ export function readRunLog(file: string, checks: PlatformChecks = defaultChecks(
 }
 
 export type PublishOptions = { runsDirectory?: string; checks?: PlatformChecks; now?: () => number };
-export type PublishResult = { path: string; status: "CREATED" | "REUSED"; eventCount: number };
+export type PublishResult = { path: string; status: "CREATED" | "REUSED"; eventCount: number; warnings: string[] };
 
 function removeStaleTemps(dir: string, now: number): void {
   for (const name of fs.readdirSync(dir)) {
@@ -106,7 +127,10 @@ export function publishRun(history: readonly RunEvent[], options: PublishOptions
 
   const name = `${header.payload.traceId}-${header.payload.artifactId.slice(0, 16)}.runlog.jsonl`;
   const final = path.join(dir, name);
-  const result = (status: PublishResult["status"]): PublishResult => ({ path: final, status, eventCount: events.length });
+  const warning = syncedRootWarning(dir);
+  const result = (status: PublishResult["status"]): PublishResult => ({
+    path: final, status, eventCount: events.length, warnings: warning === null ? [] : [warning],
+  });
 
   const exists = (): boolean => {
     try {

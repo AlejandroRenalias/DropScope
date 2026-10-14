@@ -68,10 +68,10 @@ describe("readInputFile", () => {
     expect(codeOf(() => safeResolve(link))).toBe("E_PATH:LINK_IN_PATH");
   });
 
-  it("rejects a file symbolic link when the platform lets this account create one", () => {
+  it("rejects a file symbolic link when the platform lets this account create one", (ctx) => {
     const target = write("target.json", "{}");
     const link = path.join(root, "filelink.json");
-    try { fs.symlinkSync(target, link, "file"); } catch { return; }
+    try { fs.symlinkSync(target, link, "file"); } catch { ctx.skip(); return; }
     expect(codeOf(() => readInputFile(link, 10, fake()))).toBe("E_PATH:LINK_IN_PATH");
   });
 

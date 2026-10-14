@@ -53,14 +53,24 @@ export const attributeListSchema = z.array(
   z.object({ ordinal: ordinalSchema, key: fieldSchema, value: fieldSchema }).strict(),
 );
 
+// Context ids are the importer's own ids: c0, c1, ...
+export const contextIdSchema = z.string().regex(/^c[0-9]{1,7}$/);
+
 const contextSchema = z.object({
-  contextId: z.string().min(1),
-  resource: z.object({ attributes: attributeListSchema, schemaUrl: fieldSchema }).strict(),
+  contextId: contextIdSchema,
+  resource: z.object({
+    attributes: attributeListSchema,
+    schemaUrl: fieldSchema,
+    droppedAttributesCount: count32,
+    unknownFields: fieldSchema.nullable(),
+  }).strict(),
   scope: z.object({
     name: fieldSchema,
     version: fieldSchema,
     attributes: attributeListSchema,
     schemaUrl: fieldSchema,
+    droppedAttributesCount: count32,
+    unknownFields: fieldSchema.nullable(),
   }).strict(),
 }).strict();
 
@@ -114,11 +124,20 @@ export const importErrorCodeSchema = z.enum([
 ]);
 export type ImportErrorCode = z.infer<typeof importErrorCodeSchema>;
 
-// Note details contain only codes, counts, ids and enumerated names (section 5, ImportNote).
-const noteDetailSchema = z.record(
-  z.string().regex(/^[A-Za-z][A-Za-z0-9]{0,31}$/),
-  z.union([z.number().int().nonnegative(), z.string().max(64).regex(/^[A-Za-z0-9._:-]*$/)]),
-);
+// Note details contain only counts, ids and enumerated names, and each code has its own exact shape
+// (spec section 7). Free-form details are not allowed: a detail is a place content could hide.
+const countSchema = z.number().int().nonnegative();
+const noteShape = <C extends string, D extends z.ZodRawShape>(code: C, stepId: "step" | "none" | "either", detail: D) =>
+  z.object({
+    code: z.literal(code),
+    stepId: stepId === "step" ? spanIdSchema : stepId === "none" ? z.null() : spanIdSchema.nullable(),
+    detail: z.object(detail).strict(),
+  }).strict();
+const secretCountDetail = z.object({
+  awsAccessKey: countSchema.optional(), githubToken: countSchema.optional(), openAiKey: countSchema.optional(),
+  bearerToken: countSchema.optional(), jwt: countSchema.optional(), privateKeyBlock: countSchema.optional(),
+  email: countSchema.optional(),
+}).strict().refine((d) => Object.values(d).some((n) => n !== undefined && n > 0), { message: "needs one counted class" });
 
 const eventBase = {
   schemaVersion: z.literal(RUN_EVENT_SCHEMA_VERSION),
@@ -146,7 +165,7 @@ const runStartedPayload = z.object({
 const stepStartedPayload = z.object({
   stepId: spanIdSchema,
   parentStepId: spanIdSchema.nullable(),
-  contextId: z.string().min(1),
+  contextId: contextIdSchema,
   kind: stepKindSchema,
   operationName: fieldSchema.nullable(),
   name: fieldSchema,
@@ -175,6 +194,7 @@ const stepEndedPayload = z.object({
     name: fieldSchema,
     attributes: attributeListSchema,
     droppedAttributesCount: count32,
+    unknownFields: fieldSchema.nullable(),
   }).strict()),
 }).strict();
 
@@ -217,7 +237,7 @@ const contentRecordedPayload = z.object({
 const logRecordedPayload = z.object({
   logOrdinal: ordinalSchema,
   stepId: spanIdSchema.nullable(),
-  contextId: z.string().min(1),
+  contextId: contextIdSchema,
   timeNs: unsignedNs,
   observedTimeNs: unsignedNs,
   severityNumber: z.number().int().min(0).max(24),
@@ -226,13 +246,40 @@ const logRecordedPayload = z.object({
   eventName: fieldSchema,
   droppedAttributesCount: count32,
   attributes: attributeListSchema,
+  unknownFields: fieldSchema.nullable(),
 }).strict();
 
-const importNotePayload = z.object({
-  code: importNoteCodeSchema,
-  stepId: spanIdSchema.nullable(),
-  detail: noteDetailSchema,
-}).strict();
+const importNotePayload = z.discriminatedUnion("code", [
+  noteShape("OTHER_TRACE_EXCLUDED", "none", { spans: countSchema, logs: countSchema }),
+  noteShape("DUPLICATE_SPAN_COLLAPSED", "none", { count: countSchema }),
+  noteShape("DUPLICATE_LOG_COLLAPSED", "none", { count: countSchema }),
+  noteShape("MISSING_PARENT", "step", {}),
+  noteShape("PARENT_CYCLE_BROKEN", "step", {}),
+  noteShape("CHILD_OUTSIDE_PARENT_INTERVAL", "step", {}),
+  noteShape("NEGATIVE_DURATION_CLAMPED", "step", {}),
+  noteShape("UNFINISHED_SPAN_CLOSED", "step", {}),
+  noteShape("ORPHAN_LOG_RECORD", "none", { logOrdinal: ordinalSchema }),
+  noteShape("UNRECOGNIZED_OPERATION", "step", {}),
+  noteShape("CONTENT_ABSENT", "step", {}),
+  noteShape("USAGE_NOT_SUMMED", "either", { count: countSchema, scope: z.enum(["span", "log"]) }),
+  noteShape("UNUSABLE_USAGE", "step", { count: countSchema }),
+  noteShape("ENUM_NAME_ACCEPTED", "none", { role: z.enum(["spans", "logs"]), count: countSchema }),
+  noteShape("SCHEMA_URL_ABSENT", "none", { contextId: contextIdSchema }),
+  noteShape("SCHEMA_URL_MISMATCH", "none", { contextId: contextIdSchema }),
+  noteShape("WITHHELD_ATTRIBUTE", "step", { count: countSchema, bytes: countSchema }),
+  z.object({ code: z.literal("SECRET_PATTERN_COUNT"), stepId: z.null(), detail: secretCountDetail }).strict(),
+  // UNKNOWN_FIELD has four shapes: a step, a log, a context, or the outer envelope.
+  z.object({
+    code: z.literal("UNKNOWN_FIELD"),
+    stepId: spanIdSchema.nullable(),
+    detail: z.union([
+      z.object({ count: countSchema }).strict(),
+      z.object({ logOrdinal: ordinalSchema, count: countSchema }).strict(),
+      z.object({ contextId: contextIdSchema, count: countSchema }).strict(),
+      z.object({ scope: z.literal("envelope"), count: countSchema }).strict(),
+    ]),
+  }).strict(),
+]);
 
 const runEndedPayload = z.object({
   eventCount: z.number().int().positive(),

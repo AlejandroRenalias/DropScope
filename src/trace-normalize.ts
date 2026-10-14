@@ -83,9 +83,16 @@ export function normalizeRun(input: NormalizeInput): NormalizedRun {
   }
 
   // Phase 5: collapse duplicates. Contexts are content-addressed so identity needs no input position.
+  // A context (resource and scope) is shared by many spans and logs, so it is serialized and hashed once.
+  // The hash stands in for the full context in span and log identities, which keeps those identities
+  // small however large the shared resource is.
   const contextByKey = new Map<string, ParsedContext>();
+  const keyOfContext = new Map<ParsedContext, string>();
   const contextKeyOf = (context: ParsedContext): string => {
-    const key = canonicalJson(context);
+    const known = keyOfContext.get(context);
+    if (known !== undefined) return known;
+    const key = sha256Hex(canonicalJson(context));
+    keyOfContext.set(context, key);
     if (!contextByKey.has(key)) contextByKey.set(key, context);
     return key;
   };

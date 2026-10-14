@@ -14,16 +14,17 @@ import { canonicalJson, compareUtf8, sha256Hex } from "./canonical.js";
 import type { ImportNoteDraft, NormalLog, NormalSpan, NormalizedRun } from "./trace-normalize.js";
 import type { ParsedAttribute } from "./otlp-structure.js";
 import { ImportError } from "./run-import-error.js";
-import { ALLOWLIST, KNOWN_CONTENT_KEYS, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION } from "./run-privacy.js";
+import { ALLOWLIST, KNOWN_CONTENT_KEYS, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
 import {
   runEventListSchema, RUN_EVENT_SCHEMA_VERSION,
   type ContentMode, type Field, type RunEvent, type StepKind, type TaggedValue,
 } from "./run-events.js";
 
-export const IMPORTER = { id: "dropscope-otlp-json", version: "1" } as const;
+export const IMPORTER = { id: "dropscope-otlp-json", version: "2" } as const;
 export const DEFAULT_CONVENTION_VERSION = "1.37.0";
 export const LIMITS_VERSION = "1-provisional";
 export const MAX_OUTPUT_EVENTS = 1_000_000;
+export const MAX_RUN_LOG_BYTES = 128 * 1024 * 1024;
 const MAX_SCAN_CHARS = 65_536;
 
 export type EmitInput = { role: "spans" | "logs"; byteLength: number; sha256: string; enumNamesAccepted: number };
@@ -92,13 +93,15 @@ class Emitter {
     }
   }
 
+  // Each entry reports how many of its parts were withheld and their byte lengths (attributes only).
   attributeList(attrs: ParsedAttribute[], allowlisted: boolean) {
     return attrs.map((a) => {
       const check = allowlisted ? ALLOWLIST.get(a.key) : undefined;
-      const before = this.withheldParts;
+      const partsBefore = this.withheldParts;
+      const bytesBefore = this.withheldBytes;
       const key = this.field(tagStr(a.key), check !== undefined);
       const value = this.field(a.value, check !== undefined && check(a.value));
-      return { entry: { ordinal: a.ordinal, key, value }, withheld: this.withheldParts - before };
+      return { entry: { ordinal: a.ordinal, key, value }, withheld: this.withheldParts - partsBefore, bytes: this.withheldBytes - bytesBefore };
     });
   }
 }
@@ -126,6 +129,21 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
   const em = new Emitter(options.contentMode);
   const conventionVersion = options.conventionVersion ?? DEFAULT_CONVENTION_VERSION;
   const notes: ImportNoteDraft[] = [...run.notes];
+
+  // Output budget (spec section 10): events and bytes are counted as they are made, so an input that would
+  // produce too much output fails before the output is built, not after.
+  let producedEvents = 0;
+  let producedBytes = 0;
+  const account = (value: unknown): void => {
+    producedBytes += Buffer.byteLength(canonicalJson(value), "utf8") + 64;
+    if (producedBytes > MAX_RUN_LOG_BYTES) throw new ImportError("E_LIMIT", "emit", null, "OUTPUT_BYTES");
+  };
+  const make = (draft: Draft, countBytes = true): Draft => {
+    producedEvents += 1;
+    if (producedEvents > MAX_OUTPUT_EVENTS) throw new ImportError("E_LIMIT", "emit", null, "OUTPUT_EVENTS");
+    if (countBytes) account(draft);
+    return draft;
+  };
   const addNote = (code: ImportNoteDraft["code"], stepId: string | null, detail: Record<string, number | string> = {}) =>
     notes.push({ code, stepId, detail });
 
@@ -136,14 +154,22 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     const schemaOf = (url: string | null) => em.field(tagStr(url ?? ""), url === null || SCHEMA_URL.test(url));
     const payload = {
       contextId,
-      resource: { attributes: resourceAttributes, schemaUrl: schemaOf(context.resource.schemaUrl) },
+      resource: {
+        attributes: resourceAttributes, schemaUrl: schemaOf(context.resource.schemaUrl),
+        droppedAttributesCount: context.resource.droppedAttributesCount,
+        unknownFields: context.resource.unknownFields === null ? null : em.field(context.resource.unknownFields, false),
+      },
       scope: {
         name: em.field(tagStr(context.scope.name ?? ""), context.scope.name === null || SCOPE_NAME.test(context.scope.name)),
         version: em.field(tagStr(context.scope.version ?? ""), context.scope.version === null || SCOPE_VERSION.test(context.scope.version)),
         attributes: scopeAttributes,
         schemaUrl: schemaOf(context.scope.schemaUrl),
+        droppedAttributesCount: context.scope.droppedAttributesCount,
+        unknownFields: context.scope.unknownFields === null ? null : em.field(context.scope.unknownFields, false),
       },
     };
+    account(payload);
+    if (context.unknownCount > 0) addNote("UNKNOWN_FIELD", null, { contextId, count: context.unknownCount });
     const effective = context.scope.schemaUrl ?? context.resource.schemaUrl;
     if (effective === null) addNote("SCHEMA_URL_ABSENT", null, { contextId });
     else if (effective !== `https://opentelemetry.io/schemas/${conventionVersion}`) addNote("SCHEMA_URL_MISMATCH", null, { contextId });
@@ -189,8 +215,10 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
         logOrdinal: ordinal, stepId: log.stepId, contextId: log.contextId, timeNs: log.timeNs, observedTimeNs: log.observedTimeNs,
         severityNumber: log.severityNumber, severityText: em.field(tagStr(log.severityText), false), flags: log.flags,
         eventName: em.field(tagStr(log.eventName), false), droppedAttributesCount: log.droppedAttributesCount, attributes,
+        unknownFields: log.unknownFields === null ? null : em.field(log.unknownFields, false),
       },
     } as Draft;
+    make(logEvent);
     return { ordinal, log, logEvent, contents: contentOf(contents) };
   });
   const logsOfStep = new Map<string, LogBundle[]>();
@@ -201,7 +229,7 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     logsOfStep.set(bundle.log.stepId, list);
   }
   const logContentEvents = (bundle: LogBundle): Draft[] =>
-    bundle.contents.map((c) => ({
+    bundle.contents.map((c) => make({
       type: "ContentRecorded",
       payload: { stepId: null, logOrdinal: bundle.ordinal, channel: "LOG_RECORD", field: c.field, ...(c.fieldKey ? { fieldKey: c.fieldKey } : {}), ordinal: c.ordinal, value: c.value },
     } as Draft));
@@ -217,10 +245,8 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     if (span.unknownCount > 0) addNote("UNKNOWN_FIELD", span.spanId, { count: span.unknownCount });
 
     // Label from structural data only (spec 6.4).
-    const parts: string[] = [kind];
-    if (operation !== undefined && ALLOWLIST.get("gen_ai.operation.name")?.(operation)) parts.push((operation as { v: string }).v);
     const model = attr(span.attributes, "gen_ai.request.model") ?? attr(span.attributes, "gen_ai.response.model");
-    if (model !== undefined && ALLOWLIST.get("gen_ai.request.model")?.(model)) parts.push((model as { v: string }).v);
+    const label = deriveLabel(kind, operation, model);
 
     // Split attributes: content names and other gen_ai.* leave the attribute list (spec 5).
     const kept: ParsedAttribute[] = [];
@@ -232,16 +258,18 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
       } else kept.push(a);
     }
 
-    const bytesBefore = em.withheldBytes;
     const attributeResults = em.attributeList(kept, true);
     const eventResults = span.events.map((e) => ({
       ordinal: e.ordinal, timeNs: e.timeNs, name: em.field(tagStr(e.name), false),
       attributes: em.attributeList(e.attributes, true), droppedAttributesCount: e.droppedAttributesCount,
+      unknownFields: e.unknownFields === null ? null : em.field(e.unknownFields, false),
     }));
-    const withheldEntries = attributeResults.filter((x) => x.withheld > 0).length
-      + eventResults.reduce((n, e) => n + e.attributes.filter((x) => x.withheld > 0).length, 0);
+    // Counts only attribute keys and values; names, status messages and other fields are not attributes.
+    const withheldLists = [attributeResults, ...eventResults.map((e) => e.attributes)];
+    const withheldEntries = withheldLists.reduce((n, list) => n + list.filter((x) => x.withheld > 0).length, 0);
+    const withheldBytes = withheldLists.reduce((n, list) => n + list.reduce((m, x) => m + x.bytes, 0), 0);
     if (options.contentMode === "HASH_ONLY" && withheldEntries > 0) {
-      addNote("WITHHELD_ATTRIBUTE", span.spanId, { count: withheldEntries, bytes: em.withheldBytes - bytesBefore });
+      addNote("WITHHELD_ATTRIBUTE", span.spanId, { count: withheldEntries, bytes: withheldBytes });
     }
 
     const start: Draft = {
@@ -249,13 +277,14 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
       payload: {
         stepId: span.spanId, parentStepId: span.parentStepId, contextId: span.contextId, kind,
         operationName: operation === undefined ? null : em.field(operation, ALLOWLIST.get("gen_ai.operation.name")?.(operation) === true),
-        name: em.field(tagStr(span.name), false), label: parts.join(" "), otlpKind: span.kind, startNs: span.startNs,
+        name: em.field(tagStr(span.name), false), label, otlpKind: span.kind, startNs: span.startNs,
         traceState: em.field(tagStr(span.traceState), false), flags: span.flags,
         droppedAttributesCount: span.droppedAttributesCount, droppedEventsCount: span.droppedEventsCount, droppedLinksCount: span.droppedLinksCount,
         attributes: attributeResults.map((x) => x.entry), links: span.links.map((l) => em.field(l, false)),
         unknownFields: span.unknownFields === null ? null : em.field(span.unknownFields, false),
       },
     } as Draft;
+    make(start);
     const end: Draft = {
       type: "StepEnded",
       payload: {
@@ -264,6 +293,7 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
         events: eventResults.map((e) => ({ ...e, attributes: e.attributes.map((x) => x.entry) })),
       },
     } as Draft;
+    make(end);
 
     // Usage (spec 8.1): LLM_CALL spans only.
     const tail: Draft[] = [];
@@ -274,7 +304,7 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
       const unusable = Number(input.unusable) + Number(output.unusable);
       if (unusable > 0) addNote("UNUSABLE_USAGE", span.spanId, { count: unusable });
       if (input.value !== null || output.value !== null) {
-        tail.push({ type: "UsageRecorded", payload: { stepId: span.spanId, inputTokens: input.value, outputTokens: output.value } } as Draft);
+        tail.push(make({ type: "UsageRecorded", payload: { stepId: span.spanId, inputTokens: input.value, outputTokens: output.value } } as Draft));
       }
     } else if (usageAttrCount > 0) {
       addNote("USAGE_NOT_SUMMED", span.spanId, { count: usageAttrCount, scope: "span" });
@@ -282,14 +312,15 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
 
     const ordered = contentOf(contents);
     for (const c of ordered) {
-      tail.push({
+      tail.push(make({
         type: "ContentRecorded",
         payload: { stepId: span.spanId, logOrdinal: null, channel: "SPAN_ATTRIBUTE", field: c.field, ...(c.fieldKey ? { fieldKey: c.fieldKey } : {}), ordinal: c.ordinal, value: c.value },
-      } as Draft);
+      } as Draft));
     }
     let contentCount = ordered.length;
     for (const bundle of logsOfStep.get(span.spanId) ?? []) {
-      tail.push(bundle.logEvent, ...logContentEvents(bundle));
+      tail.push(bundle.logEvent);
+      for (const e of logContentEvents(bundle)) tail.push(e);
       contentCount += bundle.contents.length;
     }
     if ((kind === "LLM_CALL" || kind === "TOOL_CALL") && contentCount === 0) addNote("CONTENT_ABSENT", span.spanId);
@@ -309,11 +340,17 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
   const body: Draft[] = [];
   for (const slot of slots) {
     const bundle = steps.get(slot.spanId) as StepBundle;
-    if (slot.isStart) body.push(bundle.start);
-    else body.push(bundle.end, ...bundle.tail);
+    if (slot.isStart) {
+      body.push(bundle.start);
+    } else {
+      body.push(bundle.end);
+      for (const e of bundle.tail) body.push(e);
+    }
   }
   for (const bundle of logBundles) {
-    if (bundle.log.stepId === null) body.push(bundle.logEvent, ...logContentEvents(bundle));
+    if (bundle.log.stepId !== null) continue;
+    body.push(bundle.logEvent);
+    for (const e of logContentEvents(bundle)) body.push(e);
   }
 
   // Notes that need whole-run knowledge.
@@ -330,7 +367,7 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
   for (const note of notes) unique.set(canonicalJson(note), note);
   const noteEvents: Draft[] = [...unique.values()]
     .sort((a, b) => compareString(a.code, b.code) || compareString(a.stepId ?? "", b.stepId ?? "") || compareString(canonicalJson(a.detail), canonicalJson(b.detail)))
-    .map((n) => ({ type: "ImportNote", payload: { code: n.code, stepId: n.stepId, detail: n.detail } } as Draft));
+    .map((n) => make({ type: "ImportNote", payload: { code: n.code, stepId: n.stepId, detail: n.detail } } as Draft));
 
   const artifactId = sha256Hex(canonicalJson({
     traceId: run.traceId,
@@ -346,10 +383,12 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
       limitsVersion: LIMITS_VERSION, artifactId, contexts: contextPayloads,
     },
   } as Draft;
+  make(started, false); // its contexts were accounted when they were built
 
-  const drafts: Draft[] = [started, ...body, ...noteEvents];
-  if (drafts.length + 1 > MAX_OUTPUT_EVENTS) throw new ImportError("E_LIMIT", "emit");
-  drafts.push({ type: "RunEnded", payload: { eventCount: drafts.length + 1 } } as Draft);
+  const drafts: Draft[] = [started];
+  for (const d of body) drafts.push(d);
+  for (const d of noteEvents) drafts.push(d);
+  drafts.push(make({ type: "RunEnded", payload: { eventCount: drafts.length + 1 } } as Draft));
 
   const events = drafts.map((d, i) => ({ schemaVersion: RUN_EVENT_SCHEMA_VERSION, sequenceNumber: i + 1, runId: run.traceId, ...d }));
   const checked = runEventListSchema.safeParse(events);

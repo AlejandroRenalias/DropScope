@@ -35,3 +35,13 @@ export const KNOWN_CONTENT_KEYS = new Set([
   "gen_ai.tool.call.arguments", "gen_ai.tool.call.result",
 ]);
 
+
+// The label of a step is derived only from structural data (spec 6.4): its kind, its operation name if it
+// passes its pattern, and its model if it passes its pattern. The reducer recomputes it on read, so a label
+// cannot carry content.
+export function deriveLabel(kind: string, operation: TaggedValue | undefined, model: TaggedValue | undefined): string {
+  const parts: string[] = [kind];
+  if (operation !== undefined && operation.t === "s" && ALLOWLIST.get("gen_ai.operation.name")?.(operation)) parts.push(operation.v);
+  if (model !== undefined && model.t === "s" && ALLOWLIST.get("gen_ai.request.model")?.(model)) parts.push(model.v);
+  return parts.join(" ");
+}

@@ -42,7 +42,7 @@ function powershell(script: string, env: Record<string, string>): unknown {
   try {
     const text = execFileSync(
       systemExecutable("System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
-      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", `$ErrorActionPreference = 'Stop'; ${script}`],
       { env: { ...process.env, ...env }, encoding: "utf8", timeout: 20_000, windowsHide: true, stdio: ["ignore", "pipe", "ignore"] },
     );
     return JSON.parse(text);
@@ -52,6 +52,19 @@ function powershell(script: string, env: Record<string, string>): unknown {
 }
 
 const ALLOWED_SIDS = new Set(["S-1-5-18", "S-1-5-32-544"]); // SYSTEM and Administrators
+
+// Decides whether a folder's access list proves "owner only". An empty, missing or malformed list proves
+// nothing and is refused, as is any identity other than the current user, SYSTEM and Administrators.
+// The current user must be present: a list without them does not show the folder is usable by them alone.
+export function evaluateFolderAcl(result: unknown, userSid: string): void {
+  const raw = (result as { sids?: unknown } | null)?.sids;
+  const sids = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : null;
+  if (sids === null || sids.length === 0 || !sids.every((sid) => typeof sid === "string" && /^S-1-[0-9-]+$/.test(sid))) {
+    return fail("E_PLATFORM", "ACL_UNREADABLE");
+  }
+  if (!sids.includes(userSid)) fail("E_PLATFORM", "ACL_MISSING_CURRENT_USER");
+  for (const sid of sids) if (sid !== userSid && !ALLOWED_SIDS.has(sid as string)) fail("E_PLATFORM", "RUNS_DIR_NOT_OWNER_ONLY");
+}
 
 export const windowsChecks: PlatformChecks = {
   name: "win32",
@@ -85,14 +98,14 @@ export const windowsChecks: PlatformChecks = {
       "$s = @($a.Access | ForEach-Object { $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value }); " +
       "@{ sids = $s } | ConvertTo-Json -Compress",
       { DS_PATH: dir },
-    ) as { sids?: unknown };
-    const sids = Array.isArray(acl.sids) ? acl.sids : typeof acl.sids === "string" ? [acl.sids] : null;
-    if (sids === null) return fail("E_PLATFORM", "ACL_UNREADABLE");
-    for (const sid of sids) if (sid !== info.user && !ALLOWED_SIDS.has(String(sid))) fail("E_PLATFORM", "RUNS_DIR_NOT_OWNER_ONLY");
+    );
+    evaluateFolderAcl(acl, info.user);
   },
 };
 
-// ---- POSIX implementation: no offline attribute exists, directory mode is the access control ----
+// ---- POSIX best-effort checks. NOT used by default: there is no way to detect cloud placeholders or to
+// prove the local-file boundary, so the importer refuses to run on other platforms (spec 11.1: fail closed
+// where the platform cannot provide a check). They exist for tests and for an explicit, informed opt-in. ----
 export const posixChecks: PlatformChecks = {
   name: "posix",
   fileAttributes: () => null,
@@ -104,8 +117,10 @@ export const posixChecks: PlatformChecks = {
   },
 };
 
+// Version 1 supports Windows only. Elsewhere the importer fails closed instead of guessing.
 export function defaultChecks(): PlatformChecks {
-  return process.platform === "win32" ? windowsChecks : posixChecks;
+  if (process.platform !== "win32") return fail("E_PLATFORM", "UNSUPPORTED_PLATFORM");
+  return windowsChecks;
 }
 
 // ---- path rules ----
@@ -153,10 +168,28 @@ export function safeResolve(raw: string, allowMissingTail = false): string {
 }
 
 // ---- reading ----
+// The path as the file system reports it for the open file's location. Compared before and after the open
+// and after the read: if a folder in the path was swapped for a link in between, the real location changes.
+function canonicalLocation(file: string): string {
+  let real: string;
+  try {
+    real = fs.realpathSync.native(file);
+  } catch {
+    return fail("E_PATH", "PATH_UNRESOLVABLE");
+  }
+  return process.platform === "win32" ? real.replace(/^\\\\\?\\/, "").replace(/\//g, "\\").toLowerCase() : real;
+}
+
 export function readInputFile(file: string, maxBytes: number, checks: PlatformChecks = defaultChecks()): Uint8Array {
   const resolved = safeResolve(file);
   const before = fs.lstatSync(resolved, { bigint: true });
   if (!before.isFile()) return fail("E_FILE_KIND", "NOT_A_REGULAR_FILE");
+  // Record where the file really is, then check every component for links again: a folder swapped for a link
+  // between the first check and this reading is caught here, and any later swap changes the location.
+  // (The real location may legitimately differ from the typed path, for example under app-container
+  // file-system redirection, so it is compared with itself over time, not with the typed spelling.)
+  const location = canonicalLocation(resolved);
+  safeResolve(resolved);
   // Attributes are read before the open: opening a cloud placeholder would download it.
   const attributes = checks.fileAttributes(resolved);
   if (attributes !== null && (attributes & PLACEHOLDER_MASK) !== 0) fail("E_FILE_KIND", "CLOUD_PLACEHOLDER_OR_OFFLINE");
@@ -171,6 +204,7 @@ export function readInputFile(file: string, maxBytes: number, checks: PlatformCh
     const stat = fs.fstatSync(fd, { bigint: true });
     if (!stat.isFile()) return fail("E_FILE_KIND", "NOT_A_REGULAR_FILE");
     if ((stat.ino !== 0n || before.ino !== 0n) && (stat.ino !== before.ino || stat.dev !== before.dev)) fail("E_PATH", "FILE_CHANGED_DURING_OPEN");
+    if (canonicalLocation(resolved) !== location) fail("E_PATH", "PATH_CHANGED_DURING_OPEN");
     const chunks: Buffer[] = [];
     let total = 0;
     for (;;) {
@@ -181,6 +215,7 @@ export function readInputFile(file: string, maxBytes: number, checks: PlatformCh
       if (total > maxBytes) fail("E_LIMIT", "FILE_TOO_LARGE");
       chunks.push(buffer.subarray(0, read));
     }
+    if (canonicalLocation(resolved) !== location) fail("E_PATH", "PATH_CHANGED_DURING_READ");
     return new Uint8Array(Buffer.concat(chunks, total));
   } finally {
     fs.closeSync(fd);
@@ -195,6 +230,19 @@ export function defaultRunsDirectory(): string {
     return path.join(base, "DropScope", "runs");
   }
   return path.join(process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share"), "dropscope", "runs");
+}
+
+// ADR-027: warn if the runs folder is under a cloud-synced root, because run files would then be uploaded.
+const SYNCED_SEGMENT = /^(onedrive(?: - .*)?|onedrive-.*|dropbox(?: .*)?|google drive|googledrive|icloud drive|iclouddrive|box|box sync|mega|pcloud drive|sync)$/i;
+export function syncedRootWarning(dir: string): string | null {
+  const resolved = path.resolve(dir);
+  const lower = resolved.toLowerCase();
+  for (const name of ["OneDrive", "OneDriveConsumer", "OneDriveCommercial"]) {
+    const root = process.env[name];
+    if (root && lower.startsWith(`${path.resolve(root).toLowerCase()}${path.sep}`)) return "RUNS_DIR_IN_SYNCED_FOLDER";
+  }
+  const parts = resolved.split(path.sep);
+  return parts.some((part) => SYNCED_SEGMENT.test(part)) ? "RUNS_DIR_IN_SYNCED_FOLDER" : null;
 }
 
 export function ensureRunsDirectory(dir: string, checks: PlatformChecks = defaultChecks()): string {

@@ -5,7 +5,7 @@
 //
 // "State" here is only what the recording shows. It makes no claim about the model's hidden context.
 import { runEventSchema, type Field, type RunEvent, type StepKind } from "./run-events.js";
-import { ALLOWLIST, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION } from "./run-privacy.js";
+import { ALLOWLIST, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
 import { ImportError } from "./run-import-error.js";
 import { MAX_OUTPUT_EVENTS } from "./run-emit.js";
 
@@ -66,6 +66,8 @@ function checkHashOnly(event: RunEvent, contextIds: Set<string>): void {
         contextIds.add(context.contextId);
         checkAttributes(context.resource.attributes, false, event);
         checkAttributes(context.scope.attributes, true, event);
+        mustBeWithheld(context.resource.unknownFields);
+        mustBeWithheld(context.scope.unknownFields);
         checkPatternOrEmpty(context.resource.schemaUrl, SCHEMA_URL, event);
         checkPatternOrEmpty(context.scope.schemaUrl, SCHEMA_URL, event);
         checkPatternOrEmpty(context.scope.name, SCOPE_NAME, event);
@@ -89,12 +91,14 @@ function checkHashOnly(event: RunEvent, contextIds: Set<string>): void {
       mustBeWithheld(event.payload.statusMessage);
       for (const e of event.payload.events) {
         mustBeWithheld(e.name);
+        mustBeWithheld(e.unknownFields);
         checkAttributes(e.attributes, true, event);
       }
       break;
     case "LogRecorded":
       mustBeWithheld(event.payload.severityText);
       mustBeWithheld(event.payload.eventName);
+      mustBeWithheld(event.payload.unknownFields);
       checkAttributes(event.payload.attributes, true, event);
       break;
     case "ContentRecorded":
@@ -104,6 +108,34 @@ function checkHashOnly(event: RunEvent, contextIds: Set<string>): void {
       break;
     default:
       break;
+  }
+}
+
+// The label is derived data. It must equal what the importer would derive from the structural fields, in
+// both content modes, so it cannot carry content.
+function checkLabel(event: Extract<RunEvent, { type: "StepStarted" }>): void {
+  const p = event.payload;
+  const operation = p.operationName !== null && "v" in p.operationName ? p.operationName.v : undefined;
+  const modelOf = (key: string) => {
+    const found = p.attributes.find((a) => verbatimString(a.key) === key);
+    return found === undefined ? null : { value: "v" in found.value ? found.value.v : undefined };
+  };
+  const model = (modelOf("gen_ai.request.model") ?? modelOf("gen_ai.response.model"))?.value;
+  if (p.label !== deriveLabel(p.kind, operation, model)) fail("LABEL_NOT_DERIVED", event);
+}
+
+// In a FULL run every value is verbatim: a withheld form anywhere means the mode was changed after the fact.
+function checkNoWithheld(event: RunEvent): void {
+  const stack: unknown[] = [event.payload];
+  while (stack.length > 0) {
+    const value = stack.pop();
+    if (Array.isArray(value)) for (const item of value) stack.push(item);
+    else if (typeof value === "object" && value !== null) {
+      for (const [key, item] of Object.entries(value)) {
+        if (key === "w") fail("WITHHELD_IN_FULL_RUN", event);
+        stack.push(item);
+      }
+    }
   }
 }
 
@@ -142,7 +174,16 @@ export function validateRunHistory(input: unknown): RunEvent[] {
     if (ended) fail("EVENT_AFTER_RUN_ENDED", event);
     if (event.type !== "RunStarted" && event.type !== "ImportNote" && event.type !== "RunEnded" && sawNote) fail("EVENT_AFTER_NOTE", event);
     if (hashOnly) checkHashOnly(event, contextIds);
-    else if (event.type === "RunStarted") event.payload.contexts.forEach((c) => contextIds.add(c.contextId));
+    else checkNoWithheld(event);
+    if (event.type === "RunStarted") {
+      const seen = new Set<string>();
+      for (const context of event.payload.contexts) {
+        if (seen.has(context.contextId)) fail("DUPLICATE_CONTEXT", event);
+        seen.add(context.contextId);
+        contextIds.add(context.contextId);
+      }
+    }
+    if (event.type === "StepStarted") checkLabel(event);
 
     switch (event.type) {
       case "RunStarted":
@@ -192,8 +233,7 @@ export function validateRunHistory(input: unknown): RunEvent[] {
       }
       case "ImportNote": {
         sawNote = true;
-        const detail = event.payload.detail;
-        if (event.payload.code === "ORPHAN_LOG_RECORD" && typeof detail.logOrdinal === "number") orphanNotes.add(detail.logOrdinal);
+        if (event.payload.code === "ORPHAN_LOG_RECORD") orphanNotes.add(event.payload.detail.logOrdinal);
         break;
       }
       case "RunEnded":
@@ -302,7 +342,10 @@ class Accumulator {
   }
 }
 
-const CHECKPOINT_EVERY = 256;
+// Checkpoints are copies of the running state. Their number is bounded (at most about 64) so a very long
+// history cannot make the replay's memory grow with its length.
+const MIN_CHECKPOINT_INTERVAL = 256;
+const MAX_CHECKPOINTS = 64;
 
 export type RunReplay = {
   readonly events: readonly RunEvent[];
@@ -314,20 +357,21 @@ export type RunReplay = {
 // Validates once, then answers "state at step N" for any N, resuming from the nearest checkpoint.
 export function createReplay(history: unknown): RunReplay {
   const events = validateRunHistory(history);
+  const interval = Math.max(MIN_CHECKPOINT_INTERVAL, Math.ceil(events.length / MAX_CHECKPOINTS));
   const checkpoints: Accumulator[] = [];
   const running = new Accumulator();
   events.forEach((event, index) => {
     running.apply(event);
-    if ((index + 1) % CHECKPOINT_EVERY === 0) checkpoints[(index + 1) / CHECKPOINT_EVERY] = running.clone();
+    if ((index + 1) % interval === 0) checkpoints[(index + 1) / interval] = running.clone();
   });
   return {
     events,
     length: events.length,
     stateAt(n: number): RunState {
       if (!Number.isInteger(n) || n < 1 || n > events.length) throw new ImportError("E_INVALID_LOG", "reduce", null, "STEP_OUT_OF_RANGE");
-      const base = Math.floor(n / CHECKPOINT_EVERY);
+      const base = Math.floor(n / interval);
       const acc = base > 0 ? (checkpoints[base] as Accumulator).clone() : new Accumulator();
-      for (let i = base * CHECKPOINT_EVERY; i < n; i += 1) acc.apply(events[i]);
+      for (let i = base * interval; i < n; i += 1) acc.apply(events[i]);
       return acc.snapshot();
     },
   };

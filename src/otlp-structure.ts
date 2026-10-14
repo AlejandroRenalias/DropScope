@@ -6,9 +6,9 @@
 // - JSON null for a known field means "absent" (protobuf JSON rule). Inside a kept unknown field it fails closed.
 // - AnyValue and KeyValue are strict: an extra property or a wrong arm count fails with E_ANYVALUE.
 //   One exception: a log record body of exactly {} means "no body" (real traces contain it).
-// - Unknown properties on a span or log record are kept as tagged data and counted. Unknown properties on
-//   envelope objects (request, resource, scope, event, status) are counted only, because the event
-//   contract has no place to store them. This is a gap in spec 1.7 to raise with the user.
+// - Unknown properties on a span, span event, link, status, log record, resource and scope are kept as
+//   tagged data and counted. Unknown properties on the outer wrappers (the request and the resource and
+//   scope group objects) are counted only.
 // - No recursion over untrusted structure: value conversion uses an explicit stack.
 import { ImportError } from "./run-import-error.js";
 import type { TaggedValue } from "./run-events.js";
@@ -17,8 +17,15 @@ import type { JsonNumber, JsonObject, JsonValue } from "./strict-json.js";
 export type ParsedAttribute = { ordinal: number; key: string; value: TaggedValue };
 
 export type ParsedContext = {
-  resource: { attributes: ParsedAttribute[]; schemaUrl: string | null };
-  scope: { name: string | null; version: string | null; attributes: ParsedAttribute[]; schemaUrl: string | null };
+  resource: {
+    attributes: ParsedAttribute[]; schemaUrl: string | null; droppedAttributesCount: number; unknownFields: TaggedValue | null;
+  };
+  scope: {
+    name: string | null; version: string | null; attributes: ParsedAttribute[]; schemaUrl: string | null;
+    droppedAttributesCount: number; unknownFields: TaggedValue | null;
+  };
+  // Unknown properties on the resource and scope objects (kept in their unknownFields).
+  unknownCount: number;
 };
 
 export type ParsedSpanEvent = {
@@ -27,6 +34,7 @@ export type ParsedSpanEvent = {
   name: string;
   attributes: ParsedAttribute[];
   droppedAttributesCount: number;
+  unknownFields: TaggedValue | null;
 };
 
 export type ParsedSpan = {
@@ -268,6 +276,8 @@ class Structure {
       if (lexeme.replace("-", "").length > 20) return this.fail("E_NUMBER");
       return { t: "i", v: BigInt(lexeme).toString() };
     }
+    // The 20-digit limit applies to every kept number, not only to integers.
+    if (lexeme.split(/[eE]/)[0].replace(/[^0-9]/g, "").length > 20) return this.fail("E_NUMBER");
     const n = Number(lexeme);
     if (!Number.isFinite(n)) return this.fail("E_NUMBER");
     return { t: "d", v: n };
@@ -346,28 +356,30 @@ class Structure {
   }
 }
 
-const RESOURCE_KNOWN = ["attributes", "droppedAttributesCount", "entityRefs"] as const;
+const RESOURCE_KNOWN = ["attributes", "droppedAttributesCount"] as const;
 const SCOPE_KNOWN = ["name", "version", "attributes", "droppedAttributesCount"] as const;
 
 function readContext(s: Structure, group: JsonObject, scopeGroup: JsonObject): ParsedContext {
   const resource = s.object(group.get("resource"));
-  if (resource) {
-    s.countEnvelopeUnknown(resource, RESOURCE_KNOWN);
-    s.uint32(resource.get("droppedAttributesCount"));
-  }
   const scope = s.object(scopeGroup.get("scope"));
-  if (scope) {
-    s.countEnvelopeUnknown(scope, SCOPE_KNOWN);
-    s.uint32(scope.get("droppedAttributesCount"));
-  }
+  const resourceUnknown = resource ? s.unknown(resource, RESOURCE_KNOWN) : { tagged: null, count: 0 };
+  const scopeUnknown = scope ? s.unknown(scope, SCOPE_KNOWN) : { tagged: null, count: 0 };
   return {
-    resource: { attributes: s.attributes(resource?.get("attributes")), schemaUrl: s.string(group.get("schemaUrl")) },
+    resource: {
+      attributes: s.attributes(resource?.get("attributes")),
+      schemaUrl: s.string(group.get("schemaUrl")),
+      droppedAttributesCount: s.uint32(resource?.get("droppedAttributesCount")),
+      unknownFields: resourceUnknown.tagged,
+    },
     scope: {
       name: s.string(scope?.get("name")),
       version: s.string(scope?.get("version")),
       attributes: s.attributes(scope?.get("attributes")),
       schemaUrl: s.string(scopeGroup.get("schemaUrl")),
+      droppedAttributesCount: s.uint32(scope?.get("droppedAttributesCount")),
+      unknownFields: scopeUnknown.tagged,
     },
+    unknownCount: resourceUnknown.count + scopeUnknown.count,
   };
 }
 
@@ -422,38 +434,49 @@ function readSpan(s: Structure, contextIndex: number, raw: JsonValue): ParsedSpa
   if (start === "0") s.fail("E_NUMBER");
   const endRaw = span.get("endTimeUnixNano");
   const status = s.object(span.get("status"));
-  if (status) s.countEnvelopeUnknown(status, STATUS_KNOWN);
+  const statusUnknown = status ? s.unknown(status, STATUS_KNOWN) : { tagged: null, count: 0 };
   const unknown = s.unknown(span, SPAN_KNOWN);
+  let unknownCount = unknown.count + statusUnknown.count;
 
   const events = s.array(span.get("events")).map((rawEvent, ordinal): ParsedSpanEvent => {
     const event = s.object(rawEvent);
     if (!event) return s.fail("E_SYNTAX");
-    s.countEnvelopeUnknown(event, EVENT_KNOWN);
+    const eventUnknown = s.unknown(event, EVENT_KNOWN);
+    unknownCount += eventUnknown.count;
     return {
       ordinal,
       timeNs: s.uint64(event.get("timeUnixNano")),
       name: s.string(event.get("name")) ?? "",
       attributes: s.attributes(event.get("attributes")),
       droppedAttributesCount: s.uint32(event.get("droppedAttributesCount")),
+      unknownFields: eventUnknown.tagged,
     };
   });
 
   const links = s.array(span.get("links")).map((rawLink): TaggedValue => {
     const link = s.object(rawLink);
     if (!link) return s.fail("E_SYNTAX");
-    s.countEnvelopeUnknown(link, LINK_KNOWN);
-    return {
-      t: "k",
-      v: [
-        ["traceId", { t: "s", v: s.hexId(link.get("traceId"), 32) ?? "" }],
-        ["spanId", { t: "s", v: s.hexId(link.get("spanId"), 16) ?? "" }],
-        ["traceState", { t: "s", v: s.string(link.get("traceState")) ?? "" }],
-        ["flags", { t: "i", v: String(s.uint32(link.get("flags"))) }],
-        ["droppedAttributesCount", { t: "i", v: String(s.uint32(link.get("droppedAttributesCount"))) }],
-        ["attributes", attributesAsTagged(s.attributes(link.get("attributes")))],
-      ],
-    };
+    const linkUnknown = s.unknown(link, LINK_KNOWN);
+    unknownCount += linkUnknown.count;
+    const linkTrace = s.hexId(link.get("traceId"), 32);
+    const linkSpan = s.hexId(link.get("spanId"), 16);
+    if ((linkTrace !== null && /^0+$/.test(linkTrace)) || (linkSpan !== null && /^0+$/.test(linkSpan))) s.fail("E_ID");
+    const pairs: Array<[string, TaggedValue]> = [
+      ["traceId", { t: "s", v: linkTrace ?? "" }],
+      ["spanId", { t: "s", v: linkSpan ?? "" }],
+      ["traceState", { t: "s", v: s.string(link.get("traceState")) ?? "" }],
+      ["flags", { t: "i", v: String(s.uint32(link.get("flags"))) }],
+      ["droppedAttributesCount", { t: "i", v: String(s.uint32(link.get("droppedAttributesCount"))) }],
+      ["attributes", attributesAsTagged(s.attributes(link.get("attributes")))],
+    ];
+    if (linkUnknown.tagged !== null) pairs.push(["unknownFields", linkUnknown.tagged]);
+    return { t: "k", v: pairs };
   });
+
+  // Unknown span properties and unknown status properties share one tagged list ("status" is a known
+  // span property, so the key cannot clash).
+  const unknownPairs: Array<[string, TaggedValue]> = unknown.tagged !== null && unknown.tagged.t === "k" ? [...unknown.tagged.v] : [];
+  if (statusUnknown.tagged !== null) unknownPairs.push(["status", statusUnknown.tagged]);
 
   const parent = s.hexId(span.get("parentSpanId"), 16);
   return {
@@ -475,8 +498,8 @@ function readSpan(s: Structure, contextIndex: number, raw: JsonValue): ParsedSpa
     droppedLinksCount: s.uint32(span.get("droppedLinksCount")),
     statusCode: s.enumValue(status?.get("code"), STATUS_CODE_NAMES),
     statusMessage: s.string(status?.get("message")) ?? "",
-    unknownFields: unknown.tagged,
-    unknownCount: unknown.count,
+    unknownFields: unknownPairs.length === 0 ? null : { t: "k", v: unknownPairs },
+    unknownCount,
   };
 }
 

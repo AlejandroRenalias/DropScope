@@ -78,6 +78,7 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
         `  events: ${events.length}  steps: ${state.closedStepIds.length}  logs: ${state.logCount}  errors: ${state.errorStepIds.length}`,
         `  tokens: input ${state.inputTokens}, output ${state.outputTokens}`,
         `  notes: ${Object.entries(state.notes).map(([code, n]) => `${code} x${n}`).join(", ") || "none"}`,
+        ...published.warnings.map((w) => `  warning: ${w} (run files would be uploaded by the sync service)`),
         "",
       ].join("\n"));
       return 0;

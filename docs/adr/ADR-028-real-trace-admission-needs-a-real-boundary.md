@@ -1,6 +1,6 @@
 # ADR-028: Real traces need a real access boundary, not only a settings rule
 
-**Status:** DRAFT, not accepted. Needs the user's approval and an independent read-only review (`AGENTS.md`: frozen architecture, security, agent permissions).  
+**Status:** Accepted by the user on 2026-10-14, after independent read-only review (Codex, two rounds; the second approved commit `43a6f0c`). The pointer edits in ADR-027 and the spec are one-sentence cross-references.  
 **Date:** 2026-10-14  
 **Supersedes:** the admission condition in ADR-027 decision 9 (and `docs/schemas/run-event-contract-v1.md` section 11, item 2) only. Everything else in ADR-027 stands.
 

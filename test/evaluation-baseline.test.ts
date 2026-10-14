@@ -12,7 +12,8 @@ describe("repeatable evaluation baseline", () => {
     expect(results.every((result) => result.simulatedLatencyMs >= 0 && result.eventCount > 0 && result.spent >= 0)).toBe(true);
     expect(results.filter((result) => result.fixtureId === "failure-autopsy-pilot").every((result) => result.terminalStatus === "COMPLETED_INSUFFICIENT_EVIDENCE" && result.reviewerVerdict === "REJECT")).toBe(true);
     expect(results.filter((result) => result.fixtureId === "product-investigation-pilot").every((result) => result.ranking.includes("modular-desk-organizer") && result.reviewerVerdict === "REVISE")).toBe(true);
-  });
+    // Runs the whole evaluation twice, so it sits near the 5 s default and timed out under load in a full run.
+  }, 30_000);
 
   it("reports capacity gains without treating capacity as a change in quality or ledger usage", async () => {
     const comparison = summarizeCapacityExperiment(await runEvaluationBaseline());

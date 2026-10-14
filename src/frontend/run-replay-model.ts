@@ -99,13 +99,19 @@ function verbatimAttribute(attributes: Array<{ key: Field; value: Field }>, key:
   return null;
 }
 
+/** A name from a trace, made safe to show on one line: no control characters, at most 80 characters. */
+function tidy(text: string): string {
+  const flat = text.replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim();
+  return flat.length > 80 ? `${flat.slice(0, 80)}…` : flat;
+}
+
 /** A readable name for a step from structural data only: tool name, agent name, or operation and model. */
 function stepTitle(kind: StepKind, label: string, attributes: Array<{ key: Field; value: Field }>): string {
   const tool = verbatimAttribute(attributes, "gen_ai.tool.name");
   const agent = verbatimAttribute(attributes, "gen_ai.agent.name");
-  if (kind === "TOOL_CALL" && tool) return `${KIND_LABEL[kind]}: ${tool}`;
-  if (kind === "AGENT" && agent) return `${KIND_LABEL[kind]}: ${agent}`;
-  const rest = label.startsWith(kind) ? label.slice(kind.length).trim() : label;
+  if (kind === "TOOL_CALL" && tool) return `${KIND_LABEL[kind]}: ${tidy(tool)}`;
+  if (kind === "AGENT" && agent) return `${KIND_LABEL[kind]}: ${tidy(agent)}`;
+  const rest = tidy(label.startsWith(kind) ? label.slice(kind.length).trim() : label);
   return rest ? `${KIND_LABEL[kind]}: ${rest}` : KIND_LABEL[kind];
 }
 

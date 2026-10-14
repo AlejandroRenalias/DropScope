@@ -11,8 +11,10 @@
 // - Counts (model calls, tool calls, steps) are checked when a step starts. The call that would make the count
 //   exceed the limit would not have started. The stop point is that StepStarted event.
 // - Duration is measured from the earliest recorded step start, at step start and step end events (the only events
-//   that carry times). A limit is exceeded by the first such event whose time is strictly after the limit.
-//   The stop point is that event.
+//   that carry times). Elapsed time is the greatest elapsed time reached so far, so it never goes down even if a
+//   hand-edited history lists events out of time order. A limit is exceeded by the first such event that makes it
+//   strictly greater than the limit. The stop point is that event. The moment the limit was really passed can be
+//   earlier than that event, because no event carries a time between steps.
 // - Steps already running at the stop point could not be recalled: they are reported as "in flight".
 // - A token count the trace did not report counts as zero, and the result says how many were missing.
 import type { RunEvent, StepKind } from "./run-events.js";
@@ -160,6 +162,8 @@ export type BudgetReplayResult = {
   totalsAt(position: number): Totals;
   costPicoAt(position: number): bigint | null; // cost in 10^-12 currency units, exact
   usageGaps: { modelCallsWithoutUsage: number; partialUsage: number };
+  // Step end times the importer had to estimate (missing, or before the start). Time results depend on them.
+  estimatedEnds: number;
 };
 
 const costPico = (policy: BudgetPolicy, t: Totals): bigint | null =>
@@ -190,6 +194,12 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
   let toolCount = 0;
   let partialUsage = 0;
   let lastEvent = 0;
+  let maxElapsed = 0n;
+  let estimatedEnds = 0;
+  const reached = (t: bigint): bigint => {
+    if (t > maxElapsed) maxElapsed = t;
+    return maxElapsed;
+  };
 
   for (const event of events) {
     const sequence = event.sequenceNumber;
@@ -201,11 +211,12 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
       if (p.kind === "TOOL_CALL") toolCount += 1;
       steps.set(p.stepId, { stepId: p.stepId, kind: p.kind, startSequence: sequence, endSequence: Number.MAX_SAFE_INTEGER });
       series.startSeq.push(sequence); series.startSteps.push(stepCount); series.startModel.push(modelCount); series.startTool.push(toolCount);
-      series.timeSeq.push(sequence); series.timeNs.push(elapsed(p.startNs));
+      series.timeSeq.push(sequence); series.timeNs.push(reached(elapsed(p.startNs)));
     } else if (event.type === "StepEnded") {
       const step = steps.get(event.payload.stepId);
       if (step) step.endSequence = sequence;
-      series.timeSeq.push(sequence); series.timeNs.push(elapsed(event.payload.endEffectiveNs));
+      if (event.payload.endNs === null || BigInt(event.payload.endNs) !== BigInt(event.payload.endEffectiveNs)) estimatedEnds += 1;
+      series.timeSeq.push(sequence); series.timeNs.push(reached(elapsed(event.payload.endEffectiveNs)));
     } else if (event.type === "UsageRecorded") {
       const i = event.payload.inputTokens === null ? 0n : BigInt(event.payload.inputTokens);
       const o = event.payload.outputTokens === null ? 0n : BigInt(event.payload.outputTokens);
@@ -310,16 +321,19 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
     policy, breaches, first, alsoAtSameStop, remainder, steps: stepList, recorded, totalsAt,
     costPicoAt: (position) => costPico(policy, totalsAt(position)),
     usageGaps: { modelCallsWithoutUsage, partialUsage },
+    estimatedEnds,
   };
 }
 
 // ---- formatting exact amounts ----
-/** Cost in 10^-12 currency units, shown with 2 to 6 decimals and no float. */
+/**
+ * Cost in 10^-12 currency units, shown with every digit it is computed with (2 to 12 decimals, trailing zeros
+ * trimmed) and no float, so a breach by a tiny amount can still be explained.
+ */
 export function formatPico(pico: bigint): string {
   const unit = 10n ** 12n;
   const whole = pico / unit;
-  const micro = (pico % unit) / MICRO_TO_PICO;
-  const decimals = micro.toString().padStart(6, "0").replace(/0+$/, "").padEnd(2, "0");
+  const decimals = (pico % unit).toString().padStart(12, "0").replace(/0+$/, "").padEnd(2, "0");
   return `${whole.toString()}.${decimals}`;
 }
 export function formatMicro(micro: bigint): string {

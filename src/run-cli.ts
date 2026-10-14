@@ -120,7 +120,8 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       }
       const model = buildRunModel(readRunLog(positional[0], checks));
       const result = replayBudget(model.events, parsed.policy);
-      const titleOf = (stepId: string): string => model.stepsById.get(stepId)?.title ?? "a step";
+      // Step titles can come from a trace (tool and agent names in a file that keeps its content): escape them.
+      const titleOf = (stepId: string): string => escapeForTerminal(model.stepsById.get(stepId)?.title ?? "a step");
       if (flags.has("--json")) {
         const text = JSON.stringify({
           counterfactual: true, runId: model.runId, policy: parsed.policy, firstBreach: result.first, breaches: result.breaches,
@@ -133,7 +134,7 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
         }, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2);
         io.out(`${text}\n`);
       } else {
-        io.out(`${budgetReportLines(result, model.events, titleOf).join("\n")}\n`);
+        io.out(`${budgetReportLines(result, model.events, titleOf).map(escapeForTerminal).join("\n")}\n`);
       }
       return 0;
     }

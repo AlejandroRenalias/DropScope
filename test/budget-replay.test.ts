@@ -164,6 +164,42 @@ describe("budget replay: hand-checked cases", () => {
   });
 });
 
+// Histories that the reducer accepts but whose times are out of order or estimated (hand-edited or from skewed clocks).
+describe("budget replay: unusual times", () => {
+  const swapEnds = (events: RunEvent[]): RunEvent[] => {
+    const copy = JSON.parse(JSON.stringify(events)) as Array<{ type: string; sequenceNumber: number; payload: { eventCount?: number } }>;
+    const ends = copy.map((e, i) => (e.type === "StepEnded" ? i : -1)).filter((i) => i >= 0);
+    [copy[ends[0]], copy[ends[1]]] = [copy[ends[1]], copy[ends[0]]];
+    copy.forEach((e, i) => { e.sequenceNumber = i + 1; });
+    copy[copy.length - 1].payload.eventCount = copy.length;
+    return copy as unknown as RunEvent[];
+  };
+
+  it("elapsed time never goes down, even when events are listed out of time order", () => {
+    const base = runOf([{ op: "chat", start: 0, end: 10 }, { op: "chat", start: 1, end: 2 }]);
+    const events = swapEnds(base); // ends are now listed 10 s then 2 s
+    expect(() => createReplay(events)).not.toThrow(); // the reducer accepts this history
+    const r = replayBudget(events, policyOf({ maxSeconds: "5" }));
+    expect(r.first).toMatchObject({ limit: "duration", usedAtBreach: 10_000_000_000n });
+    expect(r.recorded.elapsedNs).toBe(10_000_000_000n); // not 2 s
+    let last = -1n;
+    for (let p = 1; p <= events.length; p += 1) {
+      const t = r.totalsAt(p).elapsedNs;
+      expect(t >= last).toBe(true);
+      last = t;
+    }
+    // The same breach is found whichever way the two ends are listed.
+    expect(replayBudget(base, policyOf({ maxSeconds: "5" })).first?.usedAtBreach).toBe(10_000_000_000n);
+  });
+
+  it("counts step ends the importer had to estimate", () => {
+    const events = runOf([{ op: "chat", start: 0, end: null }, { op: "chat", start: 0, end: 10 }, { op: "chat", start: 20, end: 19 }]);
+    const r = replayBudget(events, policyOf({ maxSeconds: "5" }));
+    expect(r.estimatedEnds).toBe(2); // one missing end, one end before its start
+    expect(replayBudget(simple(), policyOf({ maxSeconds: "5" })).estimatedEnds).toBe(0);
+  });
+});
+
 describe("budget replay: cost", () => {
   const events = runOf([
     { op: "chat", start: 0, end: 1, input: 1_000_000, output: 0 },
@@ -192,6 +228,10 @@ describe("budget replay: cost", () => {
     const p = policyOf({ maxCost: "0.000001", inputPrice: "0.000001", outputPrice: "0" });
     expect(replayBudget(events, p).first?.limit).toBe("cost"); // 1,000,000 tokens * 0.000001 / 1,000,000 = 0.000001, then +3 tokens
     expect(formatMicro(10_500_054n)).toBe("10.500054");
+    // Every digit of the exact product is shown, so a tiny breach can be explained.
+    expect(formatPico(1n)).toBe("0.000000000001");
+    expect(formatPico(1_500_000_000_000n)).toBe("1.50");
+    expect(formatPico(123_456_789_012_345n)).toBe("123.456789012345");
     expect(formatMicro(3_000_000n)).toBe("3.00");
     expect(formatMicro(1_500_000n)).toBe("1.50");
     expect(formatPico(0n)).toBe("0.00");
@@ -358,11 +398,13 @@ describe("budget replay: agrees with the independent oracle on random runs and r
         expect(t.steps).toBe(state.stepsByKind.LLM_CALL + state.stepsByKind.TOOL_CALL + state.stepsByKind.AGENT + state.stepsByKind.OTHER);
       }
       // Totals never decrease as the position moves forward.
-      let lastTotal = -1n; let lastElapsed = -1n;
+      let lastTotal = -1n; let lastElapsed = -1n; let lastCalls = -1;
       for (let p = 1; p <= events.length; p += 1) {
         const t = got.totalsAt(p);
-        expect(t.totalTokens >= lastTotal).toBe(true);
-        lastTotal = t.totalTokens; lastElapsed = t.elapsedNs > lastElapsed ? t.elapsedNs : lastElapsed;
+        expect(t.totalTokens >= lastTotal, `case ${c} tokens @${p}`).toBe(true);
+        expect(t.elapsedNs >= lastElapsed, `case ${c} elapsed @${p}`).toBe(true);
+        expect(t.steps >= lastCalls, `case ${c} steps @${p}`).toBe(true);
+        lastTotal = t.totalTokens; lastElapsed = t.elapsedNs; lastCalls = t.steps;
       }
     }
     expect(withBreach).toBeGreaterThan(60); // the random budgets really do exercise breaches

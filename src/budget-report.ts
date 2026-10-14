@@ -86,8 +86,13 @@ export function describeBreach(
       return `After ${step} finished, the run had used ${usedText}, over your limit of ${limitText}. A guard that checks after each call would have stopped the agent here.`;
     case "BEFORE_START":
       return `${step} would have been number ${group(breach.usedAtBreach)}, over your limit of ${limitText}, so it would not have started.`;
-    case "TIME":
-      return `${formatSeconds(breach.usedAtBreach)} into the run, past your limit of ${limitText}, at the moment ${step} ${events[breach.breachEvent - 1]?.type === "StepStarted" ? "began" : "ended"}. The agent would have been stopped before that.`;
+    case "TIME": {
+      const event = events[breach.breachEvent - 1] as { type: string; payload: { endNs?: string | null; endEffectiveNs?: string } } | undefined;
+      const began = event?.type === "StepStarted";
+      const estimated = !began && event?.payload !== undefined
+        && (event.payload.endNs === null || event.payload.endNs === undefined || BigInt(event.payload.endNs) !== BigInt(event.payload.endEffectiveNs ?? "0"));
+      return `${formatSeconds(breach.usedAtBreach)} into the run, past your limit of ${limitText}, at the moment ${step} ${began ? "began" : "ended"}${estimated ? " (its end time was missing or invalid, so the importer estimated it)" : ""}. The agent would have been stopped before that.`;
+    }
   }
 }
 
@@ -127,6 +132,10 @@ export function budgetCaveats(result: BudgetReplayResult): string[] {
     "Steps that were already running at the stop point are counted as running: nothing can recall work that has started.",
   ];
   if (result.policy.cost !== null) notes.push("Prices are the ones you typed. DropScope does not look prices up.");
+  if (result.policy.maxDurationNs !== null) {
+    notes.push("Time is checked only when a step starts or ends, because no other event carries a time. The moment the limit was really passed can be earlier than the event shown.");
+    if (result.estimatedEnds > 0) notes.push(`${result.estimatedEnds} step end time${result.estimatedEnds === 1 ? " was" : "s were"} estimated by the importer (missing, or earlier than the start), so time results may be off.`);
+  }
   const gaps = result.usageGaps;
   if (gaps.modelCallsWithoutUsage > 0) notes.push(`${gaps.modelCallsWithoutUsage} model call${gaps.modelCallsWithoutUsage === 1 ? "" : "s"} reported no token counts, so the tokens and cost used may be higher than shown.`);
   if (gaps.partialUsage > 0) notes.push(`${gaps.partialUsage} usage record${gaps.partialUsage === 1 ? "" : "s"} reported only input or only output tokens; the missing number is counted as zero.`);

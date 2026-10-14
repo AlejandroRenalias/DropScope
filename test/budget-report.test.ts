@@ -1,4 +1,4 @@
-import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import { activeLimits, budgetCaveats, budgetReportLines, describeBreach, describ
 import { runCli } from "../src/run-cli.js";
 import type { PlatformChecks } from "../src/run-files.js";
 import { importTraceBytes } from "../src/run-import.js";
+import { serializeRunLog } from "../src/run-store.js";
 import { buildRunModel, loadRunFromBytes } from "../src/frontend/run-replay-model.js";
 import { readFileSync } from "node:fs";
 
@@ -83,6 +84,39 @@ describe("budget report wording", () => {
     expect(budgetCaveats(r).join(" ")).toMatch(/1 model call reported no token counts/);
   });
 
+  it("explains a breach by less than a millionth of a currency unit, instead of showing 0.00 over 0.00", () => {
+    const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
+      { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "5", endTimeUnixNano: "9", attributes: [
+        { key: "gen_ai.operation.name", value: { stringValue: "chat" } }, { key: "gen_ai.usage.input_tokens", value: { intValue: "1" } }] },
+    ] }] }] })) });
+    const r = replayBudget(events, policy({ maxCost: "0", inputPrice: "0.000001", outputPrice: "0" }));
+    const text = describeBreach(r.first!, r.policy, events, () => "the step");
+    expect(text).toContain("used 0.000000000001 USD, over your limit of 0.00 USD");
+  });
+
+  it("says when a time breach rests on an end time the importer had to estimate", () => {
+    const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
+      { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000", attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }] },
+      { traceId: "1".repeat(32), spanId: "00000000000000a2", name: "m", startTimeUnixNano: "1000000000", endTimeUnixNano: "11000000000" },
+    ] }] }] })) });
+    const r = replayBudget(events, policy({ maxSeconds: "5" }));
+    const text = describeBreach(r.first!, r.policy, events, () => "Model call");
+    expect(text).toContain("its end time was missing or invalid, so the importer estimated it");
+    // A recorded end is stated as a fact, without the disclosure.
+    expect(describeBreach(run({ maxSeconds: "5" }).first!, policy({ maxSeconds: "5" }), model.events, titleOf)).not.toContain("estimated it");
+  });
+
+  it("tells the reader that time is checked only at step events, and how many ends were estimated", () => {
+    const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
+      { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000" },
+      { traceId: "1".repeat(32), spanId: "00000000000000a2", name: "m", startTimeUnixNano: "1000000000", endTimeUnixNano: "11000000000" },
+    ] }] }] })) });
+    const notes = budgetCaveats(replayBudget(events, policy({ maxSeconds: "5" }))).join(" ");
+    expect(notes).toContain("Time is checked only when a step starts or ends");
+    expect(notes).toContain("1 step end time was estimated");
+    expect(budgetCaveats(run({ maxTotalTokens: "1" })).join(" ")).not.toContain("Time is checked");
+  });
+
   it("writes a full report, with and without a breach", () => {
     const stop = budgetReportLines(run({ maxTotalTokens: "4000", maxSeconds: "8" }), model.events, titleOf).join("\n");
     expect(stop).toMatch(/^This is a what-if\. DropScope never controls an agent/);
@@ -148,6 +182,29 @@ describe("budget command", () => {
       expect(r.err).toMatch(message);
       expect(r.err).not.toContain("SECRET-ABC");
     }
+  });
+
+  it("never lets a trace put terminal control codes or a forged line into the report", () => {
+    const hostile = "\u001b[2JINJECT\nFORGED \u202eevil";
+    const events = importTraceBytes({
+      spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [{
+        traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000",
+        attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } }, { key: "gen_ai.tool.name", value: { stringValue: hostile } }],
+      }] }] }] })),
+      contentMode: "FULL", // a file that keeps its content keeps the tool name as written
+    });
+    const hostileFile = path.join(dir, "hostile.runlog.jsonl");
+    writeFileSync(hostileFile, serializeRunLog(events));
+    const report = cli(["budget", hostileFile, "--max-tool-calls", "0"]);
+    expect(report.code).toBe(0);
+    expect(report.out).toContain("Tool call: [2JINJECT FORGED");
+    // Not one raw control character except the report's own line breaks, no forged line, no bidirectional override.
+    expect(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/.test(report.out)).toBe(false);
+    expect(report.out.split("\n").some((line) => line.startsWith("FORGED"))).toBe(false);
+    // The screen shows the same title as one tidy line.
+    const title = loadRunFromBytes(serializeRunLog(events)).steps[0].title;
+    expect(title).not.toMatch(/[\u0000-\u001f]/);
+    expect(title.length).toBeLessThanOrEqual(100);
   });
 
   it("rejects a bad run file with a closed error and unknown flags with usage", () => {

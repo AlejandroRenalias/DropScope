@@ -14,10 +14,15 @@ const K = new Uint32Array([
 
 const rotr = (x: number, n: number): number => (x >>> n) | (x << (32 - n));
 
+/** Size after padding: the data, 0x80, zeros and the 8-byte length, rounded up to whole 64-byte blocks. Plain arithmetic, not 32-bit shifts, so it stays right for very large inputs. */
+export function paddedSize(length: number): number {
+  return Math.ceil((length + 9) / 64) * 64;
+}
+
 export function sha256Bytes(data: Uint8Array): Uint8Array {
   const h = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
   const bitLength = BigInt(data.length) * 8n;
-  const paddedLength = (((data.length + 8) >> 6) + 1) << 6; // room for 0x80, zeros and the 8-byte length, in whole 64-byte blocks
+  const paddedLength = paddedSize(data.length);
   const padded = new Uint8Array(paddedLength);
   padded.set(data);
   padded[data.length] = 0x80;

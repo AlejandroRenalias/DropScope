@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { sha256Bytes, sha256HexPure } from "../src/sha256-pure.js";
+import { paddedSize, sha256Bytes, sha256HexPure } from "../src/sha256-pure.js";
 
 const nodeHex = (data: string | Uint8Array): string => createHash("sha256").update(data).digest("hex");
 
@@ -37,5 +37,18 @@ describe("sha256-pure (browser-safe SHA-256)", () => {
     const bytes = new Uint8Array([1, 2, 3, 4, 5]);
     sha256Bytes(bytes);
     expect(Array.from(bytes)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("computes the padded size with plain arithmetic, including sizes past 2 GiB where 32-bit shifts overflow", () => {
+    for (const n of [0, 1, 54, 55, 56, 63, 64, 119, 120, 128]) expect(paddedSize(n) % 64, `n=${n}`).toBe(0);
+    expect([54, 55, 56, 63, 64, 119, 120].map(paddedSize)).toEqual([64, 64, 128, 128, 128, 128, 192]);
+    // Every padded size leaves room for the 0x80 byte and the 8-byte length, and is the smallest such multiple of 64.
+    for (const n of [0, 55, 56, 2 ** 31 - 64, 2 ** 31 - 1, 2 ** 31, 2 ** 32 - 1, 2 ** 32, 2 ** 33 + 5]) {
+      const size = paddedSize(n);
+      expect(size, `n=${n}`).toBeGreaterThanOrEqual(n + 9);
+      expect(size - 64, `n=${n}`).toBeLessThan(n + 9);
+      expect(size % 64).toBe(0);
+    }
+    expect(paddedSize(2 ** 31 - 64)).toBe(2 ** 31);
   });
 });

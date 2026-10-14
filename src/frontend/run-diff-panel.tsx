@@ -6,18 +6,14 @@ import { MAX_RUN_LOG_BYTES } from "../run-limits.js";
 import demoRunFullText from "./assets/demo-run-full.runlog.jsonl?raw";
 import demoRunVariantText from "./assets/demo-run-variant.runlog.jsonl?raw";
 import { explainLoadError } from "./load-error.js";
+import { ROW_LIMIT, foldEntries, limitEntries } from "./run-diff-layout.js";
 import { loadRunFromBytes, type RunModel } from "./run-replay-model.js";
 
 const TOOL_LINE_LIMIT = 25;
-/** Rows drawn in the side-by-side list; a run can have thousands of steps. */
-const ROW_LIMIT = 300;
-/** A run of this many matching steps in a row is folded into one line you can open. */
-const FOLD_FROM = 2;
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 type Other = { model: RunModel; label: string };
 type Step = NonNullable<DiffItem["a"]>;
-type Entry = { kind: "row"; item: DiffItem; index: number } | { kind: "fold"; start: number; items: Array<{ item: DiffItem; index: number }> };
 
 const STATUS_CHIP: Record<DiffItem["status"], string> = { same: "Same", changed: "Changed", onlyA: "Only in A", onlyB: "Only in B" };
 
@@ -81,19 +77,8 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<ReadonlySet<number>>(new Set());
   const result = useMemo(() => (other ? diffRuns(model, other.model) : null), [model, other]);
-  const entries = useMemo(() => {
-    if (!result || result.tooLarge) return { shown: [] as Entry[], hidden: 0 };
-    const all: Entry[] = [];
-    let run: Array<{ item: DiffItem; index: number }> = [];
-    const flush = () => {
-      if (run.length >= FOLD_FROM) all.push({ kind: "fold", start: run[0].index, items: run });
-      else for (const r of run) all.push({ kind: "row", ...r });
-      run = [];
-    };
-    result.items.forEach((item, index) => { if (item.status === "same") run.push({ item, index }); else { flush(); all.push({ kind: "row", item, index }); } });
-    flush();
-    return { shown: all.slice(0, ROW_LIMIT), hidden: Math.max(0, all.length - ROW_LIMIT) };
-  }, [result]);
+  const folded = useMemo(() => (result && !result.tooLarge ? foldEntries(result.items) : []), [result]);
+  const entries = useMemo(() => limitEntries(folded, open), [folded, open]);
   const toggle = (start: number) => setOpen((current) => { const next = new Set(current); if (next.has(start)) next.delete(start); else next.add(start); return next; });
   const runA = sourceLabel.replace(/\.$/, "");
 
@@ -137,14 +122,14 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
             if (entry.kind === "fold") {
               const isOpen = open.has(entry.start);
               return <div key={`fold-${entry.start}`} className="rd-foldgroup">
-                <button type="button" className="rd-fold" aria-expanded={isOpen} onClick={() => toggle(entry.start)}>{isOpen ? "Hide" : "Show"} {group(entry.items.length)} steps that match in both runs</button>
-                {isOpen && entry.items.map(({ item, index }) => <Row key={index} item={item} index={index} firstIndex={result.firstIndex} setPosition={setPosition} />)}
+                <button type="button" className="rd-fold" aria-expanded={isOpen} onClick={() => toggle(entry.start)}>{isOpen ? "Hide" : "Show"} {group(entry.total)} steps that match in both runs</button>
+                {isOpen && entry.items.slice(0, entry.drawn).map(({ item, index }) => <Row key={index} item={item} index={index} firstIndex={result.firstIndex} setPosition={setPosition} />)}
               </div>;
             }
             return <Row key={entry.index} item={entry.item} index={entry.index} firstIndex={result.firstIndex} setPosition={setPosition} />;
           })}
         </div>
-        {entries.hidden > 0 && <p className="rd-who">… and {group(entries.hidden)} more rows not shown.</p>}
+        {entries.hidden > 0 && <p className="rd-who">… and {group(entries.hidden)} more steps not shown (the list is capped at {group(ROW_LIMIT)} rows). Use the command line diff for the full list.</p>}
         {result.tools.length > 0 && <>
           <h3 className="rd-heading">Tool use that differs</h3>
           <ul className="rd-list">{result.tools.slice(0, TOOL_LINE_LIMIT).map((t) => <li key={t.tool}>{t.tool}: {group(t.a)} call(s) in run A, {group(t.b)} in run B</li>)}</ul>

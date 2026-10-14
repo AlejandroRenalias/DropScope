@@ -268,3 +268,34 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Still pending: merge of PR #49 (needs the user's explicit approval, for the exact commit CI approved), the `.claude/settings.json` rule for the runs folder, and an optional screen for the diff.
 
 - Update (2026-10-14): PR #49 (run diff) was merged into `main` with the user's approval as merge commit `6339838`, pinned to the exact head `99e08c5` (CI `verify` passed on it). The source branch was kept. Still pending: the `.claude/settings.json` rule for the runs folder, an optional screen for run diff, and the small UI checks.
+
+### Runs folder read rule (2026-10-14)
+
+- Request: ADR-027 decision 9 requires a rule denying development-agent reads of the saved runs folder before real traces are admitted. This is an agent-permission change, so independent review is required (`AGENTS.md`).
+- Change (only `.claude/settings.json`): `deny` for `Read(~/AppData/Local/DropScope/**)` and `Read(~/AppData/Local/Packages/*/LocalCache/Local/DropScope/**)` (the Claude desktop app is packaged and redirects `%LOCALAPPDATA%` to the Packages copy, which exists on this machine), `deny` for shell commands matching `*DropScope*runs*` (Bash and PowerShell), and `ask` for `npm run forensics*` (it reads and prints the default runs folder).
+- Evidence: in the same session a Read of a file under the Packages path, a Glob of the nominal path and a Bash `ls` of the Packages folder were all refused. This covers Claude Code only; Codex has its own settings, which this repository does not control.
+- Known limits: file-tool rules are not an operating-system sandbox, and shell text patterns are best effort (another spelling of the path may slip through).
+- Pending: independent review (brief: `REVIEW_BRIEF_RUNS_FOLDER_DENY.md`), the user's approval, push and merge.
+
+### Review record: runs folder read rule, round 1 (commit `fe675ef`)
+
+- Review: Codex gpt-6.1-sol, read-only. Verdict REJECT, 2 major findings. Syntax, precedence (deny, ask, allow) and the `ask` rule were found correct; the overblocking of any shell command that names both "DropScope" and "runs" (for example `git log --grep`) was judged acceptable.
+- Major 1, shell bypass: text patterns need the literal words, so a script that builds the path from pieces, wildcards, `cd` plus relative paths, `npm.cmd run forensics` or running `src/run-cli.ts` directly is not matched. Reproduced by the lead agent: `node -e` joining `'Drop'+'Scope'` and `'r'+'uns'` ran without being blocked (it printed the path only; no run file was read). Cause is structural: the rule is a check inside the agent tool, not an operating-system boundary.
+- Major 2, Codex not covered: the commit configures Claude Code only.
+- Decision (user, 2026-10-14): option A. Keep the rule as an extra precaution, keep real traces excluded until a real boundary exists (for example a separate Windows account), and draft a superseding ADR for approval. Done: `docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md` (DRAFT, not accepted). This was the first implementation attempt; the rule itself is unchanged.
+- Pending: short independent review of ADR-028 and of the honest wording (brief: `REVIEW_BRIEF_ADR_028.md`), then the user's approval of ADR-028. ADR-027 and the spec are not edited until then.
+
+### Review record: ADR-028, round 1 (commit `25cb543`) and a third attempt approved by the user
+
+- Review: Codex gpt-6.1-sol, read-only. Verdict REJECT: 2 major, 1 minor. The lead agent checked all three against the draft and agreed. Because the settings rule was attempt 1 and the ADR draft attempt 2, a repair was attempt 3, so the lead agent stopped and asked. User decision (2026-10-14): option A, one more documentation-only repair and a short re-review; any further finding goes back to the user.
+- Major 1: the boundary did not cover original inputs, copies (sync, backups), the replay screen's browser memory, the real resolved path, or overriding rights (administrator, backup privilege, shared folders). Major 2: "all attempts must fail" cannot tell a real access denial from a wrong path, a missing file or a declined prompt. Minor: the draft said "we reproduced this" although our check only printed a built path and read no file.
+- Repair (text only, `docs/adr/ADR-028-...md`): decisions 2, 3 and 6 rewritten as described in `REVIEW_BRIEF_ADR_028_ROUND2.md`; the summary's evidence sentence corrected. No code or settings changed. Still a draft; ADR-027 and the spec are not edited.
+- Pending: short independent review of the delta (brief: `REVIEW_BRIEF_ADR_028_ROUND2.md`), then the user's approval of ADR-028.
+
+### Review record: ADR-028, round 2 (commit `43a6f0c`) and acceptance of the review
+
+- Review: Codex gpt-6.1-sol, read-only, delta only. Verdict APPROVE, no findings. All three round 1 findings confirmed closed (copies and indirect access, evidence of enforcement, overstated reproduction); no new contradiction; supersession still limited to the admission condition. It could not check actual isolation, permissions, paths or whether existing data is entirely synthetic.
+- **Outcome: the ADR-028 draft text is independently reviewed.** Rounds: settings rule (rejected, 2 major), ADR draft round 1 (rejected, 2 major and 1 minor), ADR draft round 2 (approved). ADR-028 is still a DRAFT until the user accepts it; real traces remain excluded.
+- Pending: the user's decision to accept ADR-028; then the follow-ups listed in it (correct ADR-027 decision 9 and spec section 11 item 2, update the handoff); push and pull request only with the user's approval.
+
+- Update (2026-10-14): the user accepted ADR-028. Status line set to Accepted; ADR-027 decision 9 and spec section 11 item 2 now point to it with one sentence each; the handoff "Still open" entry rewritten. No code changed. These cross-reference edits are mechanical and the ADR text they point to was independently reviewed, so no further review.

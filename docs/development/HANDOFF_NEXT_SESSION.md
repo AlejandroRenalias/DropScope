@@ -8,7 +8,7 @@ A new chat starts from a fresh clone and does not remember the previous conversa
 - **Do not touch:** the `codex/*` branches, `backup/codex-handoff-2026-10-13`, `claude/migration-config`. `.claude/launch.json` on the user's machine is theirs; never commit it.
 - **Direction:** DropScope is a **learning project** (the user's choice, repeated several times). The idea is "agent run forensics": a local, offline, deterministic auditor for AI agent runs. It imports an OTLP/JSON trace, saves a validated run file, rebuilds the recorded state at any step, and re-applies a budget to the run. Dropshipping is only the built-in demo domain. No live workers, no model calls, no API cost, no network.
 - **Sprint exception:** in effect until 2026-10-31 (see `AGENTS.md`). On 2026-10-14 the user decided **not to extend it**: it expires at 00:00 on 2026-10-31 and all engineering gates then continue unchanged. The learning workflow stays paused; the user decided not to resume it.
-- **Release prep (phase 6, 2026-10-14):** `README.md` and `docs/GUIDED_TOUR.md` were added (docs only; see PROGRESS, "Release prep and final gates", which also compares the roadmap's eight acceptance criteria with the evidence and lists the honest gaps). If they are not on `main` yet, they are on the branch `docs/release-prep`.
+- **Release prep (phase 6, 2026-10-14):** `README.md` and `docs/GUIDED_TOUR.md` were added (docs only; see PROGRESS, "Release prep and final gates", which also compares the roadmap's eight acceptance criteria with the evidence and lists the honest gaps). They were merged as pull request #56 (and the final-gates check with it).
 
 ## What was built (ADR-027 accepted, revision 3)
 

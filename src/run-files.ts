@@ -132,7 +132,8 @@ function checkPathText(raw: string): void {
   if (raw.length === 0 || raw.includes("\0")) fail("E_PATH", "EMPTY_OR_NUL");
   const windows = process.platform === "win32";
   if (windows) {
-    if (raw.startsWith("\\\\") || raw.startsWith("//")) fail("E_PATH", "UNC_OR_DEVICE_PATH");
+    // Windows treats a slash and a backslash alike, so a slash then a backslash (or the reverse) also starts a network path.
+    if (/^[\\/]{2}/.test(raw)) fail("E_PATH", "UNC_OR_DEVICE_PATH");
   }
 }
 
@@ -151,6 +152,7 @@ function checkResolvedComponents(resolved: string): void {
 export function safeResolve(raw: string, allowMissingTail = false): string {
   checkPathText(raw);
   const resolved = path.resolve(raw);
+  if (process.platform === "win32" && resolved.startsWith("\\\\")) fail("E_PATH", "UNC_OR_DEVICE_PATH");
   checkResolvedComponents(resolved);
   const root = path.parse(resolved).root;
   const parts = resolved.slice(root.length).split(path.sep).filter((s) => s.length > 0);

@@ -4,7 +4,7 @@ DropScope is a local, offline tool for looking back at a recorded AI agent run. 
 
 None of these features makes a model call or a network request. Everything is computed from a file on your computer, in the same way every time, so someone else can check your answer.
 
-> **Status.** DropScope is a software-engineering **learning project**, not a product. It runs on Windows only for now (the importer refuses other systems). Every run shown in this repository is invented demo data. Real traces are deliberately kept out until a real access boundary exists: see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md). There is no release, package or hosted service.
+> **Status.** DropScope is a software-engineering **learning project**, not a product. It runs on Windows only for now (every command refuses other systems). Every run shown in this repository is invented demo data. Real traces are deliberately kept out until a real access boundary exists: see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md). There is no release, package or hosted service.
 
 ## A small example
 
@@ -53,18 +53,18 @@ On Windows PowerShell, `npm.cmd` works in place of `npm` if script policies get 
 
 ## What the answers do and do not mean
 
-DropScope reports what a recording says. It cannot see inside the agent, and it never guesses. Five things to keep in mind:
+DropScope reports what a recording says. It cannot see inside the agent, and it does not fill in what the trace left out. Where it has to estimate (for example, a step with no recorded end time is closed at the latest time the run recorded), it says so in the import notes. Five things to keep in mind:
 
 1. **It shows the recording, not the agent's mind.** "State at step 24" means "what the trace had written down by step 24". If the trace never recorded the prompts, DropScope says "not recorded" instead of filling the gap.
 2. **"Supported" means the words are in the recording. It does not mean the claim is true.** Example: the claim "the refund was accepted" is supported if the recording contains the word "accepted". But "not accepted" contains it too.
 3. **Budget replay is a "what if".** DropScope does not control any agent. It takes the limit you type and checks it against the numbers the run recorded. A real guard cannot know what a model call will cost until the call has finished, so the answer says "would have stopped here" and lists what was already running.
-4. **"Differ" means the two recordings are not the same. It does not say which one is right.** How long each step took is ignored, because two honest runs never take exactly the same time.
+4. **"Differ" means the two recordings are not the same in what is compared. It does not say which one is right.** What is compared: each step's kind, operation, model, tool and agent name, nesting, failed or not, status message, token counts and recorded content. What is not: how long each step took (two honest runs never take exactly the same time), the span names, whether a status was "unset" or "ok", links between spans and trace state. The command and the screen list this under "Not compared".
 5. **By default a saved run keeps no prompts or answers.** It keeps only their size and a fingerprint (a short code worked out from the text, so two texts can be compared without keeping either). The claim check needs the text, so import with `--full` for it. Run files stay on your computer: do not share or commit them. The demo runs here are invented.
 
 ## Where files go, and what runs on your computer
 
-- Run files are saved to `%LOCALAPPDATA%\DropScope\runs`, outside the repository. The importer creates that folder so that only your account can open it, and it stops if it cannot check that.
-- To do that on Windows, the importer calls two built-in Windows tools (PowerShell and `icacls`) to read file properties and set folder permissions. Nothing else is started and nothing touches the network.
+- Run files are saved to `%LOCALAPPDATA%\DropScope\runs`, outside the repository. The importer creates that folder with access for your account and for the Windows SYSTEM account (Administrators are also accepted when it checks the folder later), and it stops if it cannot check that. Permissions are set only when the folder is first created.
+- To do that on Windows, the commands call built-in Windows tools: PowerShell (to read file properties, once per file read, by every command) and `icacls` (to set folder permissions, by `import` when it creates the folder). Nothing else is started and no command makes a network connection of its own. Network paths (`\\server\share`) are refused before the file system is touched; a file on a mapped network drive letter is refused only after Windows has looked at it.
 - The browser screen reads a run file with a file picker, inside the browser. Nothing is uploaded.
 - Please keep real agent traces out until the boundary in [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md) exists. The repository's Claude Code settings deny reading the runs folder, but that is only a precaution: it can be bypassed and it does not cover other tools, so it cannot be a real boundary on its own.
 

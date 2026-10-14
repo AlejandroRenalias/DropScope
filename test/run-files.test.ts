@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   FILE_ATTRIBUTE_OFFLINE, FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS, FILE_ATTRIBUTE_RECALL_ON_OPEN,
   defaultChecks, ensureRunsDirectory, posixChecks, readInputFile, safeResolve, windowsChecks, type PlatformChecks,
@@ -85,6 +85,22 @@ describe("readInputFile", () => {
       expect(codeOf(() => readInputFile(path.join(root, name), 10, fake())), name).toBe("E_PATH:DEVICE_NAME");
     }
     expect(codeOf(() => readInputFile(`${file}.`, 10, fake()))).toBe("E_PATH:TRAILING_DOT_OR_SPACE");
+  });
+
+  it.skipIf(!windows)("rejects network paths written with mixed separators before looking at the file system", () => {
+    const touched = vi.spyOn(fs, "lstatSync");
+    const realpath = vi.spyOn(fs.realpathSync, "native");
+    try {
+      for (const bad of ["/\\server\\share\\x.json", "\\/server/share/x.json", "//server\\share", "\\\\?\\UNC\\server\\share\\x.json"]) {
+        expect(codeOf(() => readInputFile(bad, 10, fake())), bad).toBe("E_PATH:UNC_OR_DEVICE_PATH");
+        expect(codeOf(() => safeResolve(bad, true)), bad).toBe("E_PATH:UNC_OR_DEVICE_PATH");
+      }
+      expect(touched).not.toHaveBeenCalled();
+      expect(realpath).not.toHaveBeenCalled();
+    } finally {
+      touched.mockRestore();
+      realpath.mockRestore();
+    }
   });
 
   it.skipIf(!windows)("uses real Windows attributes and drive type", () => {

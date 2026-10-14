@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentProps } from "react";
+import { useMemo, useRef, useState, type ComponentProps } from "react";
 import { explainLoadError } from "./load-error.js";
 import { MAX_RUN_LOG_BYTES } from "../run-limits.js";
 import demoRunText from "./assets/demo-run.runlog.jsonl?raw";
@@ -27,8 +27,11 @@ export function ReplayScreen(props: ComponentProps<typeof MissionReplay>) {
   const [error, setError] = useState<string | null>(null);
   const [position, setPosition] = useState<number | null>(null);
   const run = useMemo(() => loaded ?? (source === "run" ? demoRun() : null), [loaded, source]);
+  // Each choice gets a number. A file that finishes reading after a newer choice (another file, the demo, "back") is dropped.
+  const choice = useRef(0);
 
   const open = async (file: File) => {
+    const mine = ++choice.current;
     setError(null);
     if (file.size > MAX_RUN_LOG_BYTES) {
       setError("This file is larger than the 128 MiB limit for run files.");
@@ -36,10 +39,11 @@ export function ReplayScreen(props: ComponentProps<typeof MissionReplay>) {
     }
     try {
       const model = loadRunFromBytes(new Uint8Array(await file.arrayBuffer()));
+      if (mine !== choice.current) return;
       setLoaded({ model, label: `Run file ${file.name}.` });
       setPosition(null);
     } catch (caught) {
-      setError(explainLoadError(caught));
+      if (mine === choice.current) setError(explainLoadError(caught));
     }
   };
 
@@ -57,8 +61,8 @@ export function ReplayScreen(props: ComponentProps<typeof MissionReplay>) {
         <p>{loaded ? loaded.label : "Showing the built-in synthetic demo run."} Open a run file that the import command saved to see your own agent run.</p>
         <div className="run-source-actions">
           <label className="file-button">Open a run file<input type="file" accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain" onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) void open(file); }} /></label>
-          <button type="button" className="quiet-button" onClick={() => { setLoaded({ model: loadRunFromBytes(new TextEncoder().encode(demoRunFullText)), label: "Demo run with content stored." }); setPosition(null); setError(null); }}>Demo run with content stored</button>
-          {loaded && <button type="button" className="quiet-button" onClick={() => { setLoaded(null); setPosition(null); setError(null); }}>Back to the demo run</button>}
+          <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setLoaded({ model: loadRunFromBytes(new TextEncoder().encode(demoRunFullText)), label: "Demo run with content stored." }); setPosition(null); setError(null); }}>Demo run with content stored</button>
+          {loaded && <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setLoaded(null); setPosition(null); setError(null); }}>Back to the demo run</button>}
         </div>
         {error && <p className="inline-error" role="alert">{error}</p>}
         <details className="run-source-help"><summary>How to make a run file</summary>

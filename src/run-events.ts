@@ -182,8 +182,10 @@ const eventBase = {
 const runStartedPayload = z.object({
   traceId: traceIdSchema,
   derivedOrder: z.literal(true),
-  importer: z.object({ id: z.string().min(1), version: z.string().min(1) }).strict(),
-  conventionVersion: z.string().min(1),
+  // These header fields are structure, never content: they accept only the shapes the importer writes, so a hand-edited
+  // file cannot carry free text in them while claiming to keep none.
+  importer: z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}$/), version: z.string().regex(/^[0-9]{1,9}$/) }).strict(),
+  conventionVersion: z.string().regex(/^[0-9]{1,4}(\.[0-9]{1,4}){1,3}$/),
   contentMode: contentModeSchema,
   selectedTrace: z.enum(["ONLY", "EXPLICIT"]),
   inputs: z.array(z.object({
@@ -191,7 +193,7 @@ const runStartedPayload = z.object({
     byteLength: z.number().int().nonnegative(),
     sha256: sha256Schema,
   }).strict()).min(1).max(2),
-  limitsVersion: z.string().min(1),
+  limitsVersion: z.string().regex(/^[0-9]{1,4}(-[a-z]{1,16})?$/),
   artifactId: sha256Schema,
   contexts: z.array(contextSchema),
 }).strict();

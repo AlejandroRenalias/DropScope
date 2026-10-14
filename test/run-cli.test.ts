@@ -115,8 +115,8 @@ describe("state", () => {
     newRuns();
     run(["import", path.join(root, "trace-a.json")]);
     const file = path.join(runs, fs.readdirSync(runs)[0]);
-    expect(run(["state", file, "--at", "0"]).code).toBe(1);
-    expect(run(["state", file, "--at", "99999999"]).code).toBe(1);
+    expect(run(["state", file, "--at", "0"]).code).toBe(2);
+    expect(run(["state", file, "--at", "99999999"]).code).toBe(2);
     const tampered = path.join(root, "tampered.runlog.jsonl");
     fs.writeFileSync(tampered, fs.readFileSync(file, "utf8").replace("\n", "\n\n"));
     const result = run(["state", tampered]);

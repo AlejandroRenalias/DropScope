@@ -38,6 +38,8 @@ export function describeClaimResult(r: ClaimResult, titleOf: (stepId: string) =>
       return `Cannot check: this run was imported without content, so only the size and a fingerprint of the ${field} of ${title} were kept. Import the trace again with --full to check claims.`;
     case "NO_CONTENT":
       return `Cannot check: the trace did not record the ${field} of ${title}${more}.`;
+    case "TOOL_NAME_WITHHELD":
+      return "Cannot check: this run kept some tool names only as fingerprints (they did not fit the allowed pattern), so a step it holds might be the tool you named. Import the trace again with --full to check this claim.";
     case "TOO_MUCH_WORK":
       return "Cannot check: the content to search is too large for this many claims. Check fewer claims at a time.";
   }

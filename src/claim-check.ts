@@ -19,6 +19,9 @@
 //     steps was recorded after the event where the claim was made (TOO_LATE, see atEvent).
 //  5. If any matching step cannot be read (content withheld, or never recorded) and none supports the claim, the
 //     result is CANNOT_CHECK: an unread step might have supported it.
+//     The same holds for a tool name: a step whose tool name was kept only as a fingerprint (a name outside the
+//     allowed pattern, in the default mode) might have been the one the claim names, so a claim about a tool that
+//     would otherwise be NOT_SUPPORTED is CANNOT_CHECK (reason TOOL_NAME_WITHHELD).
 //  6. "Supported" means the text is present in the recording. It does not prove the claim is true.
 import { ImportError } from "./run-import-error.js";
 import type { Field, RunEvent, TaggedValue } from "./run-events.js";
@@ -61,7 +64,7 @@ export type Claim = {
 };
 
 export type ClaimVerdict = "SUPPORTED" | "NOT_SUPPORTED" | "CANNOT_CHECK";
-export type ClaimReason = "FOUND" | "NO_MATCHING_STEP" | "NOT_FOUND" | "TOO_LATE" | "CONTENT_WITHHELD" | "NO_CONTENT" | "TOO_MUCH_WORK";
+export type ClaimReason = "FOUND" | "NO_MATCHING_STEP" | "NOT_FOUND" | "TOO_LATE" | "CONTENT_WITHHELD" | "NO_CONTENT" | "TOO_MUCH_WORK" | "TOOL_NAME_WITHHELD";
 
 export type ClaimResult = {
   claim: Claim;
@@ -228,13 +231,18 @@ export function parseClaimText(text: string): ParsedClaims {
 
 // ---- reading the evidence out of a run ----
 type Item = { sequence: number; value: Field };
-type StepInfo = { stepId: string; startSequence: number; tool: string | null; failed: boolean; content: Map<string, Item[]> };
+type StepInfo = { stepId: string; startSequence: number; tool: string | null; toolWithheld: boolean; failed: boolean; content: Map<string, Item[]> };
 
 function verbatimAttribute(attributes: Array<{ key: Field; value: Field }>, key: string): string | null {
   for (const a of attributes) {
     if ("v" in a.key && a.key.v.t === "s" && a.key.v.v === key && "v" in a.value && a.value.v.t === "s") return a.value.v.v;
   }
   return null;
+}
+
+/** True when the step has a tool name that the run file kept only as a fingerprint (so it cannot be matched by name). */
+function toolNameWithheld(attributes: Array<{ key: Field; value: Field }>): boolean {
+  return attributes.some((a) => "v" in a.key && a.key.v.t === "s" && a.key.v.v === "gen_ai.tool.name" && "w" in a.value);
 }
 
 /** The searchable values of a stored value: its text, number and true/false leaves, in order, each searched on its own. */
@@ -262,7 +270,7 @@ function indexSteps(events: readonly RunEvent[]): Map<string, StepInfo> {
       case "StepStarted":
         steps.set(event.payload.stepId, {
           stepId: event.payload.stepId, startSequence: event.sequenceNumber, tool: verbatimAttribute(event.payload.attributes, "gen_ai.tool.name"),
-          failed: false, content: new Map(),
+          toolWithheld: toolNameWithheld(event.payload.attributes), failed: false, content: new Map(),
         });
         break;
       case "StepEnded": {
@@ -359,7 +367,23 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
     return { kind: "SUPPORTED", evidenceEvent: Math.max(...(foundAt as number[])) };
   };
 
+  const unnamedTools = ordered.filter((step) => step.toolWithheld);
   const results: ClaimResult[] = claims.map((claim) => {
+    const result = checkOne(claim);
+    // A step whose tool name was withheld might be the one this claim names, so "not supported" cannot be said. The
+    // only nameless step that changes nothing is one whose content for the claimed field is KNOWN to come after the
+    // claim's cutoff event; a step that never recorded the field is unread, so it keeps the doubt (rule 5).
+    if (result.verdict === "NOT_SUPPORTED" && claim.stepId === null) {
+      const limit = claim.atEvent ?? Number.MAX_SAFE_INTEGER;
+      const possible = unnamedTools.find((step) => {
+        const items = step.content.get(CLAIM_FIELD_NAME[claim.field]) ?? [];
+        return items.length === 0 || items.some((item) => item.sequence <= limit);
+      });
+      if (possible !== undefined) return { ...result, verdict: "CANNOT_CHECK" as const, reason: "TOOL_NAME_WITHHELD" as const, stepId: possible.stepId };
+    }
+    return result;
+  });
+  function checkOne(claim: Claim): ClaimResult {
     const base = { claim, stepsChecked: 0, evidenceEvent: null, stepFailed: false, missing: [] as string[], stepId: null as string | null };
     const matching = ordered.filter((s) => (claim.stepId !== null ? s.stepId === claim.stepId : s.tool === claim.tool));
     if (matching.length === 0) return { ...base, verdict: "NOT_SUPPORTED", reason: "NO_MATCHING_STEP" };
@@ -392,7 +416,7 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
     if (best !== null) return { ...common, verdict: "NOT_SUPPORTED", reason: "NOT_FOUND", stepId: best.stepId, missing: best.missing };
     const lateOutcome = late?.outcome as Extract<StepOutcome, { kind: "LATE" }>;
     return { ...common, verdict: "NOT_SUPPORTED", reason: "TOO_LATE", stepId: (late as NonNullable<typeof late>).step.stepId, evidenceEvent: lateOutcome.lateEvent };
-  });
+  }
 
   const tools = [...new Set(ordered.map((s) => s.tool).filter((t): t is string => t !== null).map(tidyName))];
   return {

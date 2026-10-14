@@ -1,0 +1,3 @@
+# Run logs and trace fixtures must keep LF line endings (spec 11.5).
+*.runlog.jsonl text eol=lf
+docs/development/spike-2026-10-13/traces/* text eol=lf

@@ -13,7 +13,8 @@
     "demo": "tsx src/cli.ts",
     "demo:recovery": "tsx src/recovery-demo.ts",
     "evaluate": "tsx src/evaluation-cli.ts",
-    "runtime:dev": "tsx src/local-runtime-cli.ts"
+    "runtime:dev": "tsx src/local-runtime-cli.ts",
+    "forensics": "tsx src/run-cli.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

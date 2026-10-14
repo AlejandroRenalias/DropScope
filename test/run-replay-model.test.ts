@@ -20,6 +20,15 @@ describe("demo run", () => {
   });
 });
 
+describe("demo run with content stored", () => {
+  it("is exactly what the real importer produces from the same source trace in FULL mode", () => {
+    const fresh = serializeRunLog(importTraceBytes({ spans: demoTrace(), contentMode: "FULL" }));
+    const committed = new Uint8Array(readFileSync(asset("demo-run-full.runlog.jsonl")));
+    expect(Buffer.compare(Buffer.from(fresh), Buffer.from(committed)), "run: npx tsx test/fixtures/make-demo-run.ts").toBe(0);
+    expect(loadRunFromBytes(committed).contentMode).toBe("FULL");
+  });
+});
+
 describe("run model", () => {
   const model = loadRunFromBytes(demoBytes());
 

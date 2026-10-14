@@ -1,7 +1,8 @@
 // Generates the synthetic demo run shown on the Replay screen.
 //   npx tsx test/fixtures/make-demo-run.ts
 // It writes the readable source trace (test/fixtures/demo-run-trace.json) and the run log the browser loads
-// (src/frontend/assets/demo-run.runlog.jsonl), produced by the real importer in the default HASH_ONLY mode.
+// (src/frontend/assets/demo-run.runlog.jsonl), produced by the real importer in the default HASH_ONLY mode, and the
+// same run with content stored (demo-run-full.runlog.jsonl, importer mode FULL), used by the claim check.
 // All content is invented. test/demo-run.test.ts fails if the committed run log drifts from this source.
 import { writeFileSync } from "node:fs";
 import { importTraceBytes } from "../../src/run-import.js";
@@ -75,6 +76,9 @@ const trace = {
 };
 const bytes = new TextEncoder().encode(`${JSON.stringify(trace, null, 2)}\n`);
 const events = importTraceBytes({ spans: bytes });
+// The same run with its content stored, so the claim check has something to read. All content is invented.
+const fullEvents = importTraceBytes({ spans: bytes, contentMode: "FULL" });
 writeFileSync(new URL("./demo-run-trace.json", import.meta.url), bytes);
 writeFileSync(new URL("../../src/frontend/assets/demo-run.runlog.jsonl", import.meta.url), serializeRunLog(events));
+writeFileSync(new URL("../../src/frontend/assets/demo-run-full.runlog.jsonl", import.meta.url), serializeRunLog(fullEvents));
 console.log(`demo run: ${spans.length} spans, ${events.length} events`);

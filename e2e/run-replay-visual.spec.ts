@@ -46,3 +46,20 @@ test("captures the budget replay panel with a result", async ({ page }) => {
   await expect(panel.locator(".bp-gauge.over")).toContainText("4,065 tokens");
   await expect(panel).toHaveScreenshot("budget-replay.png", { animations: "disabled" });
 });
+
+test("captures the claim check panel with results", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.evaluate(() => window.localStorage.clear());
+  await page.reload();
+  await page.addStyleTag({ content: ".topbar { position: static !important; }" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
+  await page.getByRole("button", { name: "Imported agent run" }).click();
+  await page.getByRole("button", { name: "Demo run with content stored" }).click();
+  const replay = page.getByRole("region", { name: "Agent run replay" });
+  const panel = replay.getByRole("region", { name: "Claim check" });
+  await panel.getByRole("button", { name: /Try an example/ }).click();
+  await expect(panel.locator(".cc-summary")).toContainText("2 supported, 1 not supported");
+  await expect(panel).toHaveScreenshot("claim-check.png", { animations: "disabled" });
+});

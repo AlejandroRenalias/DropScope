@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { parseBudgetPolicy, replayBudget, type BudgetPolicyInput } from "../budget-replay.js";
 import type { RunEvent } from "../run-events.js";
 import { BudgetReplayPanel } from "./budget-replay-panel.js";
+import { ClaimCheckPanel } from "./claim-check-panel.js";
 import { PageHead } from "./research-office.js";
 import {
   categoryOf, describeRunEvent, describeStateChange, eventStepId, formatDuration, formatNumber, runEventCategories, stepStatusAt,
@@ -127,6 +128,8 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
     </section>
 
     <BudgetReplayPanel model={model} input={budgetInput} setInput={setBudgetInput} errors={parsedBudget.errors} result={budget} position={bounded} setPosition={setPosition} />
+
+    <ClaimCheckPanel model={model} setPosition={setPosition} />
 
     <div className="replay-grid rr-grid">
       <section className="panel-card rr-steps" aria-labelledby="rr-steps-title">

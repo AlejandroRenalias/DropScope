@@ -2,10 +2,13 @@
 //   import <spans.json> [--logs <logs.json>] [--trace <traceId>] [--full]
 //   state <run.runlog.jsonl> [--at <N>]
 //   budget <run.runlog.jsonl> [limits...] [--json]   (counterfactual: re-applies a budget to a recorded run)
+//   claims <run.runlog.jsonl> --claims <claims.json> [--json]   (is each claim supported by the recorded content?)
 // Output never echoes input text: only fixed words, counts, ids and escaped paths (spec 11.6).
 import { pathToFileURL } from "node:url";
 import { parseBudgetPolicy, replayBudget, type BudgetPolicyInput } from "./budget-replay.js";
 import { budgetReportLines } from "./budget-report.js";
+import { claimReportLines } from "./claim-report.js";
+import { CLAIM_LIMITS, checkClaims, parseClaimFile } from "./claim-check.js";
 import { buildRunModel } from "./frontend/run-replay-model.js";
 import { defaultChecks, readInputFile, type PlatformChecks } from "./run-files.js";
 import { ImportError } from "./run-import-error.js";
@@ -33,6 +36,9 @@ const USAGE = [
   "         [--max-model-calls N] [--max-tool-calls N] [--max-steps N] [--max-seconds S]",
   "         [--max-cost X --input-price P --output-price Q [--currency USD]] [--json]",
   "         (what-if: where a guard with these limits would have stopped a recorded run)",
+  "",
+  "  claims <run.runlog.jsonl> --claims <claims.json> [--json]",
+  "         (is each claim supported by the content the run recorded? needs a run imported with --full)",
   "",
   "Run files are local-only: do not share or commit them. --full keeps content in the file.",
 ].join("\n");
@@ -135,6 +141,32 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
         io.out(`${text}\n`);
       } else {
         io.out(`${budgetReportLines(result, model.events, titleOf).map(escapeForTerminal).join("\n")}\n`);
+      }
+      return 0;
+    }
+    if (command === "claims") {
+      const { positional, values, flags } = parseFlags(rest, ["--claims"], ["--json"]);
+      const claimsPath = values.get("--claims");
+      if (positional.length !== 1 || claimsPath === undefined) throw new UsageError();
+      const parsed = parseClaimFile(readInputFile(claimsPath, CLAIM_LIMITS.maxBytes, checks));
+      if (parsed.errors.length > 0) {
+        io.err(`${parsed.errors.map((message) => `error: ${escapeForTerminal(message)}`).join("\n")}\n`);
+        return 2;
+      }
+      const model = buildRunModel(readRunLog(positional[0], checks));
+      const check = checkClaims(model.events, parsed.claims);
+      // Step titles can come from a trace (tool and agent names in a file that keeps its content): escape them.
+      const titleOf = (stepId: string): string => escapeForTerminal(model.stepsById.get(stepId)?.title ?? "a step");
+      if (flags.has("--json")) {
+        io.out(`${JSON.stringify({
+          runId: model.runId, contentMode: check.contentMode, counts: check.counts,
+          results: check.results.map((r) => ({
+            id: r.claim.id, text: r.claim.text, verdict: r.verdict, reason: r.reason, stepId: r.stepId, stepsChecked: r.stepsChecked,
+            evidenceEvent: r.evidenceEvent, stepFailed: r.stepFailed, missing: r.missing,
+          })),
+        }, null, 2)}\n`);
+      } else {
+        io.out(`${claimReportLines(check, titleOf).map(escapeForTerminal).join("\n")}\n`);
       }
       return 0;
     }

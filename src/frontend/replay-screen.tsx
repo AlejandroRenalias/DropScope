@@ -2,6 +2,7 @@ import { useMemo, useState, type ComponentProps } from "react";
 import { ImportError } from "../run-import-error.js";
 import { MAX_RUN_LOG_BYTES } from "../run-limits.js";
 import demoRunText from "./assets/demo-run.runlog.jsonl?raw";
+import demoRunFullText from "./assets/demo-run-full.runlog.jsonl?raw";
 import { MissionReplay } from "./mission-replay.js";
 import { RunReplay } from "./run-replay.js";
 import { loadRunFromBytes, type RunModel } from "./run-replay-model.js";
@@ -64,6 +65,7 @@ export function ReplayScreen(props: ComponentProps<typeof MissionReplay>) {
         <p>{loaded ? loaded.label : "Showing the built-in synthetic demo run."} Open a run file that the import command saved to see your own agent run.</p>
         <div className="run-source-actions">
           <label className="file-button">Open a run file<input type="file" accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain" onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) void open(file); }} /></label>
+          <button type="button" className="quiet-button" onClick={() => { setLoaded({ model: loadRunFromBytes(new TextEncoder().encode(demoRunFullText)), label: "Demo run with content stored." }); setPosition(null); setError(null); }}>Demo run with content stored</button>
           {loaded && <button type="button" className="quiet-button" onClick={() => { setLoaded(null); setPosition(null); setError(null); }}>Back to the demo run</button>}
         </div>
         {error && <p className="inline-error" role="alert">{error}</p>}

@@ -1,5 +1,7 @@
 # Synthetic Fixture Catalog
 
+> **Note.** This page describes the original mission replay. DropScope now centers on agent run forensics: start with the [README](../README.md) and the [guided tour](GUIDED_TOUR.md).
+
 DropScope fixtures are fixed local inputs for exercising the same orchestration engine under different conditions. They are teaching and regression artifacts, not product recommendations, market research, or commercial evidence.
 
 ## Deterministic Learning Fixtures

@@ -1,5 +1,7 @@
 # DropScope Architecture Overview
 
+> **Note.** This page describes the original mission replay. DropScope now centers on agent run forensics: start with the [README](../README.md) and the [guided tour](GUIDED_TOUR.md).
+
 DropScope is a local-first research-workflow learning project. It uses fixed synthetic missions to make scheduling, evidence gates, reviews, budgets, recovery, and replay observable before those ideas are trusted around real research or workers.
 
 ## One Source of Truth

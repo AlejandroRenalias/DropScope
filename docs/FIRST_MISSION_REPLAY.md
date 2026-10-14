@@ -1,5 +1,7 @@
 # First Mission Replay
 
+> **Note.** This page describes the original mission replay. DropScope now centers on agent run forensics: start with the [README](../README.md) and the [guided tour](GUIDED_TOUR.md).
+
 This five-minute walkthrough uses `crosscurrent-workspace-market`, a fixed local fixture. Its candidates, evidence, timing, and outcome are synthetic or recorded teaching inputs—not market research or a product recommendation.
 
 ## Start the Local Mission

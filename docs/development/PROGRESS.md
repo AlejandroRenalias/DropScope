@@ -276,3 +276,11 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Evidence: in the same session a Read of a file under the Packages path, a Glob of the nominal path and a Bash `ls` of the Packages folder were all refused. This covers Claude Code only; Codex has its own settings, which this repository does not control.
 - Known limits: file-tool rules are not an operating-system sandbox, and shell text patterns are best effort (another spelling of the path may slip through).
 - Pending: independent review (brief: `REVIEW_BRIEF_RUNS_FOLDER_DENY.md`), the user's approval, push and merge.
+
+### Review record: runs folder read rule, round 1 (commit `fe675ef`)
+
+- Review: Codex gpt-6.1-sol, read-only. Verdict REJECT, 2 major findings. Syntax, precedence (deny, ask, allow) and the `ask` rule were found correct; the overblocking of any shell command that names both "DropScope" and "runs" (for example `git log --grep`) was judged acceptable.
+- Major 1, shell bypass: text patterns need the literal words, so a script that builds the path from pieces, wildcards, `cd` plus relative paths, `npm.cmd run forensics` or running `src/run-cli.ts` directly is not matched. Reproduced by the lead agent: `node -e` joining `'Drop'+'Scope'` and `'r'+'uns'` ran without being blocked (it printed the path only; no run file was read). Cause is structural: the rule is a check inside the agent tool, not an operating-system boundary.
+- Major 2, Codex not covered: the commit configures Claude Code only.
+- Decision (user, 2026-10-14): option A. Keep the rule as an extra precaution, keep real traces excluded until a real boundary exists (for example a separate Windows account), and draft a superseding ADR for approval. Done: `docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md` (DRAFT, not accepted). This was the first implementation attempt; the rule itself is unchanged.
+- Pending: short independent review of ADR-028 and of the honest wording (brief: `REVIEW_BRIEF_ADR_028.md`), then the user's approval of ADR-028. ADR-027 and the spec are not edited until then.

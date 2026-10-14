@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildRunModel } from "../src/frontend/run-replay-model.js";
 import { DIFF_LIMITS, diffRuns } from "../src/run-diff.js";
-import { diffReportLines } from "../src/run-diff-report.js";
+import { DIFF_TEXT_LIMIT, diffReportLines } from "../src/run-diff-report.js";
 import { importTraceBytes } from "../src/run-import.js";
 import { parseRunLog } from "../src/run-log-format.js";
 import { serializeRunLog } from "../src/run-store.js";
@@ -158,6 +158,15 @@ describe("run diff: limits and reports", () => {
     expect(text).toContain("not treated as a difference");
     const same = diffReportLines(diffRuns(modelOf(base()), modelOf(base())), { a: "x", b: "y" }).join("\n");
     expect(same).toContain("match step for step");
+  });
+
+  it("prints DIFF_TEXT_LIMIT differences by default (the number the screen's notice quotes)", () => {
+    const a = Array.from({ length: 40 }, (_v, i) => ({ op: "execute_tool" as const, tool: `a${i}`, start: i, end: i + 0.5 }));
+    const b = Array.from({ length: 40 }, (_v, i) => ({ op: "execute_tool" as const, tool: `b${i}`, start: i, end: i + 0.5 }));
+    const lines = diffReportLines(diffRuns(modelOf(a), modelOf(b)), { a: "x", b: "y" });
+    expect(lines.filter((l) => l.startsWith("  Run A has "))).toHaveLength(DIFF_TEXT_LIMIT);
+    expect(DIFF_TEXT_LIMIT).toBe(25);
+    expect(lines).toContain(`  ... and ${40 - DIFF_TEXT_LIMIT} more.`);
   });
 
   it("caps the listed differences and counts the rest", () => {

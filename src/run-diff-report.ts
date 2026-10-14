@@ -3,6 +3,10 @@
 import { formatSeconds, group } from "./budget-report.js";
 import type { DiffChange, DiffItem, DiffResult, RunTotals } from "./run-diff.js";
 
+/** How many differences the command prints as text, and how many it puts in its --json output. The screen quotes these in its notice. */
+export const DIFF_TEXT_LIMIT = 25;
+export const DIFF_JSON_LIMIT = 1000;
+
 export const DIFF_NOTE =
   "Steps are matched by what they are (kind, operation, model name, and tool or agent name, using the full recorded values) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.";
 
@@ -99,7 +103,7 @@ function diffSummaryLines(result: DiffResult): string[] {
   return [diffVerdictLine(result), `  Look at: ${where} (use the state command with --at to see each run there).`, `  ${diffCountsLine(result)}`];
 }
 
-export function diffReportLines(result: DiffResult, ids: { a: string; b: string }, limit = 25): string[] {
+export function diffReportLines(result: DiffResult, ids: { a: string; b: string }, limit = DIFF_TEXT_LIMIT): string[] {
   const lines: string[] = [`Run A: ${ids.a}`, `Run B: ${ids.b}`, "", ...diffSummaryLines(result)];
   if (result.tooLarge) return lines;
   if (!result.identical) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiffItem } from "../src/run-diff.js";
-import { FOLD_FROM, ROW_LIMIT, foldEntries, limitEntries } from "../src/frontend/run-diff-layout.js";
+import { FOLD_FROM, ROW_LIMIT, drawnSteps, foldEntries, limitEntries, truncationNotice } from "../src/frontend/run-diff-layout.js";
+import { DIFF_JSON_LIMIT, DIFF_TEXT_LIMIT } from "../src/run-diff-report.js";
 
 const item = (status: DiffItem["status"]): DiffItem => ({ status, a: null, b: null, changes: [] });
 const items = (...statuses: Array<DiffItem["status"] | [DiffItem["status"], number]>): DiffItem[] =>
@@ -66,5 +67,36 @@ describe("run diff layout: the row cap", () => {
     expect(drawnRows(shown)).toBe(3);
     expect(shown).toHaveLength(3);
     expect(hidden).toBe(4);
+  });
+});
+
+describe("run diff layout: what the card really draws", () => {
+  it("draws no steps of a closed group and no more than the budget of an open one", () => {
+    const entries = foldEntries(items([ "same", 5000 ]));
+    const closed = limitEntries(entries, new Set()).shown[0];
+    const opened = limitEntries(entries, new Set([0])).shown[0];
+    if (closed.kind !== "fold" || opened.kind !== "fold") throw new Error("expected fold lines");
+    expect(drawnSteps(closed, false)).toHaveLength(0);
+    expect(drawnSteps(opened, true)).toHaveLength(ROW_LIMIT);
+    expect(drawnSteps(opened, false)).toHaveLength(0);
+    expect(drawnSteps(opened, true).map((x) => x.index)).toEqual(Array.from({ length: ROW_LIMIT }, (_v, i) => i));
+  });
+
+  it("the total drawn rows never exceed the cap, however many groups are open", () => {
+    const entries = foldEntries(items([ "changed", 10 ], [ "same", 200 ], "onlyA", [ "same", 200 ], "onlyB", [ "same", 200 ]));
+    const open = new Set(entries.flatMap((e) => (e.kind === "fold" ? [e.start] : [])));
+    const { shown } = limitEntries(entries, open);
+    const total = shown.reduce((n, e) => n + (e.kind === "row" ? 1 : drawnSteps(e, true).length), 0);
+    expect(total).toBe(ROW_LIMIT);
+  });
+
+  it("the notice quotes the command line limits, not a promise of a full list", () => {
+    const notice = truncationNotice(1200);
+    expect(notice).toContain("1,200 more steps not shown");
+    expect(notice).toContain(`capped at ${ROW_LIMIT} rows`);
+    expect(notice).toContain(`first ${DIFF_TEXT_LIMIT} differences as text`);
+    expect(notice).toContain("up to 1,000 with --json");
+    expect(DIFF_JSON_LIMIT).toBe(1000);
+    expect(notice).not.toMatch(/full list/i);
   });
 });

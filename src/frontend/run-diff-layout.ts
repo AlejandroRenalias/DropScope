@@ -1,7 +1,9 @@
 // Which rows the run diff card draws. Pure, so the limits are testable without a browser.
 // Matching steps in a row (FOLD_FROM or more) fold into one line. A cap on drawn rows applies to everything the
 // card draws, including the steps inside a group the user opened, so a huge run cannot flood the page.
+import { group } from "../budget-report.js";
 import type { DiffItem } from "../run-diff.js";
+import { DIFF_JSON_LIMIT, DIFF_TEXT_LIMIT } from "../run-diff-report.js";
 
 /** Rows drawn in the side-by-side list; a run can have thousands of steps. */
 export const ROW_LIMIT = 300;
@@ -51,4 +53,14 @@ export function limitEntries(entries: readonly Entry[], open: ReadonlySet<number
     } else hidden += entry.items.length;
   }
   return { shown, hidden };
+}
+
+/** The steps of a fold line that are actually drawn: none while it is closed, at most `drawn` while it is open. */
+export function drawnSteps(fold: Extract<Shown, { kind: "fold" }>, isOpen: boolean): IndexedItem[] {
+  return isOpen ? fold.items.slice(0, fold.drawn) : [];
+}
+
+/** Said under the list when steps are not drawn. It quotes the real limits of the command line diff, which is not a full list either. */
+export function truncationNotice(hidden: number, limit: number = ROW_LIMIT): string {
+  return `… and ${group(hidden)} more steps not shown (this list is capped at ${group(limit)} rows). The command line diff prints the first ${group(DIFF_TEXT_LIMIT)} differences as text, or up to ${group(DIFF_JSON_LIMIT)} with --json.`;
 }

@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "../src/run-cli.js";
+import { DIFF_JSON_LIMIT } from "../src/run-diff-report.js";
 import type { PlatformChecks } from "../src/run-files.js";
 import { importTraceBytes } from "../src/run-import.js";
 import { serializeRunLog } from "../src/run-store.js";
@@ -108,6 +109,7 @@ describe("diff command: structured output limits", () => {
     const parsed = JSON.parse(run(["diff", a, b, "--json"]).out);
     expect(parsed.counts.onlyA).toBe(1005);
     expect(parsed.differences.length).toBe(1000);
+    expect(DIFF_JSON_LIMIT, "the screen quotes this limit in its notice").toBe(1000);
     expect(parsed.differencesOmitted).toBe(1010);
     const small = JSON.parse(run(["diff", a, a, "--json"]).out);
     expect(small.differencesOmitted).toBe(0);

@@ -6,7 +6,7 @@ import { MAX_RUN_LOG_BYTES } from "../run-limits.js";
 import demoRunFullText from "./assets/demo-run-full.runlog.jsonl?raw";
 import demoRunVariantText from "./assets/demo-run-variant.runlog.jsonl?raw";
 import { explainLoadError } from "./load-error.js";
-import { ROW_LIMIT, foldEntries, limitEntries } from "./run-diff-layout.js";
+import { drawnSteps, foldEntries, limitEntries, truncationNotice } from "./run-diff-layout.js";
 import { loadRunFromBytes, type RunModel } from "./run-replay-model.js";
 
 const TOOL_LINE_LIMIT = 25;
@@ -123,13 +123,13 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
               const isOpen = open.has(entry.start);
               return <div key={`fold-${entry.start}`} className="rd-foldgroup">
                 <button type="button" className="rd-fold" aria-expanded={isOpen} onClick={() => toggle(entry.start)}>{isOpen ? "Hide" : "Show"} {group(entry.total)} steps that match in both runs</button>
-                {isOpen && entry.items.slice(0, entry.drawn).map(({ item, index }) => <Row key={index} item={item} index={index} firstIndex={result.firstIndex} setPosition={setPosition} />)}
+                {drawnSteps(entry, isOpen).map(({ item, index }) => <Row key={index} item={item} index={index} firstIndex={result.firstIndex} setPosition={setPosition} />)}
               </div>;
             }
             return <Row key={entry.index} item={entry.item} index={entry.index} firstIndex={result.firstIndex} setPosition={setPosition} />;
           })}
         </div>
-        {entries.hidden > 0 && <p className="rd-who">… and {group(entries.hidden)} more steps not shown (the list is capped at {group(ROW_LIMIT)} rows). Use the command line diff for the full list.</p>}
+        {entries.hidden > 0 && <p className="rd-who">{truncationNotice(entries.hidden)}</p>}
         {result.tools.length > 0 && <>
           <h3 className="rd-heading">Tool use that differs</h3>
           <ul className="rd-list">{result.tools.slice(0, TOOL_LINE_LIMIT).map((t) => <li key={t.tool}>{t.tool}: {group(t.a)} call(s) in run A, {group(t.b)} in run B</li>)}</ul>

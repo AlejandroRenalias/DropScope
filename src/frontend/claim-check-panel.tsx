@@ -1,5 +1,5 @@
 import { useId, useMemo, useState } from "react";
-import { CLAIM_LIMITS, checkClaims, parseClaimText } from "../claim-check.js";
+import { CLAIM_LIMITS, checkClaims, decodeClaimBytes, parseClaimText } from "../claim-check.js";
 import { CLAIM_NOTE, VERDICT_LABEL, claimCaveats, claimSummary, describeClaimResult } from "../claim-report.js";
 import type { RunModel } from "./run-replay-model.js";
 
@@ -41,7 +41,7 @@ export function ClaimCheckPanel({ model, setPosition }: { model: RunModel; setPo
     }
     try {
       // Show the file's own text in the box so it can be edited. Invalid UTF-8 is refused, not repaired.
-      setText(new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(await file.arrayBuffer())));
+      setText(decodeClaimBytes(new Uint8Array(await file.arrayBuffer())));
     } catch {
       setFileError("This claims file is not valid UTF-8 text.");
     }

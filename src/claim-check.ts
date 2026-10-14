@@ -39,8 +39,14 @@ export const CLAIM_LIMITS = {
   maxStrings: 5,
   maxStringLength: 500,
   maxToolNameLength: 200,
-  // Total characters searched across one check; above this the remaining claims say "too much work".
+  // Work allowed across one check, in "work units"; above this the remaining claims say "too much work". One unit is
+  // one character looked at. Every recorded item and every value also costs a fixed number of units, so a run
+  // full of empty values cannot make the check do unlimited work for free.
   maxScannedCharacters: 1_000_000_000,
+  fixedCostPerValue: 8,
+  // Lower-casing can make text longer. It is charged at the worst case before it happens: a text that is not plain
+  // ASCII may grow to this many times its length (a test checks every Unicode character stays within it).
+  lowerCaseGrowthBound: 3,
 } as const;
 
 export type Claim = {
@@ -205,6 +211,16 @@ export function parseClaimFile(rawBytes: Uint8Array): ParsedClaims {
   return errors.length > 0 ? { claims: [], errors } : { claims, errors: [] };
 }
 
+/**
+ * Turns the bytes of a claims file into text for the screen's box. Invalid UTF-8 throws. Any byte order mark is KEPT
+ * in the text (ignoreBOM), so the rule "one leading mark is accepted, a second is not" is applied exactly once, by
+ * parseClaimFile, to the same bytes the command line reads. Decoding with the default would silently drop one mark
+ * here and make the screen accept a file the command line refuses.
+ */
+export function decodeClaimBytes(bytes: Uint8Array): string {
+  return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+}
+
 /** Same as parseClaimFile, for text typed or pasted into the screen. */
 export function parseClaimText(text: string): ParsedClaims {
   return parseClaimFile(new TextEncoder().encode(text));
@@ -270,6 +286,8 @@ function indexSteps(events: readonly RunEvent[]): Map<string, StepInfo> {
   return steps;
 }
 
+const ASCII_ONLY = /^[\x00-\x7f]*$/;
+
 type StepOutcome =
   | { kind: "SUPPORTED"; evidenceEvent: number }
   | { kind: "MISSING"; missing: string[] }
@@ -300,6 +318,9 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
     const fieldName = CLAIM_FIELD_NAME[claim.field];
     const all = step.content.get(fieldName) ?? [];
     if (all.length === 0) return { kind: "NO_CONTENT" };
+    // Even looking at the list of items costs something (a run can record up to a million of them).
+    scanBudget -= CLAIM_LIMITS.fixedCostPerValue * all.length;
+    if (scanBudget < 0) return { kind: "TOO_MUCH_WORK" };
     const limit = claim.atEvent ?? Number.MAX_SAFE_INTEGER;
     const early = all.filter((item) => item.sequence <= limit);
     if (early.length === 0) return { kind: "LATE", lateEvent: all[0].sequence };
@@ -314,7 +335,18 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
     let unresolved = needles.length;
     search: for (const item of early) {
       for (const leaf of leavesFor(item)) {
-        scanBudget -= leaf.length * (unresolved + (claim.caseSensitive ? 0 : 1));
+        // Charge first, create later. Every value costs its length plus a fixed amount (so empty values are not free)
+        // for each text still being looked for. Case-insensitive search also pays for a worst-case lower-cased copy,
+        // and for the check that tells plain ASCII (which cannot grow) from other text, before either is made.
+        const fixed = CLAIM_LIMITS.fixedCostPerValue;
+        let searched = leaf.length + fixed;
+        if (!claim.caseSensitive) {
+          scanBudget -= leaf.length + fixed; // looking at the value to decide how much it can grow
+          if (scanBudget < 0) return { kind: "TOO_MUCH_WORK" };
+          searched = (ASCII_ONLY.test(leaf) ? leaf.length : leaf.length * CLAIM_LIMITS.lowerCaseGrowthBound) + fixed;
+          scanBudget -= searched; // making the lower-cased copy
+        }
+        scanBudget -= searched * unresolved;
         if (scanBudget < 0) return { kind: "TOO_MUCH_WORK" };
         const haystack = claim.caseSensitive ? leaf : leaf.toLowerCase();
         for (let i = 0; i < needles.length; i += 1) {

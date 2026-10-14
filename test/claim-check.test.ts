@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CLAIM_LIMITS, checkClaims, parseClaimFile, parseClaimText, searchableLeaves, type Claim,
+  CLAIM_LIMITS, checkClaims, parseClaimFile, parseClaimText, searchableLeaves, decodeClaimBytes, type Claim,
 } from "../src/claim-check.js";
 import type { RunEvent } from "../src/run-events.js";
 import { importTraceBytes } from "../src/run-import.js";
@@ -43,6 +43,18 @@ const claim = (over: Partial<Claim> = {}): Claim => ({
   id: "c1", text: "a claim", tool: "lookup", stepId: null, field: "result", mustContain: ["59"], caseSensitive: true, atEvent: null, ...over,
 });
 const seqOf = (events: RunEvent[], type: string, nth = 0) => events.filter((e) => e.type === type)[nth].sequenceNumber;
+
+
+// The cost model (see CLAIM_LIMITS): a value costs its length plus a fixed amount for each text still being looked
+// for, every recorded item costs a fixed amount, and case-insensitive search also pays for the value twice more
+// (the ASCII check and the lower-cased copy, whose size is bounded by the growth bound unless the text is ASCII).
+const F = CLAIM_LIMITS.fixedCostPerValue;
+const G = CLAIM_LIMITS.lowerCaseGrowthBound;
+const oneValueCost = (length: number, needles: number, mode: "exact" | "ascii-insensitive" | "unicode-insensitive") => {
+  if (mode === "exact") return (length + F) * needles + F;
+  const searched = (mode === "ascii-insensitive" ? length : length * G) + F;
+  return (length + F) + searched + searched * needles + F;
+};
 
 // Two tool calls and a model call, hand-checkable.
 const base = (mode: "FULL" | "HASH_ONLY" = "FULL") => runOf([
@@ -222,9 +234,10 @@ describe("claim check: mixed late, absent and readable candidates", () => {
     const run = runOf([{ start: 0, end: 1, tool: "big", result: "X".repeat(2_000_000) }]);
     const many = Array.from({ length: 200 }, (_, i) => claim({ id: `c${i}`, tool: "big", mustContain: ["a", "b", "c", "d", "e"], caseSensitive: false }));
     const results = checkClaims(run, many).results;
-    // Each claim costs 2,000,000 x (5 texts + 1 lower-casing) = 12,000,000 characters: 83 fit in 10^9, the rest do not.
-    expect(results.filter((r) => r.reason === "NOT_FOUND")).toHaveLength(83);
-    expect(results.filter((r) => r.reason === "TOO_MUCH_WORK")).toHaveLength(117);
+    const fit = Math.floor(CLAIM_LIMITS.maxScannedCharacters / oneValueCost(2_000_000, 5, "ascii-insensitive"));
+    expect(fit).toBe(71);
+    expect(results.filter((r) => r.reason === "NOT_FOUND")).toHaveLength(fit);
+    expect(results.filter((r) => r.reason === "TOO_MUCH_WORK")).toHaveLength(200 - fit);
   });
 });
 
@@ -273,17 +286,79 @@ describe("claim check: evidence must come before the claim (atEvent)", () => {
 
 describe("claim check: work limit", () => {
   it("turns remaining claims into CANNOT_CHECK instead of freezing", () => {
-    const big = "x".repeat(2_000_000);
-    const run = runOf([{ start: 0, end: 1, tool: "big", result: big }]);
+    const run = runOf([{ start: 0, end: 1, tool: "big", result: "x".repeat(2_000_000) }]);
     const many = Array.from({ length: 100 }, (_, i) => claim({ id: `c${i}`, tool: "big", mustContain: ["a", "b", "c", "d", "e"].map((c) => `${c}${c}`) }));
     const results = checkClaims(run, many).results;
-    // 100 claims x 5 texts x 2 MB = 1e9 characters: right at the limit, so the whole set is still answered...
-    expect(results.every((r) => r.verdict === "NOT_SUPPORTED")).toBe(true);
-    const over = checkClaims(run, [...many, claim({ id: "extra", tool: "big", mustContain: ["zz"] })]).results;
-    // ...and one more claim goes over it and is not answered.
-    expect(over[over.length - 1]).toMatchObject({ verdict: "CANNOT_CHECK", reason: "TOO_MUCH_WORK" });
+    const fit = Math.floor(CLAIM_LIMITS.maxScannedCharacters / oneValueCost(2_000_000, 5, "exact"));
+    expect(fit).toBe(99);
+    // The first 99 claims are answered; the 100th would go over the allowance and is not.
+    expect(results.slice(0, fit).every((r) => r.verdict === "NOT_SUPPORTED")).toBe(true);
+    expect(results.slice(fit).every((r) => r.verdict === "CANNOT_CHECK" && r.reason === "TOO_MUCH_WORK")).toBe(true);
     expect(CLAIM_LIMITS.maxScannedCharacters).toBe(1_000_000_000);
   });
+
+  it("is not free to process empty values: many empty values still use up the allowance", () => {
+    const empties = { arrayValue: { values: Array.from({ length: 100_000 }, () => ({ stringValue: "" })) } };
+    const run = runOf([{ start: 0, end: 1, tool: "t", resultValue: empties }, { start: 1, end: 2, tool: "t", resultValue: empties }, { start: 2, end: 3, tool: "t", resultValue: empties }]);
+    const many = Array.from({ length: 100 }, (_, i) => claim({ id: `c${i}`, tool: "t", mustContain: ["a", "b", "c", "d", "e"] }));
+    const results = checkClaims(run, many).results;
+    // Three steps, each one item with 100,000 empty values; every value costs the fixed amount per text still wanted.
+    const perClaim = 3 * oneValueCost(0, 5, "exact") + 3 * (100_000 - 1) * F * 5;
+    const fit = Math.floor(CLAIM_LIMITS.maxScannedCharacters / perClaim);
+    expect(fit).toBeLessThan(100);
+    expect(results.filter((r) => r.reason === "NOT_FOUND")).toHaveLength(fit);
+    expect(results.filter((r) => r.reason === "TOO_MUCH_WORK")).toHaveLength(100 - fit);
+  }, 60_000);
+
+  it("is not free to walk a long list of recorded items either", () => {
+    // 30,000 log records, each recording one empty result for the same step: 30,000 items of one value each.
+    const logs = Array.from({ length: 30_000 }, (_, i) => ({ traceId: T, spanId: id(0), timeUnixNano: ns(0.5) + "", observedTimeUnixNano: String(BASE + BigInt(i + 1)), attributes: [s("gen_ai.tool.call.result", "")] }));
+    const run = runOf([{ start: 0, end: 1, tool: "t" }], "FULL", logs);
+    const items = run.filter((e) => e.type === "ContentRecorded").length;
+    expect(items).toBe(30_000);
+    const many = Array.from({ length: 3_000 }, (_, i) => claim({ id: `c${i}`, tool: "t", mustContain: ["a"] }));
+    const results = checkClaims(run, many).results;
+    // Per claim: the list of items costs F each, and each empty value costs F for the one text still wanted.
+    const fit = Math.floor(CLAIM_LIMITS.maxScannedCharacters / (2 * F * items));
+    expect(fit).toBeLessThan(3_000);
+    expect(results.filter((r) => r.reason === "NOT_FOUND")).toHaveLength(fit);
+    expect(results.filter((r) => r.reason === "TOO_MUCH_WORK")).toHaveLength(3_000 - fit);
+  }, 120_000);
+
+  it("charges text that lower-casing makes longer at its worst case, so the real work stays inside the allowance", () => {
+    const dotted = String.fromCharCode(0x130); // one character that becomes two when lower-cased
+    const n = 3_000_000;
+    expect(dotted.toLowerCase().length).toBe(2);
+    const run = runOf([{ start: 0, end: 1, tool: "t", result: dotted.repeat(n) }]);
+    const many = Array.from({ length: 100 }, (_, i) => claim({ id: `c${i}`, tool: "t", mustContain: ["a", "b", "c", "d", "e"], caseSensitive: false }));
+    const results = checkClaims(run, many).results;
+    const done = results.filter((r) => r.reason === "NOT_FOUND").length;
+    expect(done).toBe(Math.floor(CLAIM_LIMITS.maxScannedCharacters / oneValueCost(n, 5, "unicode-insensitive")));
+    expect(done).toBeGreaterThan(0);
+    expect(done).toBeLessThan(100);
+    // The real work per claim: the lower-cased copy (2n characters) is made once and searched for 5 texts.
+    expect(done * (2 * n) * (1 + 5)).toBeLessThanOrEqual(CLAIM_LIMITS.maxScannedCharacters);
+  }, 60_000);
+
+  it("lower-casing never grows any single character by more than the bound used for charging", () => {
+    let widest = 1;
+    const violations: string[] = [];
+    for (let cp = 0; cp <= 0x10ffff; cp += 1) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+      const text = String.fromCodePoint(cp);
+      const ratio = text.toLowerCase().length / text.length;
+      if (ratio > CLAIM_LIMITS.lowerCaseGrowthBound) violations.push(cp.toString(16));
+      if (ratio > widest) widest = ratio;
+    }
+    expect(violations).toEqual([]);
+    expect(widest).toBeGreaterThan(1); // the bound is not vacuous: some characters really do grow
+  }, 60_000);
+
+  it("searches an 8 MiB plain-ASCII value case-insensitively without trouble", () => {
+    const run = runOf([{ start: 0, end: 1, tool: "t", result: "Hello ".repeat(1_300_000) + "World" }]);
+    const r = checkClaims(run, [claim({ tool: "t", mustContain: ["hello hello", "WORLD"], caseSensitive: false })]).results[0];
+    expect(r.verdict).toBe("SUPPORTED");
+  }, 60_000);
 });
 
 describe("searchableLeaves", () => {
@@ -393,8 +468,32 @@ describe("claims file", () => {
     expect(parseClaimFile(withBom)).toEqual(parseClaimFile(bytes));
     expect(parseClaimFile(withBom).errors).toEqual([]);
     // What the screen does with the same bytes: decode (which drops the mark) and parse the text.
-    expect(parseClaimText(new TextDecoder("utf-8", { fatal: true }).decode(withBom))).toEqual(parseClaimFile(withBom));
+    expect(parseClaimText(decodeClaimBytes(withBom))).toEqual(parseClaimFile(withBom));
     // Only one mark is accepted.
     expect(parseClaimFile(new Uint8Array([0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, ...bytes])).errors[0]).toContain("not valid JSON");
+  });
+
+  it("gives the command line and the screen the same answer for every kind of leading marks and bad bytes", () => {
+    const bytes = new TextEncoder().encode(JSON.stringify({ claims: [one] }));
+    const mark = [0xef, 0xbb, 0xbf];
+    const variants: Array<[string, Uint8Array]> = [
+      ["no mark", bytes],
+      ["one mark", new Uint8Array([...mark, ...bytes])],
+      ["two marks", new Uint8Array([...mark, ...mark, ...bytes])],
+      ["three marks", new Uint8Array([...mark, ...mark, ...mark, ...bytes])],
+      ["a mark in the middle", new Uint8Array([...bytes.slice(0, 1), ...mark, ...bytes.slice(1)])],
+      ["only a mark", new Uint8Array(mark)],
+      ["a mark and a broken file", new Uint8Array([...mark, 0x7b])],
+      ["invalid UTF-8", new Uint8Array([0x7b, 0xff, 0x7d])],
+      ["empty", new Uint8Array(0)],
+    ];
+    for (const [name, input] of variants) {
+      const cli = parseClaimFile(input);
+      let screen: ReturnType<typeof parseClaimFile>;
+      try { screen = parseClaimText(decodeClaimBytes(input)); } catch { screen = { claims: [], errors: ["refused as not valid UTF-8"] }; }
+      // Both accept (and then agree on the claims) or both refuse.
+      expect(cli.errors.length > 0, name).toBe(screen.errors.length > 0);
+      if (cli.errors.length === 0) expect(screen.claims, name).toEqual(cli.claims);
+    }
   });
 });

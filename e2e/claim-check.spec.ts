@@ -115,6 +115,21 @@ test.describe("claim check", () => {
     await expect(panel.getByRole("alert")).toContainText("larger than 1 MiB");
   });
 
+  test("treats a leading byte order mark the same way as the command line: one is accepted, two are refused", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const replay = await openRunReplay(page);
+    await useStoredDemo(page);
+    const panel = replay.getByRole("region", { name: "Claim check" });
+    const input = panel.locator(".cc-file-button input");
+    const body = Buffer.from(JSON.stringify({ claims: [{ id: "order-total", text: "The order total was 59.00", tool: "lookup_order", mustContain: ["59.0"] }] }));
+    const mark = Buffer.from([0xef, 0xbb, 0xbf]);
+    await input.setInputFiles({ name: "one-mark.json", mimeType: "application/json", buffer: Buffer.concat([mark, body]) });
+    await expect(panel.locator(".cc-result.supported")).toContainText("order-total");
+    await input.setInputFiles({ name: "two-marks.json", mimeType: "application/json", buffer: Buffer.concat([mark, mark, body]) });
+    await expect(panel.locator(".bp-errors")).toContainText("not valid JSON");
+    await expect(panel.locator(".cc-result")).toHaveCount(0);
+  });
+
   test("uses the run file you opened, not the demo", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const replay = await openRunReplay(page);

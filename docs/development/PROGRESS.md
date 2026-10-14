@@ -413,3 +413,7 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Known limit of the browser ordering tests: they wait for the old read to finish and the page to settle, but cannot see a delay inside the application's own code after that point (Sol's 1,500 ms mutant); the scan covers the current origin only.
 - Validation: typecheck clean; build succeeds; 759 unit tests pass (3 skipped); 85 end-to-end tests pass (picture baselines unchanged). No change to `IMPORTER.version`, `schemaVersion` or any demo file.
 - Pending: a short final check of this repair if the user wants one; push and pull request need the user's approval.
+
+### CI failure on pull request #57 (2026-10-15)
+
+- CI `verify` (Ubuntu) failed on one new test, `test/final-review-fixes.test.ts` "says a step number is out of range": the test built the demo file path from the file URL by stripping the leading slash, which is right on Windows (`C:/...`) and wrong on Linux (`/home/...` became a relative path, so the command could not read the file and exited 1 instead of 2). Test-only fault; the product code was right. Fixed by using `fileURLToPath`. This is the kind of platform difference the Windows-only tests also hide from CI (see the open items above); the other 754 tests passed there.

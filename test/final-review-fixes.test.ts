@@ -1,5 +1,6 @@
 // Regression tests for the findings of the final whole-project review (Opus 5.5 and Sol 6.1, commit 99bc048).
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { checkClaims, type Claim } from "../src/claim-check.js";
 import { explainLoadError } from "../src/frontend/load-error.js";
@@ -180,7 +181,7 @@ describe("command line seams", () => {
   };
 
   it("says a step number is out of range instead of blaming the file", () => {
-    const file = decodeURIComponent(demoPath.pathname.replace(/^\//, ""));
+    const file = fileURLToPath(demoPath);
     for (const at of ["0", "99"]) {
       const r = run(["state", file, "--at", at], fake);
       expect(r.code, at).toBe(2);

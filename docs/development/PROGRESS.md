@@ -258,3 +258,11 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Mutation check (23 planted bugs, including every one the reviewer named): 22 caught. One survives and is equivalent under current validation: removing `kind` from the signature (the label always begins with the kind).
 - Validation: typecheck clean; build succeeds; 716 unit tests pass (3 skipped).
 - Pending: a short independent review of the delta only (brief: `REVIEW_BRIEF_RUN_DIFF_ROUND4.md`, commit under review `eb47e85`).
+
+### Review record: run diff, round 4 (commit `eb47e85`) and acceptance
+
+- Review: Codex gpt-6.1-sol, read-only, scoped to the round-3 repair. Verdict APPROVE, no actionable defect. It rechecked parents in the shared start and end, repeated names, ancestor relationships, chains of unmatched ancestors and top-level steps. All round-3 findings confirmed fixed (provable nesting changes in both directions, exact counts in text and `--json`, repeated log-content order); removing `kind` from the signature confirmed equivalent.
+- One non-blocking test gap: a mutation that drops a duplicate item inside one log record (the same key, ordinal and value recorded twice) passed every test, though the real code handled it correctly. Closed with one added assertion (same value twice versus once is a difference); the mutation is now caught and the real code still passes. Test-only change with no change to behavior, so lead-agent acceptance (`AGENTS.md`), no further review.
+- **Outcome: run diff is independently reviewed.** Four Codex rounds: round 1 (4 major, 2 minor), round 2 (1 major, 2 minor), round 3 (1 major) fixed, round 4 approved. Counting the build, there were four implementation attempts on this workstream; the third and fourth were approved by the user. CI (`verify`) passed on `7902a3e` (an earlier run of `997e6de` failed on two old speed tests that timed out on a slow machine and passed on one rerun, no code change).
+- Validation: typecheck clean; 717 unit tests pass (3 skipped).
+- Still pending: merge of PR #49 (needs the user's explicit approval, for the exact commit CI approved), the `.claude/settings.json` rule for the runs folder, and an optional screen for the diff.

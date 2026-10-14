@@ -20,7 +20,7 @@ A new chat starts from a fresh clone and does not remember the previous conversa
 | Safe file access, write-once store, CLI | `src/run-files.ts`, `src/run-store.ts`, `src/run-log-format.ts`, `src/run-cli.ts` | Windows only in v1 (other platforms refuse); runs go to `%LOCALAPPDATA%\DropScope\runs` |
 | Replay screen for imported runs | `src/frontend/replay-screen.tsx`, `run-replay.tsx`, `run-replay-model.ts`, `run-replay.css`, `assets/demo-run.runlog.jsonl` | reads a run file in the browser with a file picker; the original mission replay is unchanged |
 | Claim check | `src/claim-check.ts`, `src/claim-report.ts`, `src/frontend/claim-check-panel.tsx`, `claims` command, `src/frontend/assets/demo-run-full.runlog.jsonl` | the user writes a claims file (`tool` or `stepId`, optional `field`, `mustContain`, `caseSensitive`, `atEvent`); verdicts Supported, Not supported, Cannot check. Only content a run file stored can be checked (default import withholds it, so those claims say "cannot check"); each text must sit inside one recorded value; work is bounded by a cost model (`CLAIM_LIMITS`). "Supported" means "appears in the recording", never "true". |
-| Run diff | `src/run-diff.ts`, `src/run-diff-report.ts`, `diff` command | compares two run files: matches steps by name in tree order (not by id), finds the first difference, then outcome, token counts and content (by fingerprint, so a run kept with content and one kept without compare fine). Time is in the totals only. Command line only so far (no screen). **Round 1 of independent review rejected it (6 findings, all fixed in `ffd8409`); round 2 rejected with 3 findings, fixed in `87ebe49` (third attempt, approved by the user); round 3 rejected with 1 finding, fixed in `eb47e85` (fourth attempt, approved by the user); round 4 pending.** |
+| Run diff | `src/run-diff.ts`, `src/run-diff-report.ts`, `diff` command | compares two run files: matches steps by their full recorded identity in tree order (not by id), finds the first difference, then nesting, outcome, status message, token counts and content including log records (by fingerprint, so a run kept with content and one kept without compare fine). Time is in the totals only. Command line only so far (no screen). **Independently reviewed: four Codex rounds, the last one approved (`eb47e85`).** |
 | Budget replay (counterfactual) | `src/budget-replay.ts`, `src/budget-report.ts`, `src/frontend/budget-replay-panel.tsx`, `budget` command | exact whole-number arithmetic; wording is "would have stopped" |
 
 The spec is `docs/schemas/run-event-contract-v1.md` (amended several times with the user's approval; each change is recorded in `PROGRESS.md`). Product proposal: `docs/development/PROPOSAL_AGENT_RUN_FORENSICS.md`. Phases 0 to 3 of the proposal (the approved cut line) are done: import, state at any step, replay, budget replay.
@@ -38,7 +38,7 @@ npm run forensics -- diff <run A> <run B> [--json]                  # where do t
 npx tsx test/fixtures/make-demo-run.ts              # regenerates the demo run (a test fails if it drifts)
 ```
 
-Last known results: typecheck clean, 716 unit tests (3 skipped), 59 end-to-end tests, build succeeds.
+Last known results: typecheck clean, 717 unit tests (3 skipped), 59 end-to-end tests, build succeeds.
 
 ## How reviews were done (repeat for new risky work)
 
@@ -65,7 +65,7 @@ Last known results: typecheck clean, 716 unit tests (3 skipped), 59 end-to-end t
 
 - **`.claude/settings.json` rule** denying development-agent reads of `%LOCALAPPDATA%\DropScope\runs`. Required by ADR-027 before real traces are admitted; needs its own independent review and the user's approval.
 - **Pull request #48:** merged (see top of this file). Nothing left to do for it.
-- **Run diff:** built on branch `claude/run-diff` (command line only). Needs the independent review `AGENTS.md` asks for on correctness-sensitive work that reads untrusted files (brief not written yet), and optionally a screen like the other features. Claim checking is done and reviewed. The proposal and `ROADMAP.md` dates are only indicative now.
+- **Run diff:** built and independently reviewed (approved in round 4); pull request #49 (https://github.com/AlejandroRenalias/DropScope/pull/49) is open, CI passes, and it is NOT merged: merging needs the user's explicit approval for the exact commit CI approved. Command line only; an optional screen like the other features is not built. Claim checking is done and reviewed. The proposal and `ROADMAP.md` dates are only indicative now.
 - Small UI items: the original Mission Replay still shows raw event names in its chronology; the Failure Autopsy and Product Investigation reports were never checked visually.
 - Optional: open run files from the runs folder without a file picker (would need a design decision about serving local files).
 

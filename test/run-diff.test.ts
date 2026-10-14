@@ -404,6 +404,8 @@ describe("run diff: review round 2", () => {
     };
     expect(diffRuns(logModel(["early", "final"]), logModel(["final", "early"])).identical).toBe(false);
     expect(diffRuns(logModel(["early", "final"]), logModel(["early", "final"])).identical).toBe(true);
+    // The same value recorded twice is not the same as recorded once.
+    expect(diffRuns(logModel(["same", "same"]), logModel(["same"])).identical).toBe(false);
   });
 
   it("still reports a real moved parent when the runs line up in full", () => {

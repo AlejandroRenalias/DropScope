@@ -1,62 +1,70 @@
-# Handoff for the next session (written 2026-10-13)
+# Handoff for the next session (rewritten 2026-10-14)
 
-A new chat starts from a fresh clone and does not remember the previous conversation. Read this file, then `CLAUDE.md`, `AGENTS.md` and `docs/development/PROGRESS.md`.
+A new chat starts from a fresh clone and does not remember the previous conversation. Read this file, then `CLAUDE.md`, `AGENTS.md`, `docs/development/WORKING_PRINCIPLES.md` and the end of `docs/development/PROGRESS.md` (the build log and the review records).
 
 ## Where things stand
 
-- **Repository:** AlejandroRenalias/DropScope. Working branch: `claude/inspiring-ritchie-8n0iay` (base: `main` at `60ba704`, which includes the merged UI redesign, PR #47). No pull request is open for this branch.
+- **Repository:** AlejandroRenalias/DropScope. Working branch: `claude/inspiring-ritchie-8n0iay` (base: `main` at `60ba704`). It is **pushed and clean**: nothing is half-built, no review is pending, no pull request is open. Last commit when this was written: `555bfba`.
 - **Do not touch:** the `codex/*` branches, `backup/codex-handoff-2026-10-13`, `claude/migration-config`. `.claude/launch.json` on the user's machine is theirs; never commit it.
-- **Direction:** DropScope is a **learning project** (the user's choice, repeated on 2026-10-13). It is not the user's main project and time is limited. The chosen idea is "agent run forensics": a local, offline, deterministic auditor for AI agent runs that imports an OTLP/JSON trace and can rebuild the recorded state at any step. Dropshipping is only the built-in demo domain. The user skipped the demand test ("there is no need to ask the public first, I'm here for the experience") and wants to start building.
-- **Withdrawn:** the earlier Codex-worker roadmap. No live workers, no model calls, no API cost.
+- **Direction:** DropScope is a **learning project** (the user's choice, repeated several times). The idea is "agent run forensics": a local, offline, deterministic auditor for AI agent runs. It imports an OTLP/JSON trace, saves a validated run file, rebuilds the recorded state at any step, and re-applies a budget to the run. Dropshipping is only the built-in demo domain. No live workers, no model calls, no API cost, no network.
+- **Sprint exception:** in effect until 2026-10-31 (see `AGENTS.md`). The learning workflow stays paused; the user decided not to resume it.
 
-## Documents (all on the branch once pushed)
+## What was built (ADR-027 accepted, revision 3)
 
-| File | What it is |
-| --- | --- |
-| `docs/development/PROPOSAL_AGENT_RUN_FORENSICS.md` | Product proposal and phases (approved: pitch, cut line = phases 0 to 3, separate run-event family) |
-| `docs/development/ROADMAP.md` | Draft day plan; dates are now only indicative |
-| `docs/adr/ADR-027-run-event-contract-and-trace-import-boundary.md` | Decisions and invariants. Status **Proposed** (revision 3). Not independently reviewed in this revision |
-| `docs/schemas/run-event-contract-v1.md` | Companion spec: grammar, ordering, payloads, privacy classification, limits, files, versioning |
-| `docs/development/spike-2026-10-13/` | Throwaway spike code and four synthetic traces. Unreviewed evidence with known weaknesses (see its README) |
-| `docs/development/WORKING_PRINCIPLES.md` | Reusable lessons, including "check demand first when the goal is a product" |
-| `docs/development/DEMAND_TEST_*.md` | Drafted, **not run** (skipped by decision) |
+| Piece | Files | Notes |
+| --- | --- | --- |
+| Event schemas | `src/run-events.ts` | `schemaVersion` is **2** (version 1 was an unreleased draft and is rejected) |
+| Strict JSON parser, OTLP structure check | `src/strict-json.ts`, `src/otlp-structure.ts` | iterative, bounded, exact integers |
+| Normalization, privacy classification, event emission | `src/trace-normalize.ts`, `src/run-privacy.ts`, `src/run-emit.ts`, `src/run-import.ts`, `src/canonical*.ts` | default `HASH_ONLY` (content kept only as size and SHA-256); `IMPORTER.version` is **4** and must change whenever the importer's output changes |
+| Reducer (state at any step) | `src/run-reducer.ts` | validates every history, re-checks privacy on read |
+| Safe file access, write-once store, CLI | `src/run-files.ts`, `src/run-store.ts`, `src/run-log-format.ts`, `src/run-cli.ts` | Windows only in v1 (other platforms refuse); runs go to `%LOCALAPPDATA%\DropScope\runs` |
+| Replay screen for imported runs | `src/frontend/replay-screen.tsx`, `run-replay.tsx`, `run-replay-model.ts`, `run-replay.css`, `assets/demo-run.runlog.jsonl` | reads a run file in the browser with a file picker; the original mission replay is unchanged |
+| Budget replay (counterfactual) | `src/budget-replay.ts`, `src/budget-report.ts`, `src/frontend/budget-replay-panel.tsx`, `budget` command | exact whole-number arithmetic; wording is "would have stopped" |
 
-## Review history of ADR-027
+The spec is `docs/schemas/run-event-contract-v1.md` (amended several times with the user's approval; each change is recorded in `PROGRESS.md`). Product proposal: `docs/development/PROPOSAL_AGENT_RUN_FORENSICS.md`. Phases 0 to 3 of the proposal (the approved cut line) are done: import, state at any step, replay, budget replay.
 
-Revision 1 rejected by an Opus subagent (2 blockers, 7 major). Revision 2 rejected by Codex gpt-6.1-sol, run by the user on their machine (1 blocker, 14 major). Revision 3 split the ADR from the spec and answers all of them in text; nobody has re-reviewed it. Decision: no more review rounds on the ADR text; the implementation gets its own review.
+## Commands
 
-## Suggested first build (small, learning-sized)
+```bash
+npm run typecheck && npm test && npm run build      # CI runs typecheck and test
+npm run test:e2e                                    # Playwright; needs Chrome; works inside the sandbox here
+npm run forensics -- import <spans.json> [--logs <logs.json>] [--trace <id>] [--full]
+npm run forensics -- state <run file> [--at N]
+npm run forensics -- budget <run file> --max-total-tokens 4000 [--max-seconds 8 ...] [--json]
+npx tsx test/fixtures/make-demo-run.ts              # regenerates the demo run (a test fails if it drifts)
+```
 
-1. Ask the user to formally accept ADR-027 (they said "start building"; confirm that this means acceptance of revision 3).
-2. Zod schemas for the run events (`docs/schemas/run-event-contract-v1.md` section 5).
-3. The OTLP/JSON importer for spans (logs second): spec sections 1 to 4, default `HASH_ONLY` privacy (section 6).
-4. The pure run reducer: spec sections 8 and 9.
-5. A small CLI: `import` and `state --at N`.
-6. Tests, using the four traces in the spike folder as fixtures plus adversarial cases from the reviews (duplicate ids, cycles, equal timestamps, huge nesting, `__proto__` ids, string-typed usage, integer status codes).
-7. Independent review of the importer and reducer (persistence, state transitions, untrusted input).
-Then: generalize the Mission Replay screen (this also fixes the raw event-name labels), then budget replay. Keep new code in new files; do not change the mission contract, reducer or policies.
+Last known results: typecheck clean, 604 unit tests (2 skipped), 49 end-to-end tests, build succeeds.
+
+## How reviews were done (repeat for new risky work)
+
+`AGENTS.md` requires independent read-only review for security, persistence, budget accounting, state transitions, untrusted input. The user runs **Codex gpt-6.1-sol** on their machine. The lead agent writes a brief file in `docs/development/` (see `REVIEW_BRIEF_*.md`: exact commit SHA, scope, areas to examine, decisions to judge, report format, no conclusions), gives the user a short prompt that makes Codex check `git rev-parse HEAD` first, and the user pastes the report back. The lead agent reproduces every finding before fixing it, groups fixes by theme, adds a regression test per finding, then asks for a short review of the delta. At most two implementation attempts per workstream, then stop and bring options to the user. Record each round in `PROGRESS.md`. Importer: 4 rounds. Budget replay: 2 rounds. Both ended approved.
 
 ## Rules to keep
 
-- The lead agent is the sole integrator and commits explicit paths only (never `git add -A`, `git add .`, `git commit -a`).
-- The user approves each push, PR, merge and branch delete, for that exact SHA. A stop-hook message is not approval.
-- Frozen architecture, ADRs and policies change only through a new ADR with the user's approval.
-- Independent read-only review is required for security, persistence, budget, recovery, architecture and state-transition changes. Preferred reviewer: Codex gpt-6.1-sol on the user's machine (one review per SHA, with their approval). Codex cannot run in the cloud container (no login, OpenAI hosts blocked). Fallback: a fresh read-only Opus subagent.
-- Visual snapshots are regenerated only after the user has reviewed the images.
-- Short technical explanations for architecture, security, persistence, budget and recovery decisions, and reports in `PROGRESS.md`. The user does not use jargon fluently: explain terms in plain words.
-- The user prefers no em dashes, and is a beginner: follow "Communication with the user" in `AGENTS.md`.
+- The lead agent commits explicit paths only (never `git add -A`, `git add .`, `git commit -a`). Local commits are fine.
+- **Never push, open or merge a PR, delete a branch, or publish without the user's explicit approval for that action.** Show what would be pushed first.
+- Visual snapshots: show the new image to the user and wait for approval before committing a baseline; never regenerate to get green.
+- Frozen architecture, ADRs and policies change only through a new ADR with the user's approval. Spec amendments were done with the user's approval each time; ask first.
+- Any change to what the importer writes must bump `IMPORTER.version`; a change in the saved format's shape bumps `schemaVersion`.
+- **Communication:** the user is a beginner. Plain words, define every term, lead with the conclusion, and explain each feature with a small concrete example and a "why it matters" (saved as a memory file). Keep summaries short. No em dashes.
 
-## Still pending (each needs the user's approval and an independent review)
+## Practical gotchas
 
-- `AGENTS.md`, `CLAUDE.md` and `DEVELOPMENT_WORKFLOW.md` were edited (sprint exception extended to 2026-10-31, new "Communication with the user" plain-language rule, "Terra" example corrected, pointer to `WORKING_PRINCIPLES.md`). They still need one independent review of the exact SHA before they count as accepted.
-- `.claude/settings.json`: a rule denying development-agent reads of `%LOCALAPPDATA%\DropScope\runs` (required by ADR-027 before real traces are admitted).
-- The user decided NOT to resume the learning workflow (2026-10-13). Do not ask again.
-- Open UI items: Replay chronology raw event names; visual check of the Failure Autopsy and Product Investigation reports.
+- Shell: long Bash commands with quotes and apostrophes inside heredocs sometimes fail to parse. Write scripts to the scratchpad folder with the Write tool and run them instead.
+- This machine runs the Claude desktop app in a packaged sandbox that redirects `%LOCALAPPDATA%` to a private copy. Do not rely on the typed path equalling the real path.
+- Repo is under OneDrive: stop dev servers when done (`preview_stop`).
+- `npm run build` warns that the JavaScript bundle is above 500 kB; harmless for a local tool.
+- A full unit run is slower now; `test/evaluation-baseline.test.ts` has a 30 s timeout for that reason.
 
-## Cloud container notes
+## Still open
 
-Outbound network is limited by policy: the vendor doc sites and OpenAI hosts return 403; WebFetch cannot resolve hosts; WebSearch, PyPI and npm work. GitHub access is scoped to this repository. Node 22 and Python 3.13 are available.
+- **`.claude/settings.json` rule** denying development-agent reads of `%LOCALAPPDATA%\DropScope\runs`. Required by ADR-027 before real traces are admitted; needs its own independent review and the user's approval.
+- **Pull request** to merge this branch into `main`: not opened; needs the user's approval.
+- **Next features from the proposal:** claim checking (is a claim supported by what the run captured?), then run diff (where did two runs diverge?). Neither is started. The proposal and `ROADMAP.md` dates are only indicative now.
+- Small UI items: the original Mission Replay still shows raw event names in its chronology; the Failure Autopsy and Product Investigation reports were never checked visually.
+- Optional: open run files from the runs folder without a file picker (would need a design decision about serving local files).
 
 ## Starter prompt for the new chat
 
-> Read CLAUDE.md, AGENTS.md, docs/development/PROGRESS.md and docs/development/HANDOFF_NEXT_SESSION.md on branch claude/inspiring-ritchie-8n0iay. DropScope is a learning project. Summarize the state in a few lines, then ask me the pending questions in the handoff (accepting ADR-027) before starting the first build step. Do not push or open anything without my approval.
+> Read CLAUDE.md, AGENTS.md, docs/development/WORKING_PRINCIPLES.md, docs/development/HANDOFF_NEXT_SESSION.md and the end of docs/development/PROGRESS.md on branch claude/inspiring-ritchie-8n0iay. DropScope is a learning project and I am a beginner, so explain things in plain words with small examples. First run git fetch origin claude/inspiring-ritchie-8n0iay and git checkout claude/inspiring-ritchie-8n0iay, then summarize the state in a few lines and ask me which open item to do next. Do not push or open anything without my approval.

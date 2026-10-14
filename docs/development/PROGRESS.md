@@ -268,3 +268,11 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Still pending: merge of PR #49 (needs the user's explicit approval, for the exact commit CI approved), the `.claude/settings.json` rule for the runs folder, and an optional screen for the diff.
 
 - Update (2026-10-14): PR #49 (run diff) was merged into `main` with the user's approval as merge commit `6339838`, pinned to the exact head `99e08c5` (CI `verify` passed on it). The source branch was kept. Still pending: the `.claude/settings.json` rule for the runs folder, an optional screen for run diff, and the small UI checks.
+
+### Runs folder read rule (2026-10-14)
+
+- Request: ADR-027 decision 9 requires a rule denying development-agent reads of the saved runs folder before real traces are admitted. This is an agent-permission change, so independent review is required (`AGENTS.md`).
+- Change (only `.claude/settings.json`): `deny` for `Read(~/AppData/Local/DropScope/**)` and `Read(~/AppData/Local/Packages/*/LocalCache/Local/DropScope/**)` (the Claude desktop app is packaged and redirects `%LOCALAPPDATA%` to the Packages copy, which exists on this machine), `deny` for shell commands matching `*DropScope*runs*` (Bash and PowerShell), and `ask` for `npm run forensics*` (it reads and prints the default runs folder).
+- Evidence: in the same session a Read of a file under the Packages path, a Glob of the nominal path and a Bash `ls` of the Packages folder were all refused. This covers Claude Code only; Codex has its own settings, which this repository does not control.
+- Known limits: file-tool rules are not an operating-system sandbox, and shell text patterns are best effort (another spelling of the path may slip through).
+- Pending: independent review (brief: `REVIEW_BRIEF_RUNS_FOLDER_DENY.md`), the user's approval, push and merge.

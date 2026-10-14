@@ -36,7 +36,9 @@
       "PowerShell(gh pr close*)",
       "PowerShell(gh pr merge*)",
       "PowerShell(gh workflow*)",
-      "PowerShell(gh release*)"
+      "PowerShell(gh release*)",
+      "Bash(npm run forensics*)",
+      "PowerShell(npm run forensics*)"
     ],
     "deny": [
       "Bash(git push* --force*)",
@@ -82,7 +84,11 @@
       "PowerShell(gh api *)",
       "PowerShell(gh repo *)",
       "PowerShell(gh secret *)",
-      "PowerShell(gh variable *)"
+      "PowerShell(gh variable *)",
+      "Read(~/AppData/Local/DropScope/**)",
+      "Read(~/AppData/Local/Packages/*/LocalCache/Local/DropScope/**)",
+      "Bash(*DropScope*runs*)",
+      "PowerShell(*DropScope*runs*)"
     ]
   }
 }

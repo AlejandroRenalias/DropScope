@@ -1,8 +1,12 @@
 // Command line for agent run forensics.
 //   import <spans.json> [--logs <logs.json>] [--trace <traceId>] [--full]
 //   state <run.runlog.jsonl> [--at <N>]
+//   budget <run.runlog.jsonl> [limits...] [--json]   (counterfactual: re-applies a budget to a recorded run)
 // Output never echoes input text: only fixed words, counts, ids and escaped paths (spec 11.6).
 import { pathToFileURL } from "node:url";
+import { parseBudgetPolicy, replayBudget, type BudgetPolicyInput } from "./budget-replay.js";
+import { budgetReportLines } from "./budget-report.js";
+import { buildRunModel } from "./frontend/run-replay-model.js";
 import { defaultChecks, readInputFile, type PlatformChecks } from "./run-files.js";
 import { ImportError } from "./run-import-error.js";
 import { importTraceBytes } from "./run-import.js";
@@ -25,6 +29,10 @@ const USAGE = [
   "Usage:",
   "  import <spans.json> [--logs <logs.json>] [--trace <traceId>] [--full]",
   "  state <run.runlog.jsonl> [--at <step number>]",
+  "  budget <run.runlog.jsonl> [--max-total-tokens N] [--max-input-tokens N] [--max-output-tokens N]",
+  "         [--max-model-calls N] [--max-tool-calls N] [--max-steps N] [--max-seconds S]",
+  "         [--max-cost X --input-price P --output-price Q [--currency USD]] [--json]",
+  "         (what-if: where a guard with these limits would have stopped a recorded run)",
   "",
   "Run files are local-only: do not share or commit them. --full keeps content in the file.",
 ].join("\n");
@@ -92,6 +100,41 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       const at = atText === undefined ? replay.length : Number(atText);
       const event = replay.events[at - 1];
       io.out(`${JSON.stringify({ at, of: replay.length, event: event?.type ?? null, state: replay.stateAt(at) }, null, 2)}\n`);
+      return 0;
+    }
+    if (command === "budget") {
+      const flagNames = ["--max-total-tokens", "--max-input-tokens", "--max-output-tokens", "--max-model-calls", "--max-tool-calls",
+        "--max-steps", "--max-seconds", "--max-cost", "--input-price", "--output-price", "--currency"];
+      const { positional, values, flags } = parseFlags(rest, flagNames, ["--json"]);
+      if (positional.length !== 1) throw new UsageError();
+      const input: BudgetPolicyInput = {
+        maxTotalTokens: values.get("--max-total-tokens"), maxInputTokens: values.get("--max-input-tokens"), maxOutputTokens: values.get("--max-output-tokens"),
+        maxModelCalls: values.get("--max-model-calls"), maxToolCalls: values.get("--max-tool-calls"), maxSteps: values.get("--max-steps"),
+        maxSeconds: values.get("--max-seconds"), maxCost: values.get("--max-cost"), inputPrice: values.get("--input-price"),
+        outputPrice: values.get("--output-price"), currency: values.get("--currency"),
+      };
+      const parsed = parseBudgetPolicy(input);
+      if (!parsed.policy) {
+        io.err(`${parsed.errors.map((message) => `error: ${message}`).join("\n")}\n`);
+        return 2;
+      }
+      const model = buildRunModel(readRunLog(positional[0], checks));
+      const result = replayBudget(model.events, parsed.policy);
+      const titleOf = (stepId: string): string => model.stepsById.get(stepId)?.title ?? "a step";
+      if (flags.has("--json")) {
+        const text = JSON.stringify({
+          counterfactual: true, runId: model.runId, policy: parsed.policy, firstBreach: result.first, breaches: result.breaches,
+          alsoAtSameStop: result.alsoAtSameStop,
+          remainder: result.remainder === null ? null : {
+            notStarted: result.remainder.notStarted.map((s) => s.stepId), inFlight: result.remainder.inFlight.map((s) => s.stepId),
+            tokensNotStarted: result.remainder.tokensNotStarted, tokensInFlight: result.remainder.tokensInFlight,
+          },
+          recorded: result.recorded, usageGaps: result.usageGaps,
+        }, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2);
+        io.out(`${text}\n`);
+      } else {
+        io.out(`${budgetReportLines(result, model.events, titleOf).join("\n")}\n`);
+      }
       return 0;
     }
     throw new UsageError();

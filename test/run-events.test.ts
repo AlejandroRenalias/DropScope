@@ -4,7 +4,7 @@ import { fieldSchema, runEventSchema, taggedValueSchema } from "../src/run-event
 const trace = "0123456789abcdef0123456789abcdef";
 const span = "0123456789abcdef";
 const hash = "a".repeat(64);
-const base = { schemaVersion: 1, runId: trace };
+const base = { schemaVersion: 2, runId: trace };
 const withheld = { w: { n: 5, h: hash } };
 
 describe("tagged values and fields", () => {
@@ -48,7 +48,8 @@ describe("run events", () => {
 
   it("rejects an unknown event type, version and extra payload keys", () => {
     expect(runEventSchema.safeParse({ ...stepEnded, type: "Nope" }).success).toBe(false);
-    expect(runEventSchema.safeParse({ ...stepEnded, schemaVersion: 2 }).success).toBe(false);
+    expect(runEventSchema.safeParse({ ...stepEnded, schemaVersion: 1 }).success).toBe(false);
+    expect(runEventSchema.safeParse({ ...stepEnded, schemaVersion: 3 }).success).toBe(false);
     expect(runEventSchema.safeParse({ ...stepEnded, payload: { ...stepEnded.payload, extra: 1 } }).success).toBe(false);
   });
 

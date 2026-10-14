@@ -4,7 +4,7 @@
 // was edited by hand cannot smuggle content past the importer's guarantees.
 //
 // "State" here is only what the recording shows. It makes no claim about the model's hidden context.
-import { runEventSchema, type Field, type RunEvent, type StepKind } from "./run-events.js";
+import { RUN_EVENT_SCHEMA_VERSION, runEventSchema, type Field, type RunEvent, type StepKind } from "./run-events.js";
 import { ALLOWLIST, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
 import { ImportError } from "./run-import-error.js";
 import { MAX_OUTPUT_EVENTS } from "./run-emit.js";
@@ -145,6 +145,9 @@ export function validateRunHistory(input: unknown): RunEvent[] {
   if (input.length > MAX_OUTPUT_EVENTS) throw new ImportError("E_LIMIT", "reduce");
   const events: RunEvent[] = [];
   for (const raw of input) {
+    // A well-formed event of another version gets its own reason: it is not damaged, just unsupported.
+    const version = typeof raw === "object" && raw !== null ? (raw as { schemaVersion?: unknown }).schemaVersion : undefined;
+    if (typeof version === "number" && version !== RUN_EVENT_SCHEMA_VERSION) return fail("UNSUPPORTED_SCHEMA_VERSION", undefined);
     const parsed = runEventSchema.safeParse(raw);
     if (!parsed.success) return fail("EVENT_SCHEMA", undefined);
     events.push(parsed.data);

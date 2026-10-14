@@ -47,7 +47,7 @@ Conventions: "fail closed" means the import stops with a closed error code (sect
 
 ## 5. Events
 
-`schemaVersion` is 1. Envelope: `schemaVersion`, `sequenceNumber` (starts at 1, +1 per event), `runId`, `type`, `payload`. "Field" is the field form (3.3).
+`schemaVersion` is 2 (version 1 was a draft shape that was never released and is not supported; see section 13). Envelope: `schemaVersion`, `sequenceNumber` (starts at 1, +1 per event), `runId`, `type`, `payload`. "Field" is the field form (3.3).
 
 | Event | Payload |
 | --- | --- |
@@ -139,4 +139,4 @@ Input: 32 MiB per file, 64 MiB per import; JSON depth 64, checked while scanning
 
 ## 13. Versioning and migration
 
-`schemaVersion` changes whenever the vocabulary, a payload shape or a rule here changes. A reader supports every schema version it has ever shipped; an unknown version is rejected. Enumerations in v1 are closed and unknown values are rejected, as `contracts.md` requires unless a migration permits otherwise; adding an event type or kind therefore means version 2, not a silent extension. Unrecognized operations map to `OTHER`, so new upstream operations do not force a version change. Migration is a reader or converter for the old version. Re-import from the source file is optional regeneration, and is impossible when the source is gone; a minimized log cannot be rebuilt from nothing, so continued reading of old versions is the support guarantee.
+`schemaVersion` changes whenever the vocabulary, a payload shape or a rule here changes. Version 1 existed only as an unreleased draft during development (no release, no saved data to keep); a reader rejects it with a clear "unsupported schema version" reason, and from version 2 on this section applies in full. A reader supports every schema version it has ever shipped; an unknown version is rejected. Enumerations in v1 are closed and unknown values are rejected, as `contracts.md` requires unless a migration permits otherwise; adding an event type or kind therefore means version 2, not a silent extension. Unrecognized operations map to `OTHER`, so new upstream operations do not force a version change. Migration is a reader or converter for the old version. Re-import from the source file is optional regeneration, and is impossible when the source is gone; a minimized log cannot be rebuilt from nothing, so continued reading of old versions is the support guarantee.

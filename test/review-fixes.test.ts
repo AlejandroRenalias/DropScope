@@ -192,7 +192,7 @@ describe("finding 5: privacy and structure are enforced on read", () => {
   it("rejects free-form note details and notes with the wrong shape", () => {
     const withNote = (note: unknown) => {
       const e = clone(base());
-      e.splice(e.length - 1, 0, { schemaVersion: 1, runId: T, type: "ImportNote", payload: note });
+      e.splice(e.length - 1, 0, { schemaVersion: 2, runId: T, type: "ImportNote", payload: note });
       e.forEach((x, i) => { x.sequenceNumber = i + 1; });
       e[e.length - 1].payload.eventCount = e.length;
       return e;

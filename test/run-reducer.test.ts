@@ -161,7 +161,9 @@ describe("admission: every broken history is rejected", () => {
     ["unknown context", (e) => { e[indexOfType(e, "StepStarted")].payload.contextId = "c99"; return e; }, "E_INVALID_LOG:UNKNOWN_CONTEXT"],
     ["parent that never exists", (e) => { e[indexOfType(e, "StepStarted", 1)].payload.parentStepId = id(99); return e; }, "E_INVALID_LOG:PARENT_MISSING"],
     ["unknown event type", (e) => { e[1].type = "Nope"; return e; }, "E_INVALID_LOG:EVENT_SCHEMA"],
-    ["wrong schema version", (e) => { e[1].schemaVersion = 2; return e; }, "E_INVALID_LOG:EVENT_SCHEMA"],
+    ["the unreleased version 1", (e) => { e[1].schemaVersion = 1; return e; }, "E_INVALID_LOG:UNSUPPORTED_SCHEMA_VERSION"],
+    ["a future version", (e) => { e[1].schemaVersion = 3; return e; }, "E_INVALID_LOG:UNSUPPORTED_SCHEMA_VERSION"],
+    ["a version that is not a number", (e) => { e[1].schemaVersion = "2"; return e; }, "E_INVALID_LOG:EVENT_SCHEMA"],
   ];
   it.each(cases)("%s", (name, mutate, expected) => {
     const result = reasonOf(mutate(clone(sample())));

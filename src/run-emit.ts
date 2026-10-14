@@ -20,7 +20,7 @@ import {
   type ContentMode, type Field, type RunEvent, type StepKind, type TaggedValue,
 } from "./run-events.js";
 
-export const IMPORTER = { id: "dropscope-otlp-json", version: "2" } as const;
+export const IMPORTER = { id: "dropscope-otlp-json", version: "3" } as const;
 export const DEFAULT_CONVENTION_VERSION = "1.37.0";
 export const LIMITS_VERSION = "1-provisional";
 export const MAX_OUTPUT_EVENTS = 1_000_000;

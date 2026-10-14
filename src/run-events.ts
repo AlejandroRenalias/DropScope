@@ -7,7 +7,9 @@ const NON_NEGATIVE_DECIMAL = /^(0|[1-9][0-9]{0,19})$/;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 const BASE64_PADDED = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
-export const RUN_EVENT_SCHEMA_VERSION = 1;
+// Version 1 was a draft shape that was never released (it lacked unknownFields and dropped counts on
+// contexts, span events and logs, and had free-form note details). It is not supported.
+export const RUN_EVENT_SCHEMA_VERSION = 2;
 
 // Section 3.1: tagged values. Recursive, so the type is written by hand.
 export type TaggedValue =

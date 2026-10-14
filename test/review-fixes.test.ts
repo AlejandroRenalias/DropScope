@@ -540,3 +540,22 @@ describe("round 3: scan counts and histories do not depend on input order or obj
     for (const c of run.contexts) expect(c.resourceKey).toBe(sha256Hex(canonicalJson(c.context.resource)));
   });
 });
+
+describe("round 4: equal resources across span and log inputs", () => {
+  const resource = { attributes: [sattr("service.name", "carol@example.com")] };
+  const spanFor = (n: number) => span({ spanId: n.toString(16).padStart(16, "0") });
+  const spans = (order: number[]) => enc({ resourceSpans: [{ resource, scopeSpans: order.map((n) => ({ scope: { name: `s${n}` }, spans: [spanFor(n)] })) }] });
+  const logs = (order: number[]) => enc({
+    resourceLogs: [{ resource: JSON.parse(JSON.stringify(resource)), scopeLogs: order.map((n) => ({ scope: { name: `s${n}` }, logRecords: [{ traceId: T, spanId: n.toString(16).padStart(16, "0"), body: { stringValue: `log ${n}` } }] })) }],
+  });
+  const note = (events: RunEvent[]) => ofType(events, "ImportNote").find((n) => n.payload.code === "SECRET_PATTERN_COUNT")?.payload.detail;
+  const stable = (events: RunEvent[]) => JSON.stringify(events.map((e) => (e.type === "RunStarted" ? { ...e, payload: { ...e.payload, inputs: [], artifactId: "" } } : e)));
+
+  it("counts the shared resource content once and gives one history for any order of scopes in either file", () => {
+    const base = importTraceBytes({ spans: spans([1, 2, 3]), logs: logs([1, 2, 3]) });
+    expect(note(base)).toEqual({ email: 1 });
+    for (const [a, b] of [[[3, 2, 1], [1, 2, 3]], [[2, 3, 1], [3, 1, 2]], [[1, 3, 2], [2, 1, 3]]]) {
+      expect(stable(importTraceBytes({ spans: spans(a), logs: logs(b) }))).toBe(stable(base));
+    }
+  });
+});

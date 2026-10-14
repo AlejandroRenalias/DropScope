@@ -8,7 +8,7 @@ import { buildRunModel } from "../src/frontend/run-replay-model.js";
 import { importTraceBytes } from "../src/run-import.js";
 import { EXAMPLE_CLAIMS } from "../src/frontend/claim-check-panel.js";
 import { parseRunLog } from "../src/run-log-format.js";
-import { runCli } from "../src/run-cli.js";
+import { jsonForTerminal, runCli } from "../src/run-cli.js";
 import type { PlatformChecks } from "../src/run-files.js";
 import { serializeRunLog } from "../src/run-store.js";
 
@@ -75,6 +75,7 @@ describe("claim report sentences", () => {
     const full = claimCaveats(checkClaims(model.events, [claim()])).join(" ");
     expect(full).toContain("does not prove the claim is true");
     expect(full).toContain("never uses a model");
+    expect(full).toContain("values are never joined");
     expect(full).not.toContain("keeps no content");
     const hashed = claimCaveats(checkClaims(hashedModel.events, [claim()])).join(" ");
     expect(hashed).toContain("keeps no content");
@@ -152,7 +153,8 @@ describe("claims command", () => {
     const r = cli(["claims", files.full, "--claims", bad]);
     expect(r.code).toBe(2);
     expect(r.out).toBe("");
-    expect(r.err).toContain('error: Claim 1 (x): unknown field "typo"');
+    expect(r.err).toContain('error: Claim 1 (x): a field name is not allowed');
+    expect(r.err).not.toContain("typo");
     const broken = write("broken-claims.json", "{");
     expect(cli(["claims", files.full, "--claims", broken]).err).toContain("not valid JSON");
   });
@@ -185,6 +187,35 @@ describe("claims command", () => {
     // The forged line is one escaped line, not a second "Result:" line.
     expect(r.out.split("\n").filter((line) => line.startsWith("Result:"))).toHaveLength(1);
     expect(r.out).toContain("\\u{1b}[2J");
+  });
+
+  it("writes --json that a terminal cannot be steered by: unsafe characters are escaped, values unchanged", () => {
+    const unsafe = ["\u202e", "\u2066", "\u009b", "\u007f", "\u2028", "\u061c"].map((c) => c).join("");
+    const hostile = write("hostile-json.runlog.jsonl", serializeRunLog(importTraceBytes({ spans: traceBytes([span(0, "a", "lookup", "total is 59.0")]), contentMode: "FULL" })));
+    const claims = write("hostile-json-claims.json", claimsJson([
+      { id: "a", text: "shown" + unsafe + "text", tool: "lookup", mustContain: ["59.0"] },
+      { id: "b", text: "missing", tool: "lookup", mustContain: ["nope" + unsafe] },
+    ]));
+    const r = cli(["claims", hostile, "--claims", claims, "--json"]);
+    expect(r.code).toBe(0);
+    // eslint-disable-next-line no-control-regex
+    expect(r.out).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/);
+    const parsed = JSON.parse(r.out) as { results: Array<{ text: string; missing: string[] }> };
+    expect(parsed.results[0].text).toBe("shown" + unsafe + "text");
+    expect(parsed.results[1].missing).toEqual(["nope" + unsafe]);
+  });
+
+  it("jsonForTerminal leaves ordinary text, quotes and emoji alone", () => {
+    const text = JSON.stringify({ a: "caf\u00e9 \"quoted\" \ud83d\ude00 \\ back" });
+    expect(jsonForTerminal(text)).toBe(text);
+  });
+
+  it("reads a claims file saved with a byte order mark, the same as one without", () => {
+    const body = claimsJson([{ id: "total", text: "t", tool: "lookup", mustContain: ["59.0"] }]);
+    const withBom = path.join(root, "bom-claims.json");
+    fs.writeFileSync(withBom, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(body)]));
+    const plain = write("plain-claims.json", body);
+    expect(cli(["claims", files.full, "--claims", withBom]).out).toBe(cli(["claims", files.full, "--claims", plain]).out);
   });
 
   it("is listed in the usage text", () => {

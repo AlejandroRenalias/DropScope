@@ -72,6 +72,9 @@ test.describe("claim check", () => {
     await expect(replay.locator(".replay-position")).toContainText("Event 42 / 42");
     await total.getByRole("button", { name: /Go to event/ }).click();
     await expect(replay.locator(".replay-position")).not.toContainText("Event 42 / 42");
+    // The destination really is the recorded evidence: the tool result of lookup_order.
+    await expect(replay.locator(".event-card")).toContainText("Tool result recorded");
+    await expect(replay.locator(".event-card")).toContainText("Tool call: lookup_order");
     await panel.getByText("What this does and does not tell you").click();
     await expect(panel.locator(".bp-caveats[open]")).toContainText("does not prove the claim is true");
   });
@@ -86,7 +89,7 @@ test.describe("claim check", () => {
     await expect(panel.locator(".bp-errors")).toContainText("not valid JSON");
     await expect(panel.locator(".cc-result")).toHaveCount(0);
     await box.fill('{"claims":[{"id":"a","text":"t","tool":"lookup_order","mustContains":["59"]}]}');
-    await expect(panel.locator(".bp-errors")).toContainText('Claim 1 (a): unknown field "mustContains"');
+    await expect(panel.locator(".bp-errors")).toContainText('Claim 1 (a): a field name is not allowed (did you mean "mustContain"?)');
     await expect(panel.locator(".cc-result")).toHaveCount(0);
     await box.fill(JSON.stringify({ claims: [{ id: "html", text: "<img src=x onerror=alert(1)> <b>bold</b>", tool: "nothing_here", mustContain: ["x"] }] }));
     await expect(panel.locator(".cc-result.not-supported")).toContainText("<img src=x onerror=alert(1)> <b>bold</b>");

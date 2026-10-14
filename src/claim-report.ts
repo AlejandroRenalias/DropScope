@@ -46,7 +46,7 @@ export function describeClaimResult(r: ClaimResult, titleOf: (stepId: string) =>
 export function claimCaveats(check: ClaimCheckResult): string[] {
   const notes = [
     "Supported means the texts you listed appear in what was recorded. It does not prove the claim is true: the same words can mean something else in context (for example \"accepted\" also appears in \"not accepted\").",
-    "Matching is exact text, only in the field you chose. Capital letters count unless you set caseSensitive to false, and only the values are searched, not the names of fields.",
+    "Matching is exact text, only in the field you chose. Capital letters count unless you set caseSensitive to false, and only the values are searched, not the names of fields. Each text must appear inside one recorded value: values are never joined, so a text cannot match across the gap between two of them.",
     "Only recorded content is checked. DropScope never sees the model's hidden context and never uses a model to judge a claim.",
   ];
   if (check.contentMode === "HASH_ONLY") notes.push("This run keeps no content (only sizes and fingerprints), so claims about content cannot be checked. Import the trace with --full to keep content in the run file; run files with content must stay on this computer.");

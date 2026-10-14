@@ -28,6 +28,14 @@ export function escapeForTerminal(text: string): string {
     (c) => `\\u{${(c.codePointAt(0) as number).toString(16)}}`);
 }
 
+// JSON.stringify already escapes U+0000 to U+001F, but leaves DEL, the C1 controls (U+0080 to U+009F, which some
+// terminals obey), line and paragraph separators and bidirectional overrides raw. Those can only occur inside JSON
+// strings, so writing them as \uXXXX escapes keeps the JSON valid and every decoded value unchanged.
+export function jsonForTerminal(text: string): string {
+  return text.replace(/[\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
+    (c) => `\\u${(c.codePointAt(0) as number).toString(16).padStart(4, "0")}`);
+}
+
 const USAGE = [
   "Usage:",
   "  import <spans.json> [--logs <logs.json>] [--trace <traceId>] [--full]",
@@ -158,13 +166,13 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       // Step titles can come from a trace (tool and agent names in a file that keeps its content): escape them.
       const titleOf = (stepId: string): string => escapeForTerminal(model.stepsById.get(stepId)?.title ?? "a step");
       if (flags.has("--json")) {
-        io.out(`${JSON.stringify({
+        io.out(`${jsonForTerminal(JSON.stringify({
           runId: model.runId, contentMode: check.contentMode, counts: check.counts,
           results: check.results.map((r) => ({
             id: r.claim.id, text: r.claim.text, verdict: r.verdict, reason: r.reason, stepId: r.stepId, stepsChecked: r.stepsChecked,
             evidenceEvent: r.evidenceEvent, stepFailed: r.stepFailed, missing: r.missing,
           })),
-        }, null, 2)}\n`);
+        }, null, 2))}\n`);
       } else {
         io.out(`${claimReportLines(check, titleOf).map(escapeForTerminal).join("\n")}\n`);
       }

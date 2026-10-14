@@ -10,8 +10,10 @@
 //  2. A claim is SUPPORTED when, for at least one matching step, every listed text appears in that step's recorded
 //     field. Matching is plain substring matching on the stored text, case sensitive unless the claim says
 //     otherwise. Only leaf values are searched (text, numbers, true/false); the names of fields are not.
-//  3. All content recorded for one step and one field is joined (in event order) before searching, so the listed
-//     texts may be spread over several recorded items of the same step.
+//  3. Each listed text must appear inside ONE recorded value (one text, number or true/false). Nothing is joined
+//     and no separator is ever added, so a text can never match characters the recording does not contain. Different
+//     listed texts may be found in different values, even of different recorded items of the same step and field.
+//     The evidence event of a supported claim is the event at which the last listed text first became available.
 //  4. NOT_SUPPORTED is only said when every candidate could be read: no step matched (NO_MATCHING_STEP), every
 //     matching step's content was readable and lacked a text (NOT_FOUND), or the only content of the matching
 //     steps was recorded after the event where the claim was made (TOO_LATE, see atEvent).
@@ -90,10 +92,35 @@ export function tidyName(text: string): string {
   return flat.length > 80 ? `${flat.slice(0, 80)}…` : flat;
 }
 
-export type ParsedClaims = { claims: Claim[]; errors: string[] };
+// Edit distance between two short strings (insert, delete, replace), used only to suggest an allowed field name.
+function editDistance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i += 1) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j += 1) next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    row = next;
+  }
+  return row[b.length];
+}
+
+/** ", did you mean "mustContain"?" when the unknown name is within two edits of an allowed one; otherwise nothing. */
+function closestAllowed(unknown: string): string {
+  if (unknown.length > 40) return "";
+  let best: { name: string; distance: number } | null = null;
+  for (const name of CLAIM_KEYS) {
+    const distance = editDistance(unknown.toLowerCase(), name.toLowerCase());
+    if (distance <= 2 && (best === null || distance < best.distance)) best = { name, distance };
+  }
+  return best === null ? "" : ` (did you mean "${best.name}"?)`;
+}
+
+export type ParsedClaims ={ claims: Claim[]; errors: string[] };
 
 /** Reads a claims file (UTF-8 JSON bytes). Never repeats text from the file except claim ids, which are restricted. */
-export function parseClaimFile(bytes: Uint8Array): ParsedClaims {
+export function parseClaimFile(rawBytes: Uint8Array): ParsedClaims {
+  // Windows editors often save UTF-8 with a byte order mark. One leading mark is accepted and ignored, so the
+  // command line and the screen (whose text decoder drops it) treat the same file the same way.
+  const bytes = rawBytes.length >= 3 && rawBytes[0] === 0xef && rawBytes[1] === 0xbb && rawBytes[2] === 0xbf ? rawBytes.subarray(3) : rawBytes;
   let root: JsonValue;
   try {
     root = parseStrictJson(bytes, "claims", {
@@ -126,7 +153,8 @@ export function parseClaimFile(bytes: Uint8Array): ParsedClaims {
     else if (seenIds.has(id)) add(`${where}: the id "${id}" is used twice.`);
     else seenIds.add(id);
     const label = typeof id === "string" && ID_PATTERN.test(id) ? `${where} (${id})` : where;
-    for (const key of entry.keys()) if (!CLAIM_KEYS.has(key)) add(`${label}: unknown field ${JSON.stringify(tidyName(key))} (allowed: ${[...CLAIM_KEYS].join(", ")}).`);
+    // The unknown name is never copied into the message (it is file content). A close allowed name is suggested instead.
+    for (const key of entry.keys()) if (!CLAIM_KEYS.has(key)) add(`${label}: a field name is not allowed${closestAllowed(key)} (allowed: ${[...CLAIM_KEYS].join(", ")}).`);
 
     const text = entry.get("text");
     if (typeof text !== "string" || text.trim() === "" || text.length > CLAIM_LIMITS.maxTextLength) add(`${label}: "text" must say what was claimed, in 1 to ${CLAIM_LIMITS.maxTextLength} characters.`);
@@ -193,8 +221,8 @@ function verbatimAttribute(attributes: Array<{ key: Field; value: Field }>, key:
   return null;
 }
 
-/** The searchable text of a stored value: its text, number and true/false leaves in order, one per line. */
-export function searchableText(value: TaggedValue): string {
+/** The searchable values of a stored value: its text, number and true/false leaves, in order, each searched on its own. */
+export function searchableLeaves(value: TaggedValue): string[] {
   const leaves: string[] = [];
   const stack: TaggedValue[] = [value];
   while (stack.length > 0) {
@@ -207,7 +235,7 @@ export function searchableText(value: TaggedValue): string {
       case "k": for (let i = current.v.length - 1; i >= 0; i -= 1) stack.push(current.v[i][1]); break;
     }
   }
-  return leaves.join("\n");
+  return leaves;
 }
 
 function indexSteps(events: readonly RunEvent[]): Map<string, StepInfo> {
@@ -256,16 +284,16 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
   const steps = indexSteps(events);
   const ordered = [...steps.values()].sort((a, b) => a.startSequence - b.startSequence);
   let scanBudget = CLAIM_LIMITS.maxScannedCharacters;
-  const textCache = new Map<string, { text: string; lower: string | null }>();
-
-  const joined = (step: StepInfo, fieldName: string, items: Item[], upTo: number): { text: string; lower: string | null } => {
-    const key = `${step.stepId}|${fieldName}|${upTo}`;
-    let cached = textCache.get(key);
-    if (cached === undefined) {
-      cached = { text: items.map((item) => ("v" in item.value ? searchableText(item.value.v) : "")).join("\n"), lower: null };
-      textCache.set(key, cached);
+  // The leaves of each recorded item, extracted once. They are the strings already held by the run (numbers
+  // become short strings), so this adds no copies of large text. Nothing else is retained between claims.
+  const leavesOf = new Map<Item, string[]>();
+  const leavesFor = (item: Item): string[] => {
+    let leaves = leavesOf.get(item);
+    if (leaves === undefined) {
+      leaves = "v" in item.value ? searchableLeaves(item.value.v) : [];
+      leavesOf.set(item, leaves);
     }
-    return cached;
+    return leaves;
   };
 
   const outcomeFor = (claim: Claim, step: StepInfo): StepOutcome => {
@@ -276,17 +304,27 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
     const early = all.filter((item) => item.sequence <= limit);
     if (early.length === 0) return { kind: "LATE", lateEvent: all[0].sequence };
     if (early.some((item) => "w" in item.value)) return { kind: "WITHHELD" };
-    const cached = joined(step, fieldName, early, limit);
-    if (!claim.caseSensitive && cached.lower === null) cached.lower = cached.text.toLowerCase();
-    const haystack = claim.caseSensitive ? cached.text : (cached.lower as string);
-    const missing: string[] = [];
-    for (const piece of claim.mustContain) {
-      scanBudget -= haystack.length;
-      if (scanBudget < 0) return { kind: "TOO_MUCH_WORK" };
-      const needle = claim.caseSensitive ? piece : piece.toLowerCase();
-      if (!haystack.includes(needle)) missing.push(piece);
+
+    if (scanBudget < 0) return { kind: "TOO_MUCH_WORK" }; // spent already: do not even extract values
+
+    // Search value by value, in event order. Each text is resolved at the first value that contains it. The work is
+    // charged BEFORE anything large is created or scanned, so the limit also bounds memory.
+    const needles = claim.caseSensitive ? claim.mustContain : claim.mustContain.map((piece) => piece.toLowerCase());
+    const foundAt: Array<number | null> = needles.map(() => null);
+    let unresolved = needles.length;
+    search: for (const item of early) {
+      for (const leaf of leavesFor(item)) {
+        scanBudget -= leaf.length * (unresolved + (claim.caseSensitive ? 0 : 1));
+        if (scanBudget < 0) return { kind: "TOO_MUCH_WORK" };
+        const haystack = claim.caseSensitive ? leaf : leaf.toLowerCase();
+        for (let i = 0; i < needles.length; i += 1) {
+          if (foundAt[i] === null && haystack.includes(needles[i])) { foundAt[i] = item.sequence; unresolved -= 1; }
+        }
+        if (unresolved === 0) break search;
+      }
     }
-    return missing.length === 0 ? { kind: "SUPPORTED", evidenceEvent: early[0].sequence } : { kind: "MISSING", missing };
+    if (unresolved > 0) return { kind: "MISSING", missing: claim.mustContain.filter((_, i) => foundAt[i] === null) };
+    return { kind: "SUPPORTED", evidenceEvent: Math.max(...(foundAt as number[])) };
   };
 
   const results: ClaimResult[] = claims.map((claim) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CLAIM_LIMITS, checkClaims, parseClaimFile, parseClaimText, searchableText, type Claim,
+  CLAIM_LIMITS, checkClaims, parseClaimFile, parseClaimText, searchableLeaves, type Claim,
 } from "../src/claim-check.js";
 import type { RunEvent } from "../src/run-events.js";
 import { importTraceBytes } from "../src/run-import.js";
@@ -116,12 +116,115 @@ describe("claim check: verdicts", () => {
     expect(checkClaims(run, [claim({ tool: "pay", mustContain: ["59"] })]).results[0]).toMatchObject({ verdict: "SUPPORTED", stepFailed: true });
   });
 
-  it("joins all content of one step and field, so texts may be spread over several items", () => {
+  it("lets different listed texts be found in different recorded items of the same step", () => {
     const events2 = runOf([{ start: 0, end: 1, tool: "t", result: "first part" }], "FULL", [
       { traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", "second part")] },
     ]);
-    const r = checkClaims(events2, [claim({ tool: "t", mustContain: ["first part", "second part"] })]).results[0];
-    expect(r.verdict).toBe("SUPPORTED");
+    expect(checkClaims(events2, [claim({ tool: "t", mustContain: ["first part", "second part"] })]).results[0].verdict).toBe("SUPPORTED");
+  });
+});
+
+describe("claim check: never matches characters the recording does not contain", () => {
+  const list = (...values: string[]) => ({ arrayValue: { values: values.map((stringValue) => ({ stringValue })) } });
+  const twoValues = runOf([{ start: 0, end: 1, tool: "t", resultValue: list("first part", "second part") }]);
+  const logFor = (text: string) => [{ traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", text)] }];
+  const verdictOf = (events: RunEvent[], must: string[]) => checkClaims(events, [claim({ tool: "t", mustContain: must })]).results[0];
+
+  it("does not let a separator between two values satisfy a text", () => {
+    expect(verdictOf(twoValues, ["\n"]).verdict).toBe("NOT_SUPPORTED");
+    expect(verdictOf(twoValues, ["first part\nsecond part"]).verdict).toBe("NOT_SUPPORTED");
+    expect(verdictOf(twoValues, ["part second"]).verdict).toBe("NOT_SUPPORTED");
+    // Each text on its own is in the recording.
+    expect(verdictOf(twoValues, ["first part", "second part"]).verdict).toBe("SUPPORTED");
+  });
+
+  it("does not join separate recorded items either", () => {
+    const split = runOf([{ start: 0, end: 1, tool: "t", result: "ab" }], "FULL", logFor("cd"));
+    expect(verdictOf(split, ["abcd"]).verdict).toBe("NOT_SUPPORTED");
+    expect(verdictOf(split, ["ab\ncd"]).verdict).toBe("NOT_SUPPORTED");
+    expect(verdictOf(split, ["ab", "cd"]).verdict).toBe("SUPPORTED");
+  });
+
+  it("still finds a real newline that is inside one recorded value", () => {
+    const real = runOf([{ start: 0, end: 1, tool: "t", result: "line one\nline two" }]);
+    expect(verdictOf(real, ["one\nline"]).verdict).toBe("SUPPORTED");
+  });
+});
+
+describe("claim check: the evidence event is where the last needed text first appeared", () => {
+  const events = runOf([{ start: 0, end: 1, tool: "t", result: "first part" }], "FULL", [
+    { traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", "second part")] },
+  ]);
+  const contentEvents = events.filter((e) => e.type === "ContentRecorded").map((e) => e.sequenceNumber);
+  const at = (must: string[], extra: Partial<Claim> = {}) => checkClaims(events, [claim({ tool: "t", mustContain: must, ...extra })]).results[0];
+
+  it("names the event that holds the text, not an earlier event of the same step", () => {
+    expect(contentEvents).toHaveLength(2);
+    expect(at(["first part"]).evidenceEvent).toBe(contentEvents[0]);
+    expect(at(["second part"]).evidenceEvent).toBe(contentEvents[1]);
+    expect(at(["first part", "second part"]).evidenceEvent).toBe(contentEvents[1]);
+    expect(at(["second part", "first part"]).evidenceEvent).toBe(contentEvents[1]);
+  });
+
+  it("credits a text found in two items to the first one", () => {
+    const twice = runOf([{ start: 0, end: 1, tool: "t", result: "same" }], "FULL", [
+      { traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", "same again")] },
+    ]);
+    const first = twice.find((e) => e.type === "ContentRecorded")?.sequenceNumber;
+    expect(checkClaims(twice, [claim({ tool: "t", mustContain: ["same"] })]).results[0].evidenceEvent).toBe(first);
+  });
+
+  it("counts only content at or before atEvent when naming the evidence", () => {
+    expect(at(["second part"], { atEvent: contentEvents[0] }).verdict).toBe("NOT_SUPPORTED");
+    expect(at(["second part"], { atEvent: contentEvents[1] }).evidenceEvent).toBe(contentEvents[1]);
+    expect(at(["first part"], { atEvent: contentEvents[0] }).evidenceEvent).toBe(contentEvents[0]);
+  });
+});
+
+describe("claim check: mixed late, absent and readable candidates", () => {
+  const verdict = (events: RunEvent[], extra: Partial<Claim>) => {
+    const r = checkClaims(events, [claim({ tool: "pay", ...extra })]).results[0];
+    return [r.verdict, r.reason, r.stepId];
+  };
+  const contentOf = (events: RunEvent[], nth: number) => events.filter((e) => e.type === "ContentRecorded")[nth].sequenceNumber;
+
+  it("a readable early step that lacks the text, plus a step whose content is only late: not found", () => {
+    const run = runOf([{ start: 0, end: 1, tool: "pay", result: "declined" }, { start: 1, end: 2, tool: "pay", result: "accepted" }]);
+    expect(verdict(run, { mustContain: ["accepted"], atEvent: contentOf(run, 0) })).toEqual(["NOT_SUPPORTED", "NOT_FOUND", id(0)]);
+    // The same claim made after both steps is supported by the second.
+    expect(verdict(run, { mustContain: ["accepted"], atEvent: contentOf(run, 1) })).toEqual(["SUPPORTED", "FOUND", id(1)]);
+  });
+
+  it("every matching step late: too late", () => {
+    const run = runOf([{ start: 0, end: 1, tool: "pay", result: "a" }, { start: 1, end: 2, tool: "pay", result: "b" }]);
+    expect(verdict(run, { mustContain: ["a"], atEvent: 1 })).toEqual(["NOT_SUPPORTED", "TOO_LATE", id(0)]);
+  });
+
+  it("a step with no recorded content next to a late step cannot be checked", () => {
+    const run = runOf([{ start: 0, end: 1, tool: "pay" }, { start: 1, end: 2, tool: "pay", result: "accepted" }]);
+    expect(verdict(run, { mustContain: ["accepted"], atEvent: 1 })).toEqual(["CANNOT_CHECK", "NO_CONTENT", id(0)]);
+  });
+
+  it("a late step does not stop an early readable step from supporting the claim", () => {
+    const run = runOf([{ start: 0, end: 1, tool: "pay", result: "accepted" }, { start: 1, end: 2, tool: "pay", result: "declined" }]);
+    expect(verdict(run, { mustContain: ["accepted"], atEvent: contentOf(run, 0) })).toEqual(["SUPPORTED", "FOUND", id(0)]);
+  });
+
+  it("an exhausted work limit makes every later claim cannot-check, even for small steps", () => {
+    const run = runOf([{ start: 0, end: 1, tool: "big", result: "x".repeat(2_000_000) }, { start: 1, end: 2, tool: "small", result: "ok" }]);
+    const many = Array.from({ length: 101 }, (_, i) => claim({ id: `c${i}`, tool: "big", mustContain: ["aa", "bb", "cc", "dd", "ee"] }));
+    const results = checkClaims(run, [...many, claim({ id: "after", tool: "small", mustContain: ["ok"] })]).results;
+    expect(results[100]).toMatchObject({ verdict: "CANNOT_CHECK", reason: "TOO_MUCH_WORK" });
+    expect(results[101]).toMatchObject({ verdict: "CANNOT_CHECK", reason: "TOO_MUCH_WORK" });
+  });
+
+  it("charges case-insensitive claims before lower-casing a large value", () => {
+    const run = runOf([{ start: 0, end: 1, tool: "big", result: "X".repeat(2_000_000) }]);
+    const many = Array.from({ length: 200 }, (_, i) => claim({ id: `c${i}`, tool: "big", mustContain: ["a", "b", "c", "d", "e"], caseSensitive: false }));
+    const results = checkClaims(run, many).results;
+    // Each claim costs 2,000,000 x (5 texts + 1 lower-casing) = 12,000,000 characters: 83 fit in 10^9, the rest do not.
+    expect(results.filter((r) => r.reason === "NOT_FOUND")).toHaveLength(83);
+    expect(results.filter((r) => r.reason === "TOO_MUCH_WORK")).toHaveLength(117);
   });
 });
 
@@ -183,14 +286,14 @@ describe("claim check: work limit", () => {
   });
 });
 
-describe("searchableText", () => {
-  it("lists text, number and boolean leaves in order and skips field names and bytes", () => {
-    expect(searchableText({ t: "k", v: [["name", { t: "s", v: "a" }], ["list", { t: "a", v: [{ t: "i", v: "5" }, { t: "o", v: true }, { t: "b", v: "AAAA" }, { t: "d", v: 1.5 }] }]] })).toBe("a\n5\ntrue\n1.5");
+describe("searchableLeaves", () => {
+  it("lists text, number and boolean leaves in order, each on its own, and skips field names and bytes", () => {
+    expect(searchableLeaves({ t: "k", v: [["name", { t: "s", v: "a" }], ["list", { t: "a", v: [{ t: "i", v: "5" }, { t: "o", v: true }, { t: "b", v: "AAAA" }, { t: "d", v: 1.5 }] }]] })).toEqual(["a", "5", "true", "1.5"]);
   });
   it("does not recurse over deep structure", () => {
     let value: { t: "a"; v: unknown[] } = { t: "a", v: [{ t: "s", v: "deep" }] };
     for (let i = 0; i < 100_000; i += 1) value = { t: "a", v: [value] };
-    expect(searchableText(value as never)).toBe("deep");
+    expect(searchableLeaves(value as never)).toEqual(["deep"]);
   });
 });
 
@@ -208,7 +311,7 @@ describe("claims file", () => {
   it("rejects a misspelled field instead of ignoring it (a typo must never weaken a claim)", () => {
     const parsed = file([{ ...one, mustContains: ["59"] }]);
     expect(parsed.claims).toEqual([]);
-    expect(parsed.errors.join(" ")).toContain('unknown field "mustContains"');
+    expect(parsed.errors.join(" ")).toContain('Claim 1 (refund-amount): a field name is not allowed (did you mean "mustContain"?)');
     expect(file([{ ...one, mustContain: undefined }]).errors.join(" ")).toContain('"mustContain" must list');
   });
 
@@ -248,8 +351,8 @@ describe("claims file", () => {
     expect(parseClaimText("{}").errors.join(" ")).toContain('needs a "claims" list');
   });
 
-  it("reports broken JSON, repeated field names, a byte order mark and oversized files without echoing them", () => {
-    for (const text of ['{"claims": [', '{"claims": [], "claims": []}', '﻿{"claims": []}', "not json at all {{"]) {
+  it("reports broken JSON, repeated field names, and oversized files without echoing them", () => {
+    for (const text of ['{"claims": [', '{"claims": [], "claims": []}', "not json at all {{"]) {
       const parsed = parseClaimText(text);
       expect(parsed.errors[0]).toContain("not valid JSON");
       expect(parsed.errors.join(" ")).not.toContain("not json at all");
@@ -265,8 +368,33 @@ describe("claims file", () => {
     expect(parsed.errors[20]).toMatch(/^…and \d+ more problems\.$/);
   });
 
-  it("does not repeat hostile text from the file in its messages", () => {
-    const parsed = file([{ ...one, "\u001b[2Jevil": 1 }]);
-    expect(parsed.errors.join(" ")).not.toContain("\u001b");
+  it("never copies an unknown field name from the file into a message, and suggests only allowed names", () => {
+    const secret = "private-token-SECRET";
+    const hostile = String.fromCharCode(27) + "[2Jevil";
+    for (const name of [secret, hostile, "x".repeat(500)]) {
+      const parsed = file([{ ...one, [name]: 1 }]);
+      const text = parsed.errors.join(" ");
+      expect(text).toContain("a field name is not allowed");
+      expect(text).not.toContain(name.slice(0, 20));
+      expect(text).not.toContain(String.fromCharCode(27));
+      expect(text).not.toContain("SECRET");
+    }
+    const huge = file([{ ...one, ["y".repeat(5000)]: 1 }]).errors.join(" ");
+    expect(huge).toContain("too large");
+    expect(huge).not.toContain("yyyy");
+    expect(file([{ ...one, mustContains: ["a"] }]).errors.join(" ")).toContain('did you mean "mustContain"?');
+    expect(file([{ ...one, caseSensitve: true }]).errors.join(" ")).toContain('did you mean "caseSensitive"?');
+    expect(file([{ ...one, zzzzzz: 1 }]).errors.join(" ")).not.toContain("did you mean");
+  });
+
+  it("accepts one leading byte order mark (many Windows editors add it), the same way as the screen", () => {
+    const bytes = new TextEncoder().encode(JSON.stringify({ claims: [one] }));
+    const withBom = new Uint8Array([0xef, 0xbb, 0xbf, ...bytes]);
+    expect(parseClaimFile(withBom)).toEqual(parseClaimFile(bytes));
+    expect(parseClaimFile(withBom).errors).toEqual([]);
+    // What the screen does with the same bytes: decode (which drops the mark) and parse the text.
+    expect(parseClaimText(new TextDecoder("utf-8", { fatal: true }).decode(withBom))).toEqual(parseClaimFile(withBom));
+    // Only one mark is accepted.
+    expect(parseClaimFile(new Uint8Array([0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, ...bytes])).errors[0]).toContain("not valid JSON");
   });
 });

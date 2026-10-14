@@ -284,3 +284,10 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Major 2, Codex not covered: the commit configures Claude Code only.
 - Decision (user, 2026-10-14): option A. Keep the rule as an extra precaution, keep real traces excluded until a real boundary exists (for example a separate Windows account), and draft a superseding ADR for approval. Done: `docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md` (DRAFT, not accepted). This was the first implementation attempt; the rule itself is unchanged.
 - Pending: short independent review of ADR-028 and of the honest wording (brief: `REVIEW_BRIEF_ADR_028.md`), then the user's approval of ADR-028. ADR-027 and the spec are not edited until then.
+
+### Review record: ADR-028, round 1 (commit `25cb543`) and a third attempt approved by the user
+
+- Review: Codex gpt-6.1-sol, read-only. Verdict REJECT: 2 major, 1 minor. The lead agent checked all three against the draft and agreed. Because the settings rule was attempt 1 and the ADR draft attempt 2, a repair was attempt 3, so the lead agent stopped and asked. User decision (2026-10-14): option A, one more documentation-only repair and a short re-review; any further finding goes back to the user.
+- Major 1: the boundary did not cover original inputs, copies (sync, backups), the replay screen's browser memory, the real resolved path, or overriding rights (administrator, backup privilege, shared folders). Major 2: "all attempts must fail" cannot tell a real access denial from a wrong path, a missing file or a declined prompt. Minor: the draft said "we reproduced this" although our check only printed a built path and read no file.
+- Repair (text only, `docs/adr/ADR-028-...md`): decisions 2, 3 and 6 rewritten as described in `REVIEW_BRIEF_ADR_028_ROUND2.md`; the summary's evidence sentence corrected. No code or settings changed. Still a draft; ADR-027 and the spec are not edited.
+- Pending: short independent review of the delta (brief: `REVIEW_BRIEF_ADR_028_ROUND2.md`), then the user's approval of ADR-028.

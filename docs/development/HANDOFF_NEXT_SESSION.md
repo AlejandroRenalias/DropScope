@@ -4,7 +4,7 @@ A new chat starts from a fresh clone and does not remember the previous conversa
 
 ## Where things stand
 
-- **Repository:** AlejandroRenalias/DropScope. Working branch: `claude/inspiring-ritchie-8n0iay` (base: `main` at `60ba704`). It was **pushed with the user's approval on 2026-10-14** up to `20f1e5c` (the claim check commits are on GitHub). Nothing is half-built and no review is pending. **Pull request #48** (https://github.com/AlejandroRenalias/DropScope/pull/48, base `main`) was opened on 2026-10-14 with the user's approval and is NOT merged. Its first CI run failed on 2 tests in `test/run-files.test.ts` that assumed the default platform check works on Linux (the product refuses non-Windows by design, so the check correctly refused). The test-only fix is committed locally and needs the user's approval to push; then read CI with `get_status` (do not poll). A Linux run has not been done locally (WSL has no Node, and a Docker image pull needs the user's OK), so CI is the Linux proof.
+- **Repository:** AlejandroRenalias/DropScope. **Pull request #48** (https://github.com/AlejandroRenalias/DropScope/pull/48) was **merged into `main` on 2026-10-14** with the user's approval, as a regular merge commit `9784085` of the tested head `62b0528` (CI `verify` passed on that exact commit; the Linux test fix was included). Everything described below is now on `main`. The branch `claude/inspiring-ritchie-8n0iay` was kept (not deleted). Nothing is half-built and no review is pending. Start new work from `main` on a new branch.
 - **Do not touch:** the `codex/*` branches, `backup/codex-handoff-2026-10-13`, `claude/migration-config`. `.claude/launch.json` on the user's machine is theirs; never commit it.
 - **Direction:** DropScope is a **learning project** (the user's choice, repeated several times). The idea is "agent run forensics": a local, offline, deterministic auditor for AI agent runs. It imports an OTLP/JSON trace, saves a validated run file, rebuilds the recorded state at any step, and re-applies a budget to the run. Dropshipping is only the built-in demo domain. No live workers, no model calls, no API cost, no network.
 - **Sprint exception:** in effect until 2026-10-31 (see `AGENTS.md`). The learning workflow stays paused; the user decided not to resume it.
@@ -62,7 +62,7 @@ Last known results: typecheck clean, 669 unit tests (2 skipped), 59 end-to-end t
 ## Still open
 
 - **`.claude/settings.json` rule** denying development-agent reads of `%LOCALAPPDATA%\DropScope\runs`. Required by ADR-027 before real traces are admitted; needs its own independent review and the user's approval.
-- **Pull request #48:** open, CI failing on the 2 test-only problems above until the fix is pushed. Merging needs the user's explicit approval, and only the exact commit CI approved (`AGENTS.md`). Never enable auto-merge unless asked.
+- **Pull request #48:** merged (see top of this file). Nothing left to do for it.
 - **Next feature from the proposal:** run diff (where did two runs diverge?). Not started. Claim checking is done and reviewed. The proposal and `ROADMAP.md` dates are only indicative now.
 - Small UI items: the original Mission Replay still shows raw event names in its chronology; the Failure Autopsy and Product Investigation reports were never checked visually.
 - Optional: open run files from the runs folder without a file picker (would need a design decision about serving local files).

@@ -266,3 +266,5 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - **Outcome: run diff is independently reviewed.** Four Codex rounds: round 1 (4 major, 2 minor), round 2 (1 major, 2 minor), round 3 (1 major) fixed, round 4 approved. Counting the build, there were four implementation attempts on this workstream; the third and fourth were approved by the user. CI (`verify`) passed on `7902a3e` (an earlier run of `997e6de` failed on two old speed tests that timed out on a slow machine and passed on one rerun, no code change).
 - Validation: typecheck clean; 717 unit tests pass (3 skipped).
 - Still pending: merge of PR #49 (needs the user's explicit approval, for the exact commit CI approved), the `.claude/settings.json` rule for the runs folder, and an optional screen for the diff.
+
+- Update (2026-10-14): PR #49 (run diff) was merged into `main` with the user's approval as merge commit `6339838`, pinned to the exact head `99e08c5` (CI `verify` passed on it). The source branch was kept. Still pending: the `.claude/settings.json` rule for the runs folder, an optional screen for run diff, and the small UI checks.

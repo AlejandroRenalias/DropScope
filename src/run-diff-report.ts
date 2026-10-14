@@ -3,6 +3,10 @@
 import { formatSeconds, group } from "./budget-report.js";
 import type { DiffChange, DiffItem, DiffResult, RunTotals } from "./run-diff.js";
 
+/** How many differences the command prints as text, and how many it puts in its --json output. The screen quotes these in its notice. */
+export const DIFF_TEXT_LIMIT = 25;
+export const DIFF_JSON_LIMIT = 1000;
+
 export const DIFF_NOTE =
   "Steps are matched by what they are (kind, operation, model name, and tool or agent name, using the full recorded values) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.";
 
@@ -11,7 +15,7 @@ export const NOT_COMPARED_NOTE =
 
 const stepName = (item: DiffItem): string => (item.a ?? item.b)?.title ?? "a step";
 
-function changeText(change: DiffChange): string {
+export function changeText(change: DiffChange): string {
   switch (change.code) {
     case "STATUS": return `it ${change.a === "failed" ? "failed" : "succeeded"} in run A but ${change.b === "failed" ? "failed" : "succeeded"} in run B`;
     case "PARENT": return "it sits under a different step than in run A";
@@ -81,21 +85,28 @@ export function diffCaveats(result: DiffResult): string[] {
   return notes;
 }
 
-export function diffReportLines(result: DiffResult, ids: { a: string; b: string }, limit = 25): string[] {
-  const lines: string[] = [`Run A: ${ids.a}`, `Run B: ${ids.b}`, ""];
-  if (result.tooLarge) {
-    lines.push("Result: one of the runs has too many steps to compare here, so nothing was compared.");
-    return lines;
-  }
-  if (result.identical) {
-    lines.push("Result: the runs match step for step in step names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).");
-  } else {
-    const first = result.first as DiffItem;
-    const stepNumber = result.firstIndex + 1;
-    lines.push(`Result: the runs first differ at step ${group(stepNumber)} of the aligned list.`);
-    const where = [first.a ? `run A event ${first.a.startSequence}` : null, first.b ? `run B event ${first.b.startSequence}` : null].filter(Boolean).join(", ");
-    lines.push(`  Look at: ${where} (use the state command with --at to see each run there).`);
-    lines.push(`  Steps in both and unchanged: ${group(result.counts.same)}; changed: ${group(result.counts.changed)}; only in A: ${group(result.counts.onlyA)}; only in B: ${group(result.counts.onlyB)}.`);
+/** The verdict sentence of a diff. Shared by the command line and the screen so both say the same thing. */
+export function diffVerdictLine(result: DiffResult): string {
+  if (result.tooLarge) return "Result: one of the runs has too many steps to compare here, so nothing was compared.";
+  if (result.identical) return "Result: the runs match step for step in step names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).";
+  return `Result: the runs first differ at step ${group(result.firstIndex + 1)} of the aligned list.`;
+}
+
+export function diffCountsLine(result: DiffResult): string {
+  return `Steps in both and unchanged: ${group(result.counts.same)}; changed: ${group(result.counts.changed)}; only in A: ${group(result.counts.onlyA)}; only in B: ${group(result.counts.onlyB)}.`;
+}
+
+function diffSummaryLines(result: DiffResult): string[] {
+  if (result.tooLarge || result.identical) return [diffVerdictLine(result)];
+  const first = result.first as DiffItem;
+  const where = [first.a ? `run A event ${first.a.startSequence}` : null, first.b ? `run B event ${first.b.startSequence}` : null].filter(Boolean).join(", ");
+  return [diffVerdictLine(result), `  Look at: ${where} (use the state command with --at to see each run there).`, `  ${diffCountsLine(result)}`];
+}
+
+export function diffReportLines(result: DiffResult, ids: { a: string; b: string }, limit = DIFF_TEXT_LIMIT): string[] {
+  const lines: string[] = [`Run A: ${ids.a}`, `Run B: ${ids.b}`, "", ...diffSummaryLines(result)];
+  if (result.tooLarge) return lines;
+  if (!result.identical) {
     const diffs = describeDifferences(result, limit);
     lines.push("Differences:");
     for (const line of diffs.lines) lines.push(`  ${line}`);

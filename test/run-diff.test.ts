@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildRunModel } from "../src/frontend/run-replay-model.js";
 import { DIFF_LIMITS, diffRuns } from "../src/run-diff.js";
-import { diffReportLines } from "../src/run-diff-report.js";
+import { DIFF_TEXT_LIMIT, diffReportLines } from "../src/run-diff-report.js";
 import { importTraceBytes } from "../src/run-import.js";
 import { parseRunLog } from "../src/run-log-format.js";
 import { serializeRunLog } from "../src/run-store.js";
@@ -160,6 +160,15 @@ describe("run diff: limits and reports", () => {
     expect(same).toContain("match step for step");
   });
 
+  it("prints DIFF_TEXT_LIMIT differences by default (the number the screen's notice quotes)", () => {
+    const a = Array.from({ length: 40 }, (_v, i) => ({ op: "execute_tool" as const, tool: `a${i}`, start: i, end: i + 0.5 }));
+    const b = Array.from({ length: 40 }, (_v, i) => ({ op: "execute_tool" as const, tool: `b${i}`, start: i, end: i + 0.5 }));
+    const lines = diffReportLines(diffRuns(modelOf(a), modelOf(b)), { a: "x", b: "y" });
+    expect(lines.filter((l) => l.startsWith("  Run A has "))).toHaveLength(DIFF_TEXT_LIMIT);
+    expect(DIFF_TEXT_LIMIT).toBe(25);
+    expect(lines).toContain(`  ... and ${40 - DIFF_TEXT_LIMIT} more.`);
+  });
+
   it("caps the listed differences and counts the rest", () => {
     const a = Array.from({ length: 40 }, (_v, i) => ({ op: "execute_tool" as const, tool: `a${i}`, start: i, end: i + 0.5 }));
     const b = Array.from({ length: 40 }, (_v, i) => ({ op: "execute_tool" as const, tool: `b${i}`, start: i, end: i + 0.5 }));
@@ -178,6 +187,76 @@ describe("run diff: the built-in demo runs", () => {
     expect(r.identical).toBe(true);
     expect(r.contentComparable).toBe(true);
     expect(r.totals.a.steps).toBe(10);
+  });
+});
+
+describe("run diff: the demo variant", () => {
+  const load = (name: string) => buildRunModel(parseRunLog(new Uint8Array(fs.readFileSync(new URL(`../src/frontend/assets/${name}`, import.meta.url)))));
+  it("differs from the demo kept with content: the second refund fails and the final answer says so", () => {
+    const r = diffRuns(load("demo-run-full.runlog.jsonl"), load("demo-run-variant.runlog.jsonl"));
+    expect(r.identical).toBe(false);
+    expect(r.counts).toMatchObject({ onlyA: 0, onlyB: 0 });
+    expect(r.counts.changed).toBe(2);
+    expect(r.first?.changes.map((c) => c.code)).toContain("STATUS");
+    expect(r.totals.a.failedSteps).toBe(1);
+    expect(r.totals.b.failedSteps).toBe(2);
+  });
+
+  it("cannot be compared on content with the demo kept as fingerprints only without losing the structural difference", () => {
+    const r = diffRuns(load("demo-run.runlog.jsonl"), load("demo-run-variant.runlog.jsonl"));
+    expect(r.identical).toBe(false);
+    expect(r.counts.changed).toBe(2);
+  });
+
+  it("prints exactly this report for the demo and its variant (whole output, so whitespace and ordering are pinned)", () => {
+    const lines = diffReportLines(diffRuns(load("demo-run-full.runlog.jsonl"), load("demo-run-variant.runlog.jsonl")), { a: "A", b: "B" });
+    expect(lines).toEqual([
+      "Run A: A",
+      "Run B: B",
+      "",
+      "Result: the runs first differ at step 7 of the aligned list.",
+      "  Look at: run A event 24, run B event 24 (use the state command with --at to see each run there).",
+      "  Steps in both and unchanged: 8; changed: 2; only in A: 0; only in B: 0.",
+      "Differences:",
+      "  \"Tool call: issue_refund\" is in both runs, but it succeeded in run A but failed in run B; its status or failure message differs; recorded content differs (gen_ai.tool.call.result).",
+      "  \"Model call: chat sim-model-1\" is in both runs, but input tokens: 2010 in run A, 2190 in run B; output tokens: 240 in run A, 260 in run B; recorded content differs (gen_ai.output.messages).",
+      "Totals:",
+      "  Steps: 10 in run A, 10 in run B (same)",
+      "  Model calls: 4 in run A, 4 in run B (same)",
+      "  Tool calls: 4 in run A, 4 in run B (same)",
+      "  Failed steps: 1 in run A, 2 in run B",
+      "  Input tokens: 5,530 in run A, 5,710 in run B",
+      "  Output tokens: 785 in run A, 805 in run B",
+      "  Time: 9.1 s in run A, 9.1 s in run B (same)",
+      "Notes:",
+      "  - Steps are matched by what they are (kind, operation, model name, and tool or agent name, using the full recorded values) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.",
+      "  - Not compared: how long each step took, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.",
+      "  - Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference.",
+      "  - Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.",
+    ]);
+  });
+
+  it("prints exactly this report for two runs that match (whole output)", () => {
+    const lines = diffReportLines(diffRuns(load("demo-run.runlog.jsonl"), load("demo-run-full.runlog.jsonl")), { a: "A", b: "B" });
+    expect(lines).toEqual([
+      "Run A: A",
+      "Run B: B",
+      "",
+      "Result: the runs match step for step in step names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).",
+      "Totals:",
+      "  Steps: 10 in run A, 10 in run B (same)",
+      "  Model calls: 4 in run A, 4 in run B (same)",
+      "  Tool calls: 4 in run A, 4 in run B (same)",
+      "  Failed steps: 1 in run A, 1 in run B (same)",
+      "  Input tokens: 5,530 in run A, 5,530 in run B (same)",
+      "  Output tokens: 785 in run A, 785 in run B (same)",
+      "  Time: 9.1 s in run A, 9.1 s in run B (same)",
+      "Notes:",
+      "  - Steps are matched by what they are (kind, operation, model name, and tool or agent name, using the full recorded values) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.",
+      "  - Not compared: how long each step took, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.",
+      "  - Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference.",
+      "  - Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.",
+    ]);
   });
 });
 

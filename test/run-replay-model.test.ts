@@ -29,6 +29,16 @@ describe("demo run with content stored", () => {
   });
 });
 
+describe("demo run variant (for the run diff screen)", () => {
+  it("is exactly what the real importer produces from its committed source trace in FULL mode", () => {
+    const source = new Uint8Array(readFileSync(new URL("./fixtures/demo-run-variant-trace.json", import.meta.url)));
+    const fresh = serializeRunLog(importTraceBytes({ spans: source, contentMode: "FULL" }));
+    const committed = new Uint8Array(readFileSync(asset("demo-run-variant.runlog.jsonl")));
+    expect(Buffer.compare(Buffer.from(fresh), Buffer.from(committed)), "run: npx tsx test/fixtures/make-demo-run.ts").toBe(0);
+    expect(loadRunFromBytes(committed).contentMode).toBe("FULL");
+  });
+});
+
 describe("run model", () => {
   const model = loadRunFromBytes(demoBytes());
 

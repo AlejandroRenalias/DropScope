@@ -4,3 +4,4 @@ docs/development/spike-2026-10-13/traces/* text eol=lf
 
 # The demo run fixture is read as bytes and hashed, so its line endings must not change.
 test/fixtures/demo-run-trace.json text eol=lf
+test/fixtures/demo-run-variant-trace.json text eol=lf

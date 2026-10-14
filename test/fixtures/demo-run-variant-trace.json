@@ -1,0 +1,480 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "demo-support-agent"
+            }
+          }
+        ]
+      },
+      "schemaUrl": "https://opentelemetry.io/schemas/1.37.0",
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "demo.agent",
+            "version": "1.0"
+          },
+          "spans": [
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a101",
+              "name": "support agent run",
+              "kind": 1,
+              "startTimeUnixNano": "1760000000000000000",
+              "endTimeUnixNano": "1760000009100000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "invoke_agent"
+                  }
+                },
+                {
+                  "key": "gen_ai.agent.name",
+                  "value": {
+                    "stringValue": "support-agent"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a102",
+              "parentSpanId": "000000000000a101",
+              "name": "plan",
+              "kind": 3,
+              "startTimeUnixNano": "1760000000100000000",
+              "endTimeUnixNano": "1760000000900000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "example-ai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "sim-model-1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "sim-model-1"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "420"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "85"
+                  }
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "Customer asks for a refund for order 1042. Plan the steps."
+                  }
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "1) look up order 2) check refund policy 3) draft reply"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a103",
+              "parentSpanId": "000000000000a101",
+              "name": "tool lookup_order",
+              "kind": 1,
+              "startTimeUnixNano": "1760000001000000000",
+              "endTimeUnixNano": "1760000001400000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "execute_tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.name",
+                  "value": {
+                    "stringValue": "lookup_order"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.arguments",
+                  "value": {
+                    "stringValue": "{\"order\":1042}"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.result",
+                  "value": {
+                    "stringValue": "{\"total\":59.0,\"delivered\":false}"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a104",
+              "parentSpanId": "000000000000a101",
+              "name": "tool search_policy",
+              "kind": 1,
+              "startTimeUnixNano": "1760000001000000000",
+              "endTimeUnixNano": "1760000002100000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "execute_tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.name",
+                  "value": {
+                    "stringValue": "search_policy"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.arguments",
+                  "value": {
+                    "stringValue": "{\"query\":\"refund undelivered\"}"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.result",
+                  "value": {
+                    "stringValue": "Undelivered orders are refundable in full."
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a105",
+              "parentSpanId": "000000000000a101",
+              "name": "draft",
+              "kind": 3,
+              "startTimeUnixNano": "1760000002200000000",
+              "endTimeUnixNano": "1760000004000000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "example-ai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "sim-model-1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "sim-model-1"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "1380"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "310"
+                  }
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "Draft a reply using the order and the policy. Contact: jane.doe@example.com"
+                  }
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "Hello, your order will be refunded in full."
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a106",
+              "parentSpanId": "000000000000a101",
+              "name": "tool issue_refund",
+              "kind": 1,
+              "startTimeUnixNano": "1760000004100000000",
+              "endTimeUnixNano": "1760000004600000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "execute_tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.name",
+                  "value": {
+                    "stringValue": "issue_refund"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.arguments",
+                  "value": {
+                    "stringValue": "{\"order\":1042,\"amount\":59.0}"
+                  }
+                },
+                {
+                  "key": "error.type",
+                  "value": {
+                    "stringValue": "timeout"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2,
+                "message": "the payment service did not answer in time"
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a107",
+              "parentSpanId": "000000000000a101",
+              "name": "tool issue_refund",
+              "kind": 1,
+              "startTimeUnixNano": "1760000004800000000",
+              "endTimeUnixNano": "1760000005300000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "execute_tool"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.name",
+                  "value": {
+                    "stringValue": "issue_refund"
+                  }
+                },
+                {
+                  "key": "gen_ai.tool.call.arguments",
+                  "value": {
+                    "stringValue": "{\"order\":1042,\"amount\":59.0}"
+                  }
+                },
+                {
+                  "key": "error.type",
+                  "value": {
+                    "stringValue": "timeout"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2,
+                "message": "the payment service did not answer in time"
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a108",
+              "parentSpanId": "000000000000a101",
+              "name": "qa reviewer",
+              "kind": 1,
+              "startTimeUnixNano": "1760000005400000000",
+              "endTimeUnixNano": "1760000008400000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "invoke_agent"
+                  }
+                },
+                {
+                  "key": "gen_ai.agent.name",
+                  "value": {
+                    "stringValue": "qa-reviewer"
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a109",
+              "parentSpanId": "000000000000a108",
+              "name": "review",
+              "kind": 3,
+              "startTimeUnixNano": "1760000005500000000",
+              "endTimeUnixNano": "1760000008200000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "example-ai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "sim-model-1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "sim-model-1"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "1720"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "150"
+                  }
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "Review the draft reply for tone and correctness."
+                  }
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "The reply is correct. Suggest a friendlier closing."
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "7c1d4e2a9f6b8035a1e0d2c4b6f89a13",
+              "spanId": "000000000000a10a",
+              "parentSpanId": "000000000000a101",
+              "name": "final answer",
+              "kind": 3,
+              "startTimeUnixNano": "1760000008500000000",
+              "endTimeUnixNano": "1760000009000000000",
+              "attributes": [
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "example-ai"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "sim-model-1"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "sim-model-1"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "2190"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "260"
+                  }
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "Write the final reply with the friendlier closing."
+                  }
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "Hello! We could not process your refund of 59.00 yet. We will try again and write to you."
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import { budgetReportLines } from "./budget-report.js";
 import { claimReportLines } from "./claim-report.js";
 import { CLAIM_LIMITS, checkClaims, parseClaimFile } from "./claim-check.js";
 import { diffRuns } from "./run-diff.js";
-import { diffReportLines } from "./run-diff-report.js";
+import { DIFF_JSON_LIMIT, diffReportLines } from "./run-diff-report.js";
 import { buildRunModel } from "./frontend/run-replay-model.js";
 import { defaultChecks, readInputFile, type PlatformChecks } from "./run-files.js";
 import { ImportError } from "./run-import-error.js";
@@ -21,7 +21,6 @@ import { publishRun, readRunLog } from "./run-store.js";
 
 const MAX_INPUT_FILE = 32 * 1024 * 1024;
 const MAX_INPUT_TOTAL = 64 * 1024 * 1024;
-const JSON_DIFFERENCE_LIMIT = 1000;
 
 export type CliIo = { out: (text: string) => void; err: (text: string) => void };
 export type CliOptions = { runsDirectory?: string; checks?: PlatformChecks };
@@ -200,7 +199,7 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
         io.out(`${jsonForTerminal(JSON.stringify({
           runA: modelA.runId, runB: modelB.runId, tooLarge: result.tooLarge, fullyAligned: result.fullyAligned, unverifiedNesting: result.unverifiedNesting, identical: result.identical,
           counts: result.counts, firstDifference: result.first === null ? null : item(result.first), tools: result.tools, totals: result.totals,
-          differences: changed.slice(0, JSON_DIFFERENCE_LIMIT).map(item), differencesOmitted: Math.max(0, changed.length - JSON_DIFFERENCE_LIMIT),
+          differences: changed.slice(0, DIFF_JSON_LIMIT).map(item), differencesOmitted: Math.max(0, changed.length - DIFF_JSON_LIMIT),
         }, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2))}\n`);
       } else {
         io.out(`${diffReportLines(result, { a: modelA.runId, b: modelB.runId }).map(escapeForTerminal).join("\n")}\n`);

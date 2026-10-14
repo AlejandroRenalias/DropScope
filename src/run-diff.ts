@@ -15,8 +15,10 @@
 // step events, log record times and severities, log records that carry no content, attributes that are neither a
 // name used for matching (operation, model, tool, agent) nor recorded content, and content of log records that
 // belong to no step. The report says so.
-// No model call and no network. It reads only runs the reducer has already validated.
-import { canonicalJson, sha256Hex } from "./canonical.js";
+// No model call and no network. It reads only runs the reducer has already validated. It uses no Node modules, so the
+// browser (the run diff screen) can run it; fingerprints use sha256-pure.ts, pinned to Node's SHA-256 by a test.
+import { canonicalJson } from "./canonical-json.js";
+import { sha256HexPure } from "./sha256-pure.js";
 import type { RunModel, StepView } from "./frontend/run-replay-model.js";
 
 /** Runs with more steps than this are not compared (the answer would be too slow to be useful). */
@@ -67,7 +69,7 @@ type FieldLike = { v: unknown } | { w: { n: number; h: string } };
 const fingerprintOf = (field: FieldLike): string => {
   if ("w" in field) return `${field.w.n}:${field.w.h}`;
   const text = canonicalJson(field.v);
-  return `${Buffer.byteLength(text, "utf8")}:${sha256Hex(text)}`;
+  return `${new TextEncoder().encode(text).length}:${sha256HexPure(text)}`;
 };
 
 function attributeFingerprint(attributes: Array<{ key: FieldLike; value: FieldLike }>, name: string): string {

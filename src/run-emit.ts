@@ -12,7 +12,7 @@
 //   https://opentelemetry.io/schemas/<conventionVersion>.
 import { canonicalJson, compareUtf8, sha256Hex } from "./canonical.js";
 import type { ImportNoteDraft, NormalLog, NormalSpan, NormalizedRun } from "./trace-normalize.js";
-import type { ParsedAttribute } from "./otlp-structure.js";
+import type { ParsedAttribute, ParsedContext } from "./otlp-structure.js";
 import { ImportError } from "./run-import-error.js";
 import { ALLOWLIST, KNOWN_CONTENT_KEYS, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
 import {
@@ -28,8 +28,15 @@ export const MAX_RUN_LOG_BYTES = 128 * 1024 * 1024;
 const MAX_SCAN_CHARS = 65_536;
 
 export type EmitInput = { role: "spans" | "logs"; byteLength: number; sha256: string; enumNamesAccepted: number };
+// Upper bound of what the persisted line adds to an event's own serialization: the run id, schema version and
+// sequence number fields (86 bytes at most, up to 1,000,000 events) and the line feed, rounded up.
+export const EVENT_ENVELOPE_BYTES = 96;
+const CONTEXT_OVERHEAD_BYTES = 80;
+
 export type EmitOptions = {
   contentMode: ContentMode;
+  // Test hook; defaults to the 128 MiB limit of spec section 10.
+  maxOutputBytes?: number;
   inputs: EmitInput[];
   envelopeUnknownCount?: number;
   conventionVersion?: string;
@@ -134,9 +141,14 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
   // produce too much output fails before the output is built, not after.
   let producedEvents = 0;
   let producedBytes = 0;
+  const maxBytes = options.maxOutputBytes ?? MAX_RUN_LOG_BYTES;
+  const accountBytes = (bytes: number): void => {
+    producedBytes += bytes;
+    if (producedBytes > maxBytes) throw new ImportError("E_LIMIT", "emit", null, "OUTPUT_BYTES");
+  };
+  // Counts a complete persisted line (the event, its envelope and the line feed), never less than the truth.
   const account = (value: unknown): void => {
-    producedBytes += Buffer.byteLength(canonicalJson(value), "utf8") + 64;
-    if (producedBytes > MAX_RUN_LOG_BYTES) throw new ImportError("E_LIMIT", "emit", null, "OUTPUT_BYTES");
+    accountBytes(Buffer.byteLength(canonicalJson(value), "utf8") + EVENT_ENVELOPE_BYTES);
   };
   const make = (draft: Draft, countBytes = true): Draft => {
     producedEvents += 1;
@@ -147,18 +159,29 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
   const addNote = (code: ImportNoteDraft["code"], stepId: string | null, detail: Record<string, number | string> = {}) =>
     notes.push({ code, stepId, detail });
 
-  // Contexts.
+  // Contexts. A resource is shared by every scope under it: its payload is built, scanned, hashed and
+  // measured once, and the same object is used in every context that has it.
+  const resourceCache = new Map<ParsedContext["resource"], { payload: unknown; bytes: number }>();
+  const resourceOf = (resource: ParsedContext["resource"]) => {
+    const cached = resourceCache.get(resource);
+    if (cached !== undefined) return cached;
+    const payload = {
+      attributes: em.attributeList(resource.attributes, false).map((x) => x.entry),
+      schemaUrl: em.field(tagStr(resource.schemaUrl ?? ""), resource.schemaUrl === null || SCHEMA_URL.test(resource.schemaUrl)),
+      droppedAttributesCount: resource.droppedAttributesCount,
+      unknownFields: resource.unknownFields === null ? null : em.field(resource.unknownFields, false),
+    };
+    const entry = { payload, bytes: Buffer.byteLength(canonicalJson(payload), "utf8") };
+    resourceCache.set(resource, entry);
+    return entry;
+  };
   const contextPayloads = run.contexts.map(({ contextId, context }) => {
-    const resourceAttributes = em.attributeList(context.resource.attributes, false).map((x) => x.entry);
+    const resource = resourceOf(context.resource);
     const scopeAttributes = em.attributeList(context.scope.attributes, true).map((x) => x.entry);
     const schemaOf = (url: string | null) => em.field(tagStr(url ?? ""), url === null || SCHEMA_URL.test(url));
     const payload = {
       contextId,
-      resource: {
-        attributes: resourceAttributes, schemaUrl: schemaOf(context.resource.schemaUrl),
-        droppedAttributesCount: context.resource.droppedAttributesCount,
-        unknownFields: context.resource.unknownFields === null ? null : em.field(context.resource.unknownFields, false),
-      },
+      resource: resource.payload,
       scope: {
         name: em.field(tagStr(context.scope.name ?? ""), context.scope.name === null || SCOPE_NAME.test(context.scope.name)),
         version: em.field(tagStr(context.scope.version ?? ""), context.scope.version === null || SCOPE_VERSION.test(context.scope.version)),
@@ -168,7 +191,8 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
         unknownFields: context.scope.unknownFields === null ? null : em.field(context.scope.unknownFields, false),
       },
     };
-    account(payload);
+    // The context's own bytes plus the shared resource's bytes, without serializing the resource again.
+    accountBytes(Buffer.byteLength(canonicalJson(payload.scope), "utf8") + resource.bytes + CONTEXT_OVERHEAD_BYTES);
     if (context.unknownCount > 0) addNote("UNKNOWN_FIELD", null, { contextId, count: context.unknownCount });
     const effective = context.scope.schemaUrl ?? context.resource.schemaUrl;
     if (effective === null) addNote("SCHEMA_URL_ABSENT", null, { contextId });
@@ -383,7 +407,9 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
       limitsVersion: LIMITS_VERSION, artifactId, contexts: contextPayloads,
     },
   } as Draft;
-  make(started, false); // its contexts were accounted when they were built
+  // The header's contexts were accounted one by one; count its remaining fields here.
+  account({ type: "RunStarted", payload: { ...(started as { payload: object }).payload, contexts: [] } });
+  make(started, false);
 
   const drafts: Draft[] = [started];
   for (const d of body) drafts.push(d);

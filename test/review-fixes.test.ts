@@ -367,3 +367,111 @@ describe("spec deviations reported by the review", () => {
     for (const e of events) expect(canonicalJson(JSON.parse(canonicalJson(e)))).toBe(canonicalJson(e));
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------
+// Round 2 (review of commit 32743bd)
+// ---------------------------------------------------------------------------------------------------------
+import { readFileSync } from "node:fs";
+import { DEFAULT_STRUCTURE_LIMITS, DEFAULT_WORK_UNITS, parseLogsRequest, parseTraceRequest } from "../src/otlp-structure.js";
+import { isTaggedValue, taggedValueSchema } from "../src/run-events.js";
+import { parseStrictJson } from "../src/strict-json.js";
+
+describe("round 2, finding 1: a shared resource is not expanded once per scope", () => {
+  const spanN = (n: number) => span({ spanId: n.toString(16).padStart(16, "0") });
+  const sharedResourceFile = (scopes: number, elements = 100_000) => enc({
+    resourceSpans: [{
+      resource: { custom: Array.from({ length: elements }, () => 0) },
+      scopeSpans: Array.from({ length: scopes }, (_, i) => ({ scope: { name: `s${i}` }, spans: [spanN(i + 1)] })),
+    }],
+  });
+  const json = (bytes: Uint8Array) => parseStrictJson(bytes, "parse");
+
+  it("converts the resource once and shares it between its contexts", () => {
+    const parsed = parseTraceRequest(json(sharedResourceFile(30)));
+    expect(parsed.contexts.length).toBe(30);
+    expect(parsed.contexts.every((c) => c.resource === parsed.contexts[0].resource)).toBe(true);
+  });
+
+  it("imports 100,000 resource elements under 200 scopes in a moment, with work that does not grow with the scope count", () => {
+    const file = sharedResourceFile(200);
+    expect(file.length).toBeLessThan(400_000);
+    const started = performance.now();
+    const events = importTraceBytes({ spans: file });
+    expect(performance.now() - started).toBeLessThan(10_000);
+    expect(ofType(events, "StepStarted").length).toBe(200);
+  }, 60_000);
+
+  it("in FULL mode the repeated resource is refused by the output budget instead of being built", () => {
+    const file = sharedResourceFile(200);
+    const started = performance.now();
+    expect(codeOf(() => importTraceBytes({ spans: file, contentMode: "FULL" }))).toBe("E_LIMIT:OUTPUT_BYTES");
+    expect(performance.now() - started).toBeLessThan(20_000);
+  }, 60_000);
+
+  it("stops at an explicit work budget, shared across both input files", () => {
+    const attributes = Array.from({ length: 100 }, (_, i) => sattr(`k${i}`, "v"));
+    const spans = json(spansFile([span({ attributes })]));
+    const logs = json(logsFile([{ attributes }]));
+    expect(codeOf(() => parseTraceRequest(spans, "s", DEFAULT_STRUCTURE_LIMITS, { remaining: 50 }))).toBe("E_LIMIT:WORK_BUDGET");
+    const shared = { remaining: 150 };
+    parseTraceRequest(spans, "s", DEFAULT_STRUCTURE_LIMITS, shared);
+    expect(shared.remaining).toBe(50);
+    expect(codeOf(() => parseLogsRequest(logs, "s", DEFAULT_STRUCTURE_LIMITS, shared))).toBe("E_LIMIT:WORK_BUDGET");
+    expect(DEFAULT_WORK_UNITS).toBeGreaterThanOrEqual(2_000_000);
+  });
+});
+
+describe("round 2, finding 2: output accounting counts complete persisted lines", () => {
+  const spikeDir = new URL("../docs/development/spike-2026-10-13/traces/", import.meta.url);
+  const read = (name: string) => new Uint8Array(readFileSync(new URL(name, spikeDir)));
+  const shapes: Array<[string, () => Parameters<typeof importTraceBytes>[0]]> = [
+    ["spike trace a", () => ({ spans: read("trace-a.json") })],
+    ["spike trace d with logs", () => ({ spans: read("trace-d.json"), logs: read("trace-d.logs.json") })],
+    ["30 logs of 1,024 attributes", () => {
+      const attrs = Array.from({ length: 1024 }, (_, i) => sattr(`k${i}`, "v"));
+      return { spans: spansFile([span()]), logs: logsFile(Array.from({ length: 30 }, (_, i) => ({ traceId: T, spanId: S, timeUnixNano: String(i + 1), attributes: attrs }))) };
+    }],
+    ["many scopes", () => ({ spans: enc({ resourceSpans: [{ resource: { attributes: [sattr("a", "b")] }, scopeSpans: Array.from({ length: 50 }, (_, i) => ({ scope: { name: `s${i}` }, spans: [span({ spanId: (i + 1).toString(16).padStart(16, "0") })] })) }] }) })],
+  ];
+  for (const mode of ["HASH_ONLY", "FULL"] as const) {
+    it.each(shapes)(`${mode}: %s - the estimate is never below the real size and stays close to it`, (_name, make) => {
+      const request = { ...make(), contentMode: mode };
+      const events = importTraceBytes(request);
+      const actual = serializeRunLog(events).length;
+      expect(codeOf(() => importTraceBytes({ ...request, maxOutputBytes: actual - 1 }))).toBe("E_LIMIT:OUTPUT_BYTES");
+      expect(codeOf(() => importTraceBytes({ ...request, maxOutputBytes: actual + 20 * events.length + 4000 }))).toBe("OK");
+    }, 60_000);
+  }
+
+  it("refuses 327 logs of 1,024 attributes during emission, not after", () => {
+    const attrs = Array.from({ length: 1024 }, (_, i) => sattr(`k${i}`, "v"));
+    const logs = Array.from({ length: 327 }, (_, i) => ({ traceId: T, spanId: S, timeUnixNano: String(i + 1), attributes: attrs }));
+    expect(codeOf(() => importTraceBytes({ spans: spansFile([span()]), logs: logsFile(logs) }))).toBe("E_LIMIT:OUTPUT_BYTES");
+  }, 120_000);
+});
+
+describe("round 2: no recursion and maximum nesting", () => {
+  it("validates a tagged value nested 200,000 levels without overflowing the stack", () => {
+    let value: unknown = { t: "s", v: "leaf" };
+    for (let i = 0; i < 200_000; i += 1) value = { t: "a", v: [value] };
+    expect(isTaggedValue(value)).toBe(true);
+    expect(taggedValueSchema.safeParse(value).success).toBe(true);
+    let bad: unknown = { t: "i", v: "not a number" };
+    for (let i = 0; i < 200_000; i += 1) bad = { t: "k", v: [["key", bad]] };
+    expect(isTaggedValue(bad)).toBe(false);
+  });
+
+  it("round-trips unknown data nested to the deepest level the input rules allow, and refuses one level more", () => {
+    // The value starts at depth 8 inside a span (request, list, group, list, group, list, span), and the limit is 64.
+    const nest = (levels: number, kind: "array" | "object" | "mixed"): unknown => {
+      let value: unknown = "x";
+      for (let i = 0; i < levels; i += 1) value = kind === "array" || (kind === "mixed" && i % 2 === 0) ? [value] : { k: value };
+      return value;
+    };
+    for (const kind of ["array", "object", "mixed"] as const) {
+      const events = importTraceBytes({ spans: spansFile([span({ weird: nest(57, kind) })]), contentMode: "FULL" });
+      expect(parseRunLog(serializeRunLog(events)).length, kind).toBe(events.length);
+      expect(codeOf(() => importTraceBytes({ spans: spansFile([span({ weird: nest(58, kind) })]), contentMode: "FULL" })), kind).toBe("E_LIMIT:");
+    }
+  });
+});

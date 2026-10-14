@@ -94,9 +94,11 @@ export const windowsChecks: PlatformChecks = {
       }
     }
     const acl = powershell(
-      "$a = Get-Acl -LiteralPath $env:DS_PATH; " +
-      "$s = @($a.Access | ForEach-Object { $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value }); " +
-      "@{ sids = $s } | ConvertTo-Json -Compress",
+      // .NET is used directly (not Get-Acl): it does not depend on the PowerShell security module, which
+      // restricted environments may fail to load, and it reports SIDs without a name lookup.
+      "$a = [System.IO.Directory]::GetAccessControl($env:DS_PATH); " +
+      "$r = $a.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]); " +
+      "@{ sids = @($r | ForEach-Object { $_.IdentityReference.Value }) } | ConvertTo-Json -Compress",
       { DS_PATH: dir },
     );
     evaluateFolderAcl(acl, info.user);

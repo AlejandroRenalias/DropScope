@@ -19,20 +19,52 @@ export type TaggedValue =
   | { t: "a"; v: TaggedValue[] }
   | { t: "k"; v: Array<[string, TaggedValue]> };
 
-export const taggedValueSchema: z.ZodType<TaggedValue> = z.lazy(() =>
-  z.discriminatedUnion("t", [
-    z.object({ t: z.literal("s"), v: z.string() }).strict(),
-    z.object({ t: z.literal("i"), v: z.string().regex(DECIMAL_INTEGER) }).strict(),
-    z.object({
-      t: z.literal("d"),
-      v: z.union([z.number().finite(), z.enum(["NaN", "Infinity", "-Infinity"])]),
-    }).strict(),
-    z.object({ t: z.literal("o"), v: z.boolean() }).strict(),
-    z.object({ t: z.literal("b"), v: z.string().regex(BASE64_PADDED) }).strict(),
-    z.object({ t: z.literal("a"), v: z.array(taggedValueSchema) }).strict(),
-    z.object({ t: z.literal("k"), v: z.array(z.tuple([z.string(), taggedValueSchema])) }).strict(),
-  ]),
-);
+// Validation walks the value with an explicit stack: no stage recurses over untrusted structure (ADR-027
+// decision 8). The rules are those of section 3.1: exactly the keys t and v, and a payload that fits the tag.
+export function isTaggedValue(root: unknown): root is TaggedValue {
+  const stack: unknown[] = [root];
+  while (stack.length > 0) {
+    const value = stack.pop();
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const keys = Object.keys(value);
+    if (keys.length !== 2 || !Object.hasOwn(value, "t") || !Object.hasOwn(value, "v")) return false;
+    const tag = (value as { t: unknown }).t;
+    const inner = (value as { v: unknown }).v;
+    switch (tag) {
+      case "s":
+        if (typeof inner !== "string") return false;
+        break;
+      case "i":
+        if (typeof inner !== "string" || !DECIMAL_INTEGER.test(inner)) return false;
+        break;
+      case "d":
+        if (!((typeof inner === "number" && Number.isFinite(inner)) || inner === "NaN" || inner === "Infinity" || inner === "-Infinity")) return false;
+        break;
+      case "o":
+        if (typeof inner !== "boolean") return false;
+        break;
+      case "b":
+        if (typeof inner !== "string" || !BASE64_PADDED.test(inner)) return false;
+        break;
+      case "a":
+        if (!Array.isArray(inner)) return false;
+        for (const element of inner) stack.push(element);
+        break;
+      case "k":
+        if (!Array.isArray(inner)) return false;
+        for (const pair of inner) {
+          if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== "string") return false;
+          stack.push(pair[1]);
+        }
+        break;
+      default:
+        return false;
+    }
+  }
+  return true;
+}
+
+export const taggedValueSchema: z.ZodType<TaggedValue> = z.custom<TaggedValue>(isTaggedValue, { message: "invalid tagged value" });
 
 // Section 3.3: the field form. Verbatim or withheld, never both.
 export const fieldSchema = z.union([

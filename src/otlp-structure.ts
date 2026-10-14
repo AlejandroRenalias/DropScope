@@ -16,10 +16,15 @@ import type { JsonNumber, JsonObject, JsonValue } from "./strict-json.js";
 
 export type ParsedAttribute = { ordinal: number; key: string; value: TaggedValue };
 
+// A resource is read once per resource group and shared (the same object) by every context under it, so a
+// large resource is never converted, hashed or scanned again for each scope.
+export type ParsedResource = {
+  attributes: ParsedAttribute[]; schemaUrl: string | null; droppedAttributesCount: number; unknownFields: TaggedValue | null;
+  unknownCount: number;
+};
+
 export type ParsedContext = {
-  resource: {
-    attributes: ParsedAttribute[]; schemaUrl: string | null; droppedAttributesCount: number; unknownFields: TaggedValue | null;
-  };
+  resource: ParsedResource;
   scope: {
     name: string | null; version: string | null; attributes: ParsedAttribute[]; schemaUrl: string | null;
     droppedAttributesCount: number; unknownFields: TaggedValue | null;
@@ -27,6 +32,11 @@ export type ParsedContext = {
   // Unknown properties on the resource and scope objects (kept in their unknownFields).
   unknownCount: number;
 };
+
+// Work budget (spec section 10): every tagged value built from input counts one unit, across all files of
+// one import. The input node limit bounds the input; this bounds what is built from it.
+export type WorkBudget = { remaining: number };
+export const DEFAULT_WORK_UNITS = 4_000_000;
 
 export type ParsedSpanEvent = {
   ordinal: number;
@@ -121,7 +131,7 @@ const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$
 class Structure {
   enumNamesAccepted = 0;
   envelopeUnknownCount = 0;
-  constructor(readonly stage: string, readonly limits: StructureLimits) {}
+  constructor(readonly stage: string, readonly limits: StructureLimits, readonly budget: WorkBudget) {}
 
   fail(code: ConstructorParameters<typeof ImportError>[0]): never {
     throw new ImportError(code, this.stage);
@@ -244,6 +254,8 @@ class Structure {
       return this.anyStep(value, frame);
     };
     const begin = (value: JsonValue): void => {
+      this.budget.remaining -= 1;
+      if (this.budget.remaining < 0) throw new ImportError("E_LIMIT", this.stage, null, "WORK_BUDGET");
       const r = step(value);
       if ("tag" in r && "items" in r) stack.push(r as Frame);
       else accept(r as TaggedValue);
@@ -359,18 +371,23 @@ class Structure {
 const RESOURCE_KNOWN = ["attributes", "droppedAttributesCount"] as const;
 const SCOPE_KNOWN = ["name", "version", "attributes", "droppedAttributesCount"] as const;
 
-function readContext(s: Structure, group: JsonObject, scopeGroup: JsonObject): ParsedContext {
+function readResource(s: Structure, group: JsonObject): ParsedResource {
   const resource = s.object(group.get("resource"));
+  const unknown = resource ? s.unknown(resource, RESOURCE_KNOWN) : { tagged: null, count: 0 };
+  return {
+    attributes: s.attributes(resource?.get("attributes")),
+    schemaUrl: s.string(group.get("schemaUrl")),
+    droppedAttributesCount: s.uint32(resource?.get("droppedAttributesCount")),
+    unknownFields: unknown.tagged,
+    unknownCount: unknown.count,
+  };
+}
+
+function readContext(s: Structure, resource: ParsedResource, scopeGroup: JsonObject): ParsedContext {
   const scope = s.object(scopeGroup.get("scope"));
-  const resourceUnknown = resource ? s.unknown(resource, RESOURCE_KNOWN) : { tagged: null, count: 0 };
   const scopeUnknown = scope ? s.unknown(scope, SCOPE_KNOWN) : { tagged: null, count: 0 };
   return {
-    resource: {
-      attributes: s.attributes(resource?.get("attributes")),
-      schemaUrl: s.string(group.get("schemaUrl")),
-      droppedAttributesCount: s.uint32(resource?.get("droppedAttributesCount")),
-      unknownFields: resourceUnknown.tagged,
-    },
+    resource,
     scope: {
       name: s.string(scope?.get("name")),
       version: s.string(scope?.get("version")),
@@ -379,7 +396,7 @@ function readContext(s: Structure, group: JsonObject, scopeGroup: JsonObject): P
       droppedAttributesCount: s.uint32(scope?.get("droppedAttributesCount")),
       unknownFields: scopeUnknown.tagged,
     },
-    unknownCount: resourceUnknown.count + scopeUnknown.count,
+    unknownCount: resource.unknownCount + scopeUnknown.count,
   };
 }
 
@@ -393,6 +410,7 @@ function groups(s: Structure, request: JsonValue, outer: string, inner: string, 
     const group = s.object(rawGroup);
     if (!group) return s.fail("E_SYNTAX");
     s.countEnvelopeUnknown(group, ["resource", inner, "schemaUrl"]);
+    const resource = readResource(s, group);
     const scopeGroups = s.array(group.get(inner), s.limits.maxScopeGroups);
     for (const rawScopeGroup of scopeGroups) {
       scopeGroupTotal += 1;
@@ -401,7 +419,7 @@ function groups(s: Structure, request: JsonValue, outer: string, inner: string, 
       if (!scopeGroup) return s.fail("E_SYNTAX");
       s.countEnvelopeUnknown(scopeGroup, ["scope", leaf, "schemaUrl"]);
       const contextIndex = contexts.length;
-      contexts.push(readContext(s, group, scopeGroup));
+      contexts.push(readContext(s, resource, scopeGroup));
       const maxLeaves = leaf === "spans" ? s.limits.maxSpans : s.limits.maxLogRecords;
       for (const item of s.array(scopeGroup.get(leaf), maxLeaves)) onLeaf(contextIndex, item);
     }
@@ -531,8 +549,11 @@ function readLog(s: Structure, contextIndex: number, raw: JsonValue): ParsedLogR
   };
 }
 
-export function parseTraceRequest(json: JsonValue, stage = "structure", limits: StructureLimits = DEFAULT_STRUCTURE_LIMITS): ParsedTraceInput {
-  const s = new Structure(stage, limits);
+export function parseTraceRequest(
+  json: JsonValue, stage = "structure", limits: StructureLimits = DEFAULT_STRUCTURE_LIMITS,
+  budget: WorkBudget = { remaining: DEFAULT_WORK_UNITS },
+): ParsedTraceInput {
+  const s = new Structure(stage, limits, budget);
   const contexts: ParsedContext[] = [];
   const spans: ParsedSpan[] = [];
   groups(s, json, "resourceSpans", "scopeSpans", "spans", (contextIndex, item) => {
@@ -542,8 +563,11 @@ export function parseTraceRequest(json: JsonValue, stage = "structure", limits: 
   return { contexts, spans, stats: { enumNamesAccepted: s.enumNamesAccepted, envelopeUnknownCount: s.envelopeUnknownCount } };
 }
 
-export function parseLogsRequest(json: JsonValue, stage = "structure", limits: StructureLimits = DEFAULT_STRUCTURE_LIMITS): ParsedLogInput {
-  const s = new Structure(stage, limits);
+export function parseLogsRequest(
+  json: JsonValue, stage = "structure", limits: StructureLimits = DEFAULT_STRUCTURE_LIMITS,
+  budget: WorkBudget = { remaining: DEFAULT_WORK_UNITS },
+): ParsedLogInput {
+  const s = new Structure(stage, limits, budget);
   const contexts: ParsedContext[] = [];
   const logs: ParsedLogRecord[] = [];
   groups(s, json, "resourceLogs", "scopeLogs", "logRecords", (contextIndex, item) => {

@@ -88,10 +88,19 @@ export function normalizeRun(input: NormalizeInput): NormalizedRun {
   // small however large the shared resource is.
   const contextByKey = new Map<string, ParsedContext>();
   const keyOfContext = new Map<ParsedContext, string>();
+  const keyOfResource = new Map<ParsedContext["resource"], string>();
+  const resourceKeyOf = (resource: ParsedContext["resource"]): string => {
+    const known = keyOfResource.get(resource);
+    if (known !== undefined) return known;
+    const key = sha256Hex(canonicalJson(resource));
+    keyOfResource.set(resource, key);
+    return key;
+  };
   const contextKeyOf = (context: ParsedContext): string => {
     const known = keyOfContext.get(context);
     if (known !== undefined) return known;
-    const key = sha256Hex(canonicalJson(context));
+    // The (possibly large) resource is shared by every scope under it, so only its hash is combined here.
+    const key = sha256Hex(canonicalJson({ resource: resourceKeyOf(context.resource), scope: context.scope, unknownCount: context.unknownCount }));
     keyOfContext.set(context, key);
     if (!contextByKey.has(key)) contextByKey.set(key, context);
     return key;

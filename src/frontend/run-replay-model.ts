@@ -115,7 +115,7 @@ function stepTitle(kind: StepKind, label: string, attributes: Array<{ key: Field
   return rest ? `${KIND_LABEL[kind]}: ${rest}` : KIND_LABEL[kind];
 }
 
-const NOTE_TEXT: Record<string, (d: Record<string, unknown>) => string> = {
+const NOTE_TEXT: Record<string, (d: Record<string, unknown>, mode?: "HASH_ONLY" | "FULL") => string> = {
   OTHER_TRACE_EXCLUDED: (d) => `Left out ${d.spans} span(s) and ${d.logs} log(s) that belong to other traces.`,
   DUPLICATE_SPAN_COLLAPSED: (d) => `Merged ${d.count} identical duplicate span(s).`,
   DUPLICATE_LOG_COLLAPSED: (d) => `Merged ${d.count} identical duplicate log record(s).`,
@@ -134,12 +134,15 @@ const NOTE_TEXT: Record<string, (d: Record<string, unknown>) => string> = {
   SCHEMA_URL_ABSENT: () => "The trace does not say which convention version it follows.",
   SCHEMA_URL_MISMATCH: () => "The trace follows a different convention version than the importer expects.",
   WITHHELD_ATTRIBUTE: (d) => `${d.count} attribute(s) were withheld (${formatBytes(Number(d.bytes))} in all); only fingerprints were kept.`,
-  SECRET_PATTERN_COUNT: (d) => `Secret-like text was found in content (${Object.entries(d).map(([k, v]) => `${k}: ${v}`).join(", ")}). The text itself was not kept.`,
+  SECRET_PATTERN_COUNT: (d, mode) => `Secret-like text was found in content (${Object.entries(d).map(([k, v]) => `${k}: ${v}`).join(", ")}). ${
+    mode === "HASH_ONLY" ? "The text itself was not kept."
+      : mode === "FULL" ? "This run stores content, so the text itself was kept in the run file."
+        : "Whether the text itself was kept depends on the run's content mode."}`,
 };
 
 /** The plain-language sentence for an importer note. */
-export function describeNote(code: string, detail: Record<string, unknown>): string {
-  return NOTE_TEXT[code]?.(detail) ?? humanize(code);
+export function describeNote(code: string, detail: Record<string, unknown>, mode?: "HASH_ONLY" | "FULL"): string {
+  return NOTE_TEXT[code]?.(detail, mode) ?? humanize(code);
 }
 
 function humanize(code: string): string {
@@ -226,7 +229,7 @@ export function buildRunModel(history: unknown): RunModel {
   for (const event of events) {
     if (event.type !== "ImportNote") continue;
     const detail = event.payload.detail as Record<string, unknown>;
-    const text = describeNote(event.payload.code, detail);
+    const text = describeNote(event.payload.code, detail, header.payload.contentMode);
     notes.push({ sequence: event.sequenceNumber, code: event.payload.code, title: humanize(event.payload.code), text, stepId: event.payload.stepId });
   }
 

@@ -82,8 +82,9 @@ function parseFlags(args: string[], valued: string[], boolean: string[]): { posi
 }
 
 export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): number {
-  const checks = options.checks ?? defaultChecks();
   try {
+    // Inside the try block: on a platform other than Windows this refuses with a normal error message.
+    const checks = options.checks ?? defaultChecks();
     const [command, ...rest] = argv;
     if (command === "import") {
       const { positional, values, flags } = parseFlags(rest, ["--logs", "--trace"], ["--full"]);
@@ -118,6 +119,11 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       if (atText !== undefined && !/^[0-9]{1,9}$/.test(atText)) throw new UsageError();
       const replay = createReplay(readRunLog(positional[0], checks));
       const at = atText === undefined ? replay.length : Number(atText);
+      if (at < 1 || at > replay.length) {
+        io.err(`error: --at must be a number from 1 to ${replay.length} (the run has ${replay.length} events).
+`);
+        return 2;
+      }
       const event = replay.events[at - 1];
       io.out(`${JSON.stringify({ at, of: replay.length, event: event?.type ?? null, state: replay.stateAt(at) }, null, 2)}\n`);
       return 0;

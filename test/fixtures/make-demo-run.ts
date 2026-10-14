@@ -3,7 +3,7 @@
 // It writes the readable source trace (test/fixtures/demo-run-trace.json) and the run log the browser loads
 // (src/frontend/assets/demo-run.runlog.jsonl), produced by the real importer in the default HASH_ONLY mode, and the
 // same run with content stored (demo-run-full.runlog.jsonl, importer mode FULL), used by the claim check.
-// All content is invented. test/demo-run.test.ts fails if the committed run log drifts from this source.
+// All content is invented. test/run-replay-model.test.ts fails if the committed run log drifts from this source.
 import { writeFileSync } from "node:fs";
 import { importTraceBytes } from "../../src/run-import.js";
 import { serializeRunLog } from "../../src/run-store.js";

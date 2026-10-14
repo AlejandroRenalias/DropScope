@@ -230,7 +230,7 @@ describe("run diff: the demo variant", () => {
       "  Time: 9.1 s in run A, 9.1 s in run B (same)",
       "Notes:",
       "  - Steps are matched by what they are (kind, operation, model name, and tool or agent name, using the full recorded values) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.",
-      "  - Not compared: how long each step took, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.",
+      "  - Not compared: how long each step took, the span names the trace gave the steps, whether a step's status was unset or ok (only failed or not is compared), links between spans, trace state, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.",
       "  - Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference.",
       "  - Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.",
     ]);
@@ -242,7 +242,7 @@ describe("run diff: the demo variant", () => {
       "Run A: A",
       "Run B: B",
       "",
-      "Result: the runs match step for step in step names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).",
+      "Result: the runs match step for step in step kind, operation, model, tool and agent names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).",
       "Totals:",
       "  Steps: 10 in run A, 10 in run B (same)",
       "  Model calls: 4 in run A, 4 in run B (same)",
@@ -253,7 +253,7 @@ describe("run diff: the demo variant", () => {
       "  Time: 9.1 s in run A, 9.1 s in run B (same)",
       "Notes:",
       "  - Steps are matched by what they are (kind, operation, model name, and tool or agent name, using the full recorded values) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.",
-      "  - Not compared: how long each step took, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.",
+      "  - Not compared: how long each step took, the span names the trace gave the steps, whether a step's status was unset or ok (only failed or not is compared), links between spans, trace state, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.",
       "  - Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference.",
       "  - Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.",
     ]);
@@ -350,7 +350,7 @@ describe("run diff: review round 1", () => {
   it("says in the report what was and was not compared", () => {
     const r = diffRuns(model([tool(0, "a")]), model([tool(0, "a")]));
     const text = diffReportLines(r, { a: "x", b: "y" }).join("\n");
-    expect(text).toContain("step names, nesting");
+    expect(text).toContain("step kind, operation, model, tool and agent names, nesting");
     expect(text).toContain("Not compared:");
   });
 

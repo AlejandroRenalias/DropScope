@@ -11,7 +11,7 @@ export const DIFF_NOTE =
   "Steps are matched by what they are (kind, operation, model name, and tool or agent name, using the full recorded values) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.";
 
 export const NOT_COMPARED_NOTE =
-  "Not compared: how long each step took, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.";
+  "Not compared: how long each step took, the span names the trace gave the steps, whether a step's status was unset or ok (only failed or not is compared), links between spans, trace state, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.";
 
 const stepName = (item: DiffItem): string => (item.a ?? item.b)?.title ?? "a step";
 
@@ -88,7 +88,7 @@ export function diffCaveats(result: DiffResult): string[] {
 /** The verdict sentence of a diff. Shared by the command line and the screen so both say the same thing. */
 export function diffVerdictLine(result: DiffResult): string {
   if (result.tooLarge) return "Result: one of the runs has too many steps to compare here, so nothing was compared.";
-  if (result.identical) return "Result: the runs match step for step in step names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).";
+  if (result.identical) return "Result: the runs match step for step in step kind, operation, model, tool and agent names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).";
   return `Result: the runs first differ at step ${group(result.firstIndex + 1)} of the aligned list.`;
 }
 

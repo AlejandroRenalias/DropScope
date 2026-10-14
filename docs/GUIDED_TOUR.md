@@ -48,7 +48,7 @@ Imported run 5b8efff798038103d269b633813fc60c
 What to notice:
 
 - **content mode: HASH_ONLY** means the saved file keeps only the size and a fingerprint of every prompt and answer, not the text.
-- **notes: SECRET_PATTERN_COUNT x1** means the importer spotted one secret-like piece of text (an invented email address in a prompt) and did not keep it. Anything the importer drops or cannot map is itemized in notes, never silently lost.
+- **notes: SECRET_PATTERN_COUNT x1** means the importer spotted one secret-like piece of text (an invented email address in a prompt) and did not keep it. The importer itemizes most things it drops or cannot map in notes. One known gap: a resource or scope group in the trace that holds no spans (and no logs) is left out without a note.
 - Run the same command again and it says `Already imported run ...`: the same trace always gives the same file, and the file is never overwritten.
 - Add `--full` to keep the content. You need that for the claim check in step 4.
 - The file is saved outside the repository. Run files stay on your computer: do not share them and do not commit them.
@@ -157,7 +157,7 @@ Totals:
 
 Now press **Compare with the demo run kept with content** instead: it says the runs match step for step, even though one file kept its content and the other kept only fingerprints. That works because both are compared by fingerprint.
 
-Steps are matched by what they are (kind, operation, model, tool or agent name) in order, never by id, because ids differ between runs. A difference means the recordings differ. It does not mean either run is right.
+Steps are matched by what they are (kind, operation, model, tool or agent name) in order, never by id, because ids differ between runs. A difference means the recordings differ in what is compared (not the span names, ok-versus-unset status, links or time; the command lists these under "Not compared"). It does not mean either run is right.
 
 ## Where to go from here
 

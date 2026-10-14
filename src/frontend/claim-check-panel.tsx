@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { CLAIM_LIMITS, checkClaims, decodeClaimBytes, parseClaimText } from "../claim-check.js";
 import { CLAIM_NOTE, VERDICT_LABEL, claimCaveats, claimSummary, describeClaimResult } from "../claim-report.js";
 import type { RunModel } from "./run-replay-model.js";
@@ -33,7 +33,10 @@ export function ClaimCheckPanel({ model, setPosition }: { model: RunModel; setPo
   const titleOf = (stepId: string): string => model.stepsById.get(stepId)?.title ?? "a step";
   const stored = model.contentMode === "FULL";
 
+  // Each choice gets a number; a claims file that finishes reading after the box was edited, cleared or refilled is dropped.
+  const choice = useRef(0);
   const openFile = async (file: File) => {
+    const mine = ++choice.current;
     setFileError(null);
     if (file.size > CLAIM_LIMITS.maxBytes) {
       setFileError("This claims file is larger than 1 MiB.");
@@ -41,9 +44,10 @@ export function ClaimCheckPanel({ model, setPosition }: { model: RunModel; setPo
     }
     try {
       // Show the file's own text in the box so it can be edited. Invalid UTF-8 is refused, not repaired.
-      setText(decodeClaimBytes(new Uint8Array(await file.arrayBuffer())));
+      const decoded = decodeClaimBytes(new Uint8Array(await file.arrayBuffer()));
+      if (mine === choice.current) setText(decoded);
     } catch {
-      setFileError("This claims file is not valid UTF-8 text.");
+      if (mine === choice.current) setFileError("This claims file is not valid UTF-8 text.");
     }
   };
 
@@ -54,11 +58,11 @@ export function ClaimCheckPanel({ model, setPosition }: { model: RunModel; setPo
 
     <div className="cc-form">
       <label htmlFor={`${uid}-claims`}>Claims (JSON)</label>
-      <textarea id={`${uid}-claims`} rows={9} spellCheck={false} autoComplete="off" value={text} onChange={(e) => { setText(e.currentTarget.value); setFileError(null); }} placeholder={SYNTAX_HELP.replace(/ +\/\/.*$/gm, "")} />
+      <textarea id={`${uid}-claims`} rows={9} spellCheck={false} autoComplete="off" value={text} onChange={(e) => { choice.current += 1; setText(e.currentTarget.value); setFileError(null); }} placeholder={SYNTAX_HELP.replace(/ +\/\/.*$/gm, "")} />
       <div className="bp-actions">
-        <button type="button" className="quiet-button" onClick={() => { setText(EXAMPLE_CLAIMS); setFileError(null); }}>Try an example (3 claims)</button>
+        <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setText(EXAMPLE_CLAIMS); setFileError(null); }}>Try an example (3 claims)</button>
         <label className="cc-file-button">Open a claims file<input type="file" accept=".json,application/json,text/plain" onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) void openFile(file); }} /></label>
-        <button type="button" className="quiet-button" onClick={() => { setText(""); setFileError(null); }} disabled={!touched}>Clear claims</button>
+        <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setText(""); setFileError(null); }} disabled={!touched}>Clear claims</button>
       </div>
       <details className="bp-caveats"><summary>How to write a claim</summary>
         <p>Each claim says what was claimed, which step holds the evidence, and the exact texts that must appear in it. The evidence is the recorded result of a tool (<code>"tool"</code>), or any step by its id (<code>"stepId"</code>, with <code>"field"</code>).</p>

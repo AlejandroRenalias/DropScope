@@ -63,7 +63,7 @@ export type DiffResult = {
 };
 
 type Fingerprints = Map<string, string>;
-type StepFacts = { signature: string; message: string; content: Fingerprints; logRecords: string[] };
+type StepFacts = { signature: string; tool: string; message: string; content: Fingerprints; logRecords: string[] };
 type FieldLike = { v: unknown } | { w: { n: number; h: string } };
 
 const fingerprintOf = (field: FieldLike): string => {
@@ -99,7 +99,7 @@ function factsByStep(model: RunModel): Map<string, StepFacts> {
         p.kind, p.label, p.operationName === null ? "-" : fingerprintOf(p.operationName),
         attributeFingerprint(p.attributes, "gen_ai.tool.name"), attributeFingerprint(p.attributes, "gen_ai.agent.name"),
       ]);
-      facts.set(p.stepId, { signature, message: "", content: new Map(), logRecords: [] });
+      facts.set(p.stepId, { signature, tool: attributeFingerprint(p.attributes, "gen_ai.tool.name"), message: "", content: new Map(), logRecords: [] });
     } else if (event.type === "StepEnded") {
       const f = facts.get(event.payload.stepId);
       if (f) f.message = fingerprintOf(event.payload.statusMessage);
@@ -163,10 +163,6 @@ function totalsOf(model: RunModel): RunTotals {
   };
 }
 
-const emptyTotals = (): RunTotals => ({
-  steps: 0, modelCalls: 0, toolCalls: 0, failedSteps: 0, inputTokens: 0n, outputTokens: 0n, durationNs: 0n, stepsMissingTokens: 0,
-});
-
 function compareSteps(a: StepView, b: StepView, fa: StepFacts, fb: StepFacts, sameParent: boolean): DiffChange[] {
   const changes: DiffChange[] = [];
   if (!sameParent) changes.push({ code: "PARENT", a: "", b: "", fields: [] });
@@ -217,7 +213,7 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   if (runA.steps.length > DIFF_LIMITS.maxSteps || runB.steps.length > DIFF_LIMITS.maxSteps) {
     return {
       tooLarge: true, fullyAligned: false, items: [], firstIndex: -1, first: null, counts: { same: 0, changed: 0, onlyA: 0, onlyB: 0 },
-      totals: { a: emptyTotals(), b: emptyTotals() }, tools: [], contentComparable: false, unverifiedNesting: 0, identical: false,
+      totals, tools: [], contentComparable: false, unverifiedNesting: 0, identical: false,
     };
   }
   const sa = runA.steps;
@@ -273,19 +269,23 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   for (const item of items) counts[item.status] += 1;
   const firstIndex = items.findIndex((item) => item.status !== "same");
 
-  const toolCounts = new Map<string, [number, number]>();
-  const bump = (steps: StepView[], slot: 0 | 1): void => {
+  // Tool use is counted by the recorded tool name (its fingerprint), never by the display title: titles are cut
+  // short and change with the content mode, so they would merge different tools and split one tool in two.
+  const toolCounts = new Map<string, { title: string; a: number; b: number }>();
+  const bump = (steps: StepView[], facts: Map<string, StepFacts>, slot: "a" | "b"): void => {
     for (const s of steps) {
       if (s.kind !== "TOOL_CALL") continue;
-      const entry = toolCounts.get(s.title) ?? [0, 0];
+      const identity = (facts.get(s.stepId) as StepFacts).tool;
+      const key = identity === "-" ? `title:${s.title}` : `tool:${identity}`;
+      const entry = toolCounts.get(key) ?? { title: s.title, a: 0, b: 0 };
       entry[slot] += 1;
-      toolCounts.set(s.title, entry);
+      toolCounts.set(key, entry);
     }
   };
-  bump(sa, 0);
-  bump(sb, 1);
-  const tools = [...toolCounts.entries()].filter(([, [x, y]]) => x !== y)
-    .map(([tool, [x, y]]) => ({ tool, a: x, b: y })).sort((p, q) => (p.tool < q.tool ? -1 : p.tool > q.tool ? 1 : 0));
+  bump(sa, factsA, "a");
+  bump(sb, factsB, "b");
+  const tools = [...toolCounts.values()].filter((e) => e.a !== e.b)
+    .map((e) => ({ tool: e.title, a: e.a, b: e.b })).sort((p, q) => (p.tool < q.tool ? -1 : p.tool > q.tool ? 1 : p.a - q.a || p.b - q.b));
 
   const identical = firstIndex === -1;
   return {

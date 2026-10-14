@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { group, formatSeconds } from "../budget-report.js";
 import { diffRuns, type DiffChange, type DiffItem, type RunTotals } from "../run-diff.js";
 import { changeText, diffCaveats, diffCountsLine, diffVerdictLine } from "../run-diff-report.js";
@@ -82,19 +82,24 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
   const toggle = (start: number) => setOpen((current) => { const next = new Set(current); if (next.has(start)) next.delete(start); else next.add(start); return next; });
   const runA = sourceLabel.replace(/\.$/, "");
 
+  // Each choice of run B gets a number; a file that finishes reading after a newer choice is dropped.
+  const choice = useRef(0);
   const openFile = async (file: File) => {
+    const mine = ++choice.current;
     setError(null);
     if (file.size > MAX_RUN_LOG_BYTES) {
       setError("This file is larger than the 128 MiB limit for run files.");
       return;
     }
     try {
-      setOther({ model: loadRunFromBytes(new Uint8Array(await file.arrayBuffer())), label: `Run file ${file.name}` }); setOpen(new Set());
+      const model = loadRunFromBytes(new Uint8Array(await file.arrayBuffer()));
+      if (mine !== choice.current) return;
+      setOther({ model, label: `Run file ${file.name}` }); setOpen(new Set());
     } catch (caught) {
-      setError(explainLoadError(caught));
+      if (mine === choice.current) setError(explainLoadError(caught));
     }
   };
-  const useDemo = (text: string, label: string) => { setError(null); setOpen(new Set()); setOther({ model: loadRunFromBytes(encode(text)), label }); };
+  const useDemo = (text: string, label: string) => { choice.current += 1; setError(null); setOpen(new Set()); setOther({ model: loadRunFromBytes(encode(text)), label }); };
 
   return <section className="panel-card cc rd" aria-labelledby={`${uid}-title`}>
     <header className="surface-heading"><div><span className="eyebrow">Where do two runs first differ?</span><h2 id={`${uid}-title`}>Compare with another run</h2></div><span className="badge cc-badge">Compares two recordings</span></header>
@@ -104,7 +109,7 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
       <button type="button" className="quiet-button" onClick={() => useDemo(demoRunVariantText, "Demo variant (second refund fails)")}>Compare with the demo variant</button>
       <button type="button" className="quiet-button" onClick={() => useDemo(demoRunFullText, "Demo run with content stored")}>Compare with the demo run kept with content</button>
       <label className="cc-file-button">Open a run file as run B<input type="file" accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain" onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) void openFile(file); }} /></label>
-      <button type="button" className="quiet-button" onClick={() => { setOther(null); setError(null); }} disabled={!other}>Clear run B</button>
+      <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setOther(null); setError(null); }} disabled={!other}>Clear run B</button>
     </div>
 
     {error && <p className="inline-error" role="alert">{error}</p>}

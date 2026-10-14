@@ -4,13 +4,18 @@ import { formatSeconds, group } from "./budget-report.js";
 import type { DiffChange, DiffItem, DiffResult, RunTotals } from "./run-diff.js";
 
 export const DIFF_NOTE =
-  "Steps are matched by what they are (kind and tool or agent name) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.";
+  "Steps are matched by what they are (kind, operation, and tool or agent name, using the full recorded names) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.";
+
+export const NOT_COMPARED_NOTE =
+  "Not compared: how long each step took, step events, log record times and severities, attributes other than the names above, and content of log records that belong to no step.";
 
 const stepName = (item: DiffItem): string => (item.a ?? item.b)?.title ?? "a step";
 
 function changeText(change: DiffChange): string {
   switch (change.code) {
     case "STATUS": return `it ${change.a === "failed" ? "failed" : "succeeded"} in run A but ${change.b === "failed" ? "failed" : "succeeded"} in run B`;
+    case "PARENT": return "it sits under a different step than in run A";
+    case "STATUS_MESSAGE": return "its status or failure message differs";
     case "INPUT_TOKENS": return `input tokens: ${change.a} in run A, ${change.b} in run B`;
     case "OUTPUT_TOKENS": return `output tokens: ${change.a} in run A, ${change.b} in run B`;
     case "CONTENT": return `recorded content differs (${change.fields.join(", ")})`;
@@ -66,12 +71,12 @@ export function totalsLines(a: RunTotals, b: RunTotals): string[] {
 }
 
 export function diffCaveats(result: DiffResult): string[] {
-  const notes = [DIFF_NOTE, "Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference."];
+  const notes = [DIFF_NOTE, NOT_COMPARED_NOTE, "Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference."];
   if (!result.fullyAligned) notes.push("The runs were too different to line up in full, so everything between their shared start and shared end is listed as removed and added.");
   if (result.contentComparable) notes.push("Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.");
   else notes.push("Neither run recorded any step content, so only structure, outcome and token counts were compared.");
   const missing = result.totals.a.stepsMissingTokens + result.totals.b.stepsMissingTokens;
-  if (missing > 0) notes.push(`${group(missing)} model call(s) had no token count and are counted as zero.`);
+  if (missing > 0) notes.push(`${group(missing)} model call(s) were missing an input or an output token count; a missing figure is counted as zero in the totals.`);
   return notes;
 }
 
@@ -82,7 +87,7 @@ export function diffReportLines(result: DiffResult, ids: { a: string; b: string 
     return lines;
   }
   if (result.identical) {
-    lines.push("Result: the runs match step for step in structure, outcome, token counts and recorded content.");
+    lines.push("Result: the runs match step for step in step names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).");
   } else {
     const first = result.first as DiffItem;
     const stepNumber = result.firstIndex + 1;

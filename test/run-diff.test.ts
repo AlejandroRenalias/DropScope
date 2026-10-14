@@ -5,6 +5,7 @@ import { DIFF_LIMITS, diffRuns } from "../src/run-diff.js";
 import { diffReportLines } from "../src/run-diff-report.js";
 import { importTraceBytes } from "../src/run-import.js";
 import { parseRunLog } from "../src/run-log-format.js";
+import { serializeRunLog } from "../src/run-store.js";
 
 // ---- building runs through the real importer ----
 type Step = {
@@ -177,5 +178,107 @@ describe("run diff: the built-in demo runs", () => {
     expect(r.identical).toBe(true);
     expect(r.contentComparable).toBe(true);
     expect(r.totals.a.steps).toBe(10);
+  });
+});
+
+// ---- review round 1: things that must NOT compare as identical ----
+describe("run diff: review round 1", () => {
+  type Raw = Record<string, unknown>;
+  const T = "1".repeat(32);
+  const sAttr = (key: string, value: string) => ({ key, value: { stringValue: value } });
+  const span = (i: number, attrs: Raw[], extra: Raw = {}, parent?: number): Raw => ({
+    traceId: T, spanId: id(i), ...(parent === undefined ? {} : { parentSpanId: id(parent) }), name: `s${i}`,
+    startTimeUnixNano: ns(i), endTimeUnixNano: ns(i + 0.5), attributes: attrs, ...extra,
+  });
+  const tool = (i: number, name: string, parent?: number, extra: Raw = {}, more: Raw[] = []) =>
+    span(i, [sAttr("gen_ai.operation.name", "execute_tool"), sAttr("gen_ai.tool.name", name), ...more], extra, parent);
+  const enc = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+  const events = (spans: Raw[], logs?: Raw[]) => importTraceBytes({
+    spans: enc({ resourceSpans: [{ scopeSpans: [{ spans }] }] }),
+    ...(logs ? { logs: enc({ resourceLogs: [{ scopeLogs: [{ logRecords: logs }] }] }) } : {}),
+    contentMode: "FULL",
+  });
+  const model = (spans: Raw[], logs?: Raw[]) => buildRunModel(events(spans, logs));
+
+  it("does not treat tool names that differ only after the 80th character as the same", () => {
+    const r = diffRuns(model([tool(0, `${"x".repeat(80)}a`)]), model([tool(0, `${"x".repeat(80)}b`)]));
+    expect(r.identical).toBe(false);
+  });
+
+  it("does not treat two different agent operations with the same name as the same", () => {
+    const agent = (op: string) => span(0, [sAttr("gen_ai.operation.name", op), sAttr("gen_ai.agent.name", "researcher")]);
+    const r = diffRuns(model([agent("create_agent")]), model([agent("invoke_agent")]));
+    expect(r.identical).toBe(false);
+  });
+
+  it("tells apart steps whose operation is one the importer does not recognise", () => {
+    const odd = (op: string) => span(0, [sAttr("gen_ai.operation.name", op)]);
+    expect(diffRuns(model([odd("frobnicate")]), model([odd("polish")])).identical).toBe(false);
+    expect(diffRuns(model([odd("frobnicate")]), model([odd("frobnicate")])).identical).toBe(true);
+  });
+
+  it("notices when a step moved to a different parent", () => {
+    const agent = span(0, [sAttr("gen_ai.operation.name", "invoke_agent"), sAttr("gen_ai.agent.name", "boss")]);
+    const nested = model([agent, tool(1, "search", 0)]);
+    const flat = model([agent, tool(1, "search")]);
+    const r = diffRuns(nested, flat);
+    expect(r.identical).toBe(false);
+    expect(r.items.flatMap((i) => i.changes.map((c) => c.code))).toEqual(["PARENT"]);
+    expect(diffRuns(nested, model([agent, tool(1, "search", 0)])).identical).toBe(true);
+  });
+
+  it("notices repeated content records for the same key", () => {
+    const base = events([tool(0, "search", undefined, {}, [sAttr("gen_ai.tool.call.result", "final")])]);
+    const content = base.findIndex((e) => e.type === "ContentRecorded");
+    const copy = structuredClone(base[content]) as typeof base[number] & { payload: { value: unknown } };
+    copy.payload.value = { v: { t: "s", v: "earlier" } };
+    const doubled = structuredClone([...base.slice(0, content), copy, ...base.slice(content)]).map((e, k) => ({ ...e, sequenceNumber: k + 1 })) as typeof base;
+    const end = doubled[doubled.length - 1];
+    if (end.type === "RunEnded") end.payload.eventCount = doubled.length;
+    const reread = buildRunModel(parseRunLog(serializeRunLog(doubled)));
+    expect(diffRuns(reread, buildRunModel(base)).identical).toBe(false);
+  });
+
+  it("notices a different log body on the same step", () => {
+    const log = (text: string) => [{ traceId: T, spanId: id(0), timeUnixNano: ns(0.2), observedTimeUnixNano: ns(0.2), body: { stringValue: text } }];
+    const spans = [span(0, [sAttr("gen_ai.operation.name", "chat")])];
+    expect(diffRuns(model(spans, log("answer A")), model(spans, log("answer B"))).identical).toBe(false);
+    expect(diffRuns(model(spans, log("answer A")), model(spans, log("answer A"))).identical).toBe(true);
+  });
+
+  it("notices a different failure message", () => {
+    const failing = (message: string) => [tool(0, "search", undefined, { status: { code: 2, message } })];
+    const r = diffRuns(model(failing("disk full")), model(failing("timeout")));
+    expect(r.identical).toBe(false);
+    expect(r.first?.changes.map((c) => c.code)).toEqual(["STATUS_MESSAGE"]);
+  });
+
+  it("distinguishes custom content keys that hold the same value", () => {
+    const withKey = (key: string) => [tool(0, "search", undefined, {}, [sAttr(key, "same value")])];
+    const r = diffRuns(model(withKey("gen_ai.custom_one")), model(withKey("gen_ai.custom_two")));
+    expect(r.identical).toBe(false);
+  });
+
+  it("still trims a large shared start and end so a small change in the middle is found without the fallback", () => {
+    const n = 4000;
+    const list = (middle: string) => Array.from({ length: n }, (_v, i) => tool(i, i === n / 2 ? middle : `t${i}`));
+    const r = diffRuns(model(list("left")), model(list("right")));
+    expect(r.fullyAligned).toBe(true);
+    expect(r.firstIndex).toBe(n / 2);
+    expect(r.counts).toEqual({ same: n - 1, changed: 0, onlyA: 1, onlyB: 1 });
+  }, 60_000);
+
+  it("says in the report what was and was not compared", () => {
+    const r = diffRuns(model([tool(0, "a")]), model([tool(0, "a")]));
+    const text = diffReportLines(r, { a: "x", b: "y" }).join("\n");
+    expect(text).toContain("step names, nesting");
+    expect(text).toContain("Not compared:");
+  });
+
+  it("describes partly reported token counts truthfully", () => {
+    const partial = model([span(0, [sAttr("gen_ai.operation.name", "chat"), { key: "gen_ai.usage.input_tokens", value: { intValue: "100" } }])]);
+    const text = diffReportLines(diffRuns(partial, partial), { a: "x", b: "y" }).join("\n");
+    expect(text).toContain("missing an input or an output token count");
+    expect(text).not.toContain("had no token count");
   });
 });

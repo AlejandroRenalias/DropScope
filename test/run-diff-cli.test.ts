@@ -100,3 +100,16 @@ describe("diff command", () => {
     expect(bad.err).not.toContain("secret-text");
   });
 });
+
+describe("diff command: structured output limits", () => {
+  it("says how many differences it left out of the JSON list", () => {
+    const a = writeRun("a7", Array.from({ length: 1005 }, (_v, i) => `a${i}`));
+    const b = writeRun("b7", Array.from({ length: 1005 }, (_v, i) => `b${i}`), "2");
+    const parsed = JSON.parse(run(["diff", a, b, "--json"]).out);
+    expect(parsed.counts.onlyA).toBe(1005);
+    expect(parsed.differences.length).toBe(1000);
+    expect(parsed.differencesOmitted).toBe(1010);
+    const small = JSON.parse(run(["diff", a, a, "--json"]).out);
+    expect(small.differencesOmitted).toBe(0);
+  }, 60_000);
+});

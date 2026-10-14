@@ -21,6 +21,7 @@ import { publishRun, readRunLog } from "./run-store.js";
 
 const MAX_INPUT_FILE = 32 * 1024 * 1024;
 const MAX_INPUT_TOTAL = 64 * 1024 * 1024;
+const JSON_DIFFERENCE_LIMIT = 1000;
 
 export type CliIo = { out: (text: string) => void; err: (text: string) => void };
 export type CliOptions = { runsDirectory?: string; checks?: PlatformChecks };
@@ -191,6 +192,7 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       const modelB = buildRunModel(readRunLog(positional[1], checks));
       const result = diffRuns(modelA, modelB);
       if (flags.has("--json")) {
+        const changed = result.items.filter((i) => i.status !== "same");
         const item = (i: (typeof result.items)[number]) => ({
           status: i.status, a: i.a === null ? null : { stepId: i.a.stepId, title: i.a.title, startEvent: i.a.startSequence },
           b: i.b === null ? null : { stepId: i.b.stepId, title: i.b.title, startEvent: i.b.startSequence }, changes: i.changes,
@@ -198,7 +200,7 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
         io.out(`${jsonForTerminal(JSON.stringify({
           runA: modelA.runId, runB: modelB.runId, tooLarge: result.tooLarge, fullyAligned: result.fullyAligned, identical: result.identical,
           counts: result.counts, firstDifference: result.first === null ? null : item(result.first), tools: result.tools, totals: result.totals,
-          differences: result.items.filter((i) => i.status !== "same").slice(0, 1000).map(item),
+          differences: changed.slice(0, JSON_DIFFERENCE_LIMIT).map(item), differencesOmitted: Math.max(0, changed.length - JSON_DIFFERENCE_LIMIT),
         }, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2))}\n`);
       } else {
         io.out(`${diffReportLines(result, { a: modelA.runId, b: modelB.runId }).map(escapeForTerminal).join("\n")}\n`);

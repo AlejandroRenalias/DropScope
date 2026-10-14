@@ -1,12 +1,17 @@
 // Run diff: compares two recorded runs offline and finds where they first differ.
 //
-// Step ids are random per run, so steps are matched by what they are (their title: kind plus tool or agent name),
-// in the order of the step tree, never by id. Matching uses the longest common sequence of titles, so one inserted
-// or missing step does not make every later step look different. Matched steps are then compared on outcome
-// (failed or not), token counts and recorded content. Content is compared by fingerprint: a withheld value keeps
+// Step ids are random per run, so steps are matched by what they are, in the order of the step tree, never by id.
+// "What they are" is a signature built from complete recorded values (kind, label, operation name, tool name and
+// agent name), not from the shortened title shown to people, so names that differ only past the title's cut-off
+// are still different. Matching uses the longest common sequence of titles, so one inserted
+// or missing step does not make every later step look different. Matched steps are then compared on where they sit
+// (the step they are nested under, through the matching, not through ids), outcome (failed or not), the status
+// message, token counts and recorded content, including content that arrived through a log record on the step. Content is compared by fingerprint: a withheld value keeps
 // the SHA-256 of its canonical text, and a stored value can be fingerprinted the same way, so a run imported with
 // content and one imported without it can still be compared.
-// Not compared per step: how long it took (two honest runs never take exactly as long); the totals show duration.
+// Not compared: how long a step took (two honest runs never take exactly as long; the totals show duration),
+// step events, log record times and severities, attributes other than the names above, and content of log
+// records that belong to no step. The report says so.
 // No model call and no network. It reads only runs the reducer has already validated.
 import { canonicalJson, sha256Hex } from "./canonical.js";
 import type { RunModel, StepView } from "./frontend/run-replay-model.js";
@@ -14,7 +19,7 @@ import type { RunModel, StepView } from "./frontend/run-replay-model.js";
 /** Runs with more steps than this are not compared (the answer would be too slow to be useful). */
 export const DIFF_LIMITS = { maxSteps: 5000, maxAlignCells: 4_000_000 } as const;
 
-export type DiffChangeCode = "STATUS" | "INPUT_TOKENS" | "OUTPUT_TOKENS" | "CONTENT";
+export type DiffChangeCode = "STATUS" | "STATUS_MESSAGE" | "PARENT" | "INPUT_TOKENS" | "OUTPUT_TOKENS" | "CONTENT";
 export type DiffChange = { code: DiffChangeCode; a: string; b: string; fields: string[] };
 
 export type DiffItem = {
@@ -51,26 +56,63 @@ export type DiffResult = {
 };
 
 type Fingerprints = Map<string, string>;
+type StepFacts = { signature: string; message: string; content: Fingerprints };
+type FieldLike = { v: unknown } | { w: { n: number; h: string } };
 
-const fingerprintOf = (field: { v: unknown } | { w: { n: number; h: string } }): string => {
+const fingerprintOf = (field: FieldLike): string => {
   if ("w" in field) return `${field.w.n}:${field.w.h}`;
   const text = canonicalJson(field.v);
   return `${Buffer.byteLength(text, "utf8")}:${sha256Hex(text)}`;
 };
 
-function contentByStep(model: RunModel): Map<string, Fingerprints> {
-  const byStep = new Map<string, Fingerprints>();
-  for (const event of model.events) {
-    if (event.type !== "ContentRecorded") continue;
-    const p = event.payload;
-    const stepId = p.stepId;
-    if (stepId === null) continue;
-    const key = `${p.channel}|${p.field}|${p.fieldKey === undefined ? "" : fingerprintOf(p.fieldKey)}|${p.ordinal}`;
-    const map = byStep.get(stepId) ?? new Map<string, string>();
-    map.set(key, fingerprintOf(p.value));
-    byStep.set(stepId, map);
+function attributeFingerprint(attributes: Array<{ key: FieldLike; value: FieldLike }>, name: string): string {
+  for (const a of attributes) {
+    const key = a.key as { v?: { t?: string; v?: unknown } };
+    if (key.v?.t === "s" && key.v.v === name) return fingerprintOf(a.value);
   }
-  return byStep;
+  return "-";
+}
+
+/**
+ * What each step is and what was recorded for it, from complete values. The signature uses the kind, label,
+ * operation name, tool name and agent name. Content is kept as a list per key in event order, so a key recorded
+ * twice is not collapsed to its last value. Content that arrived through a log record counts for the step that
+ * log record belongs to; content of a log record with no step is not compared.
+ */
+function factsByStep(model: RunModel): Map<string, StepFacts> {
+  const facts = new Map<string, StepFacts>();
+  const logStep = new Map<number, string>();
+  const lists = new Map<string, Map<string, string[]>>();
+  for (const event of model.events) {
+    if (event.type === "StepStarted") {
+      const p = event.payload;
+      const signature = JSON.stringify([
+        p.kind, p.label, p.operationName === null ? "-" : fingerprintOf(p.operationName),
+        attributeFingerprint(p.attributes, "gen_ai.tool.name"), attributeFingerprint(p.attributes, "gen_ai.agent.name"),
+      ]);
+      facts.set(p.stepId, { signature, message: "", content: new Map() });
+    } else if (event.type === "StepEnded") {
+      const f = facts.get(event.payload.stepId);
+      if (f) f.message = fingerprintOf(event.payload.statusMessage);
+    } else if (event.type === "LogRecorded" && event.payload.stepId !== null) {
+      logStep.set(event.payload.logOrdinal, event.payload.stepId);
+    } else if (event.type === "ContentRecorded") {
+      const p = event.payload;
+      const stepId = p.stepId !== null ? p.stepId : logStep.get(p.logOrdinal as number) ?? null;
+      if (stepId === null) continue;
+      const key = `${p.channel}|${p.field}|${p.fieldKey === undefined ? "" : fingerprintOf(p.fieldKey)}|${p.ordinal}`;
+      const perStep = lists.get(stepId) ?? new Map<string, string[]>();
+      const list = perStep.get(key) ?? [];
+      list.push(fingerprintOf(p.value));
+      perStep.set(key, list);
+      lists.set(stepId, perStep);
+    }
+  }
+  for (const [stepId, perStep] of lists) {
+    const f = facts.get(stepId);
+    if (f) for (const [key, list] of perStep) f.content.set(key, list.join(","));
+  }
+  return facts;
 }
 
 const fieldNameOf = (key: string): string => key.split("|")[1];
@@ -106,18 +148,20 @@ const emptyTotals = (): RunTotals => ({
   steps: 0, modelCalls: 0, toolCalls: 0, failedSteps: 0, inputTokens: 0n, outputTokens: 0n, durationNs: 0n, stepsMissingTokens: 0,
 });
 
-function compareSteps(a: StepView, b: StepView, ca: Fingerprints | undefined, cb: Fingerprints | undefined): DiffChange[] {
+function compareSteps(a: StepView, b: StepView, fa: StepFacts, fb: StepFacts, sameParent: boolean): DiffChange[] {
   const changes: DiffChange[] = [];
+  if (!sameParent) changes.push({ code: "PARENT", a: "", b: "", fields: [] });
   if (a.failed !== b.failed) changes.push({ code: "STATUS", a: a.failed ? "failed" : "ok", b: b.failed ? "failed" : "ok", fields: [] });
+  if (fa.message !== fb.message) changes.push({ code: "STATUS_MESSAGE", a: "", b: "", fields: [] });
   const tokens = (code: DiffChangeCode, x: string | null, y: string | null): void => {
     if (x !== y) changes.push({ code, a: x ?? "not reported", b: y ?? "not reported", fields: [] });
   };
   tokens("INPUT_TOKENS", a.inputTokens, b.inputTokens);
   tokens("OUTPUT_TOKENS", a.outputTokens, b.outputTokens);
-  if (ca !== undefined || cb !== undefined) {
+  if (fa.content.size > 0 || fb.content.size > 0) {
     const differing = new Set<string>();
-    for (const [key, value] of ca ?? []) if (cb?.get(key) !== value) differing.add(fieldNameOf(key));
-    for (const key of cb?.keys() ?? []) if (!ca?.has(key)) differing.add(fieldNameOf(key));
+    for (const [key, value] of fa.content) if (fb.content.get(key) !== value) differing.add(fieldNameOf(key));
+    for (const key of fb.content.keys()) if (!fa.content.has(key)) differing.add(fieldNameOf(key));
     if (differing.size > 0) changes.push({ code: "CONTENT", a: "", b: "", fields: [...differing].sort() });
   }
   return changes;
@@ -158,8 +202,10 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   }
   const sa = runA.steps;
   const sb = runB.steps;
-  const ta = sa.map((s) => s.title);
-  const tb = sb.map((s) => s.title);
+  const factsA = factsByStep(runA);
+  const factsB = factsByStep(runB);
+  const ta = sa.map((s) => (factsA.get(s.stepId) as StepFacts).signature);
+  const tb = sb.map((s) => (factsB.get(s.stepId) as StepFacts).signature);
 
   // Trim what both runs share at the start and the end, then align only the middle.
   let prefix = 0;
@@ -180,12 +226,20 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   }
   for (let k = 0; k < suffix; k += 1) pairs.push({ kind: "both", i: ta.length - suffix + k, j: tb.length - suffix + k });
 
-  const contentA = contentByStep(runA);
-  const contentB = contentByStep(runB);
+  // Where each step sits: the index of its parent step, or -1 for a top-level step. A parent is "the same" when
+  // it is matched to the other run's parent. (Ids are never compared.)
+  const indexA = new Map(sa.map((x, k) => [x.stepId, k]));
+  const indexB = new Map(sb.map((x, k) => [x.stepId, k]));
+  const parentOf = (step: StepView, index: Map<string, number>): number => (step.parentStepId === null ? -1 : index.get(step.parentStepId) ?? -1);
+  const partner = new Map<number, number>();
+  for (const p of pairs) if (p.kind === "both") partner.set(p.i, p.j);
   const items: DiffItem[] = pairs.map((p) => {
     if (p.kind === "onlyA") return { status: "onlyA", a: sa[p.i], b: null, changes: [] };
     if (p.kind === "onlyB") return { status: "onlyB", a: null, b: sb[p.j], changes: [] };
-    const changes = compareSteps(sa[p.i], sb[p.j], contentA.get(sa[p.i].stepId), contentB.get(sb[p.j].stepId));
+    const pa = parentOf(sa[p.i], indexA);
+    const pb = parentOf(sb[p.j], indexB);
+    const sameParent = pa === -1 ? pb === -1 : partner.get(pa) === pb;
+    const changes = compareSteps(sa[p.i], sb[p.j], factsA.get(sa[p.i].stepId) as StepFacts, factsB.get(sb[p.j].stepId) as StepFacts, sameParent);
     return { status: changes.length === 0 ? "same" : "changed", a: sa[p.i], b: sb[p.j], changes };
   });
   const counts = { same: 0, changed: 0, onlyA: 0, onlyB: 0 };
@@ -209,6 +263,6 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   const identical = firstIndex === -1;
   return {
     tooLarge: false, fullyAligned, items, firstIndex, first: firstIndex === -1 ? null : items[firstIndex], counts, totals, tools,
-    contentComparable: contentA.size > 0 || contentB.size > 0, identical,
+    contentComparable: [...factsA.values(), ...factsB.values()].some((f) => f.content.size > 0), identical,
   };
 }

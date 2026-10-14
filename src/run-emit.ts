@@ -20,7 +20,7 @@ import {
   type ContentMode, type Field, type RunEvent, type StepKind, type TaggedValue,
 } from "./run-events.js";
 
-export const IMPORTER = { id: "dropscope-otlp-json", version: "3" } as const;
+export const IMPORTER = { id: "dropscope-otlp-json", version: "4" } as const;
 export const DEFAULT_CONVENTION_VERSION = "1.37.0";
 export const LIMITS_VERSION = "1-provisional";
 export const MAX_OUTPUT_EVENTS = 1_000_000;
@@ -161,9 +161,12 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
 
   // Contexts. A resource is shared by every scope under it: its payload is built, scanned, hashed and
   // measured once, and the same object is used in every context that has it.
-  const resourceCache = new Map<ParsedContext["resource"], { payload: unknown; bytes: number }>();
-  const resourceOf = (resource: ParsedContext["resource"]) => {
-    const cached = resourceCache.get(resource);
+  // The cache is keyed by the resource's content hash, not by object identity, so what is scanned and counted
+  // (secret patterns, withheld bytes) depends only on the distinct resource contents, never on which input
+  // object happened to be shared or came first.
+  const resourceCache = new Map<string, { payload: unknown; bytes: number }>();
+  const resourceOf = (resource: ParsedContext["resource"], resourceKey: string) => {
+    const cached = resourceCache.get(resourceKey);
     if (cached !== undefined) return cached;
     const payload = {
       attributes: em.attributeList(resource.attributes, false).map((x) => x.entry),
@@ -172,11 +175,11 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
       unknownFields: resource.unknownFields === null ? null : em.field(resource.unknownFields, false),
     };
     const entry = { payload, bytes: Buffer.byteLength(canonicalJson(payload), "utf8") };
-    resourceCache.set(resource, entry);
+    resourceCache.set(resourceKey, entry);
     return entry;
   };
-  const contextPayloads = run.contexts.map(({ contextId, context }) => {
-    const resource = resourceOf(context.resource);
+  const contextPayloads = run.contexts.map(({ contextId, context, resourceKey }) => {
+    const resource = resourceOf(context.resource, resourceKey);
     const scopeAttributes = em.attributeList(context.scope.attributes, true).map((x) => x.entry);
     const schemaOf = (url: string | null) => em.field(tagStr(url ?? ""), url === null || SCHEMA_URL.test(url));
     const payload = {

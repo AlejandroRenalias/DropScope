@@ -33,7 +33,9 @@ export type NormalizedRun = {
   selectedTrace: "ONLY" | "EXPLICIT";
   spans: NormalSpan[];
   logs: NormalLog[];
-  contexts: Array<{ contextId: string; context: ParsedContext }>;
+  // resourceKey is the SHA-256 of the resource content: contexts with equal resource content share it,
+  // whichever input object they came from.
+  contexts: Array<{ contextId: string; context: ParsedContext; resourceKey: string }>;
   // Largest start or valid end time among the selected spans (spec 4.1).
   maxNs: string;
   notes: ImportNoteDraft[];
@@ -143,6 +145,7 @@ export function normalizeRun(input: NormalizeInput): NormalizedRun {
   const contexts = sortedKeys.map((key) => ({
     contextId: contextIdOf.get(key) as string,
     context: contextByKey.get(key) as ParsedContext,
+    resourceKey: resourceKeyOf((contextByKey.get(key) as ParsedContext).resource),
   }));
 
   // Phase 6a: repair parents. A missing parent makes the span a root; each cycle loses one edge.

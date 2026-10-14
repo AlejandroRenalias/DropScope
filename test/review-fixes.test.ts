@@ -475,3 +475,68 @@ describe("round 2: no recursion and maximum nesting", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------
+// Round 3 (review of commit 0102388)
+// ---------------------------------------------------------------------------------------------------------
+import { sha256Hex } from "../src/canonical.js";
+import { normalizeRun } from "../src/trace-normalize.js";
+
+describe("round 3: scan counts and histories do not depend on input order or object sharing", () => {
+  const spanId = (n: number) => n.toString(16).padStart(16, "0");
+  const planted = { attributes: [sattr("service.name", "bob@example.com"), sattr("note", "key AKIAABCDEFGHIJKLMNOP")] };
+  const mk = (n: number) => span({ spanId: spanId(n), startTimeUnixNano: String(10 + n), endTimeUnixNano: String(50 + n) });
+  const groupA = { resource: planted, scopeSpans: [{ scope: { name: "a" }, spans: [mk(1)] }, { scope: { name: "b" }, spans: [mk(2)] }] };
+  const groupB = { resource: planted, scopeSpans: [{ scope: { name: "a" }, spans: [mk(1)] }] };
+  const groupC = { resource: { attributes: [sattr("service.name", "other@example.org")] }, scopeSpans: [{ scope: { name: "a" }, spans: [mk(3)] }, { scope: { name: "c" }, spans: [mk(4), mk(5)] }] };
+  const request = (groups: unknown[], mode: "HASH_ONLY" | "FULL" = "HASH_ONLY") => importTraceBytes({ spans: enc({ resourceSpans: groups }), contentMode: mode });
+  const comparable = (events: RunEvent[]) => events.map((e) => {
+    if (e.type !== "RunStarted") return e;
+    return { ...e, payload: { ...e.payload, inputs: [], artifactId: "" } };
+  });
+  const secretNote = (events: RunEvent[]) => ofType(events, "ImportNote").find((n) => n.payload.code === "SECRET_PATTERN_COUNT")?.payload.detail;
+
+  it("the reviewer's example: groups A,B and B,A give the same count and the same history", () => {
+    const ab = request([groupA, groupB]);
+    const ba = request([groupB, groupA]);
+    expect(secretNote(ab)).toEqual(secretNote(ba));
+    expect(secretNote(ab)).toEqual({ awsAccessKey: 1, email: 1 });
+    expect(JSON.stringify(comparable(ab))).toBe(JSON.stringify(comparable(ba)));
+  });
+
+  const shuffle = <U,>(items: U[], seed: number): U[] => {
+    const copy = [...items];
+    let state = seed;
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      state = (state * 1103515245 + 12345) % 2147483648;
+      const j = state % (i + 1);
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  for (const mode of ["HASH_ONLY", "FULL"] as const) {
+    it(`${mode}: 40 reorderings of groups, scopes and spans (with duplicates and planted secrets) give one history`, () => {
+      const groups = [groupA, groupB, groupC, { ...groupA }, { resource: { ...planted }, scopeSpans: groupB.scopeSpans }];
+      const baseline = JSON.stringify(comparable(request(groups, mode)));
+      for (let seed = 1; seed <= 40; seed += 1) {
+        const reordered = shuffle(groups, seed).map((g, i) => ({
+          resource: i % 2 === 0 ? g.resource : JSON.parse(JSON.stringify(g.resource)), // sometimes a distinct object with equal content
+          scopeSpans: shuffle(g.scopeSpans, seed + i).map((s) => ({ scope: s.scope, spans: shuffle(s.spans, seed + 7 * i) })),
+        }));
+        expect(JSON.stringify(comparable(request(reordered, mode))), `seed ${seed}`).toBe(baseline);
+      }
+    }, 60_000);
+  }
+
+  it("the context key follows the specification's recipe and orders the context ids", () => {
+    const parsed = parseTraceRequest(parseStrictJson(enc({ resourceSpans: [groupA, groupC] }), "parse"));
+    const run = normalizeRun({ spans: parsed.spans, spanContexts: parsed.contexts });
+    const keyOf = (c: (typeof parsed.contexts)[number]) =>
+      sha256Hex(canonicalJson({ resource: sha256Hex(canonicalJson(c.resource)), scope: c.scope, unknownCount: c.unknownCount }));
+    const keys = run.contexts.map((c) => keyOf(c.context));
+    expect(keys).toEqual([...keys].sort());
+    expect(run.contexts.map((c) => c.contextId)).toEqual(keys.map((_, i) => `c${i}`));
+    for (const c of run.contexts) expect(c.resourceKey).toBe(sha256Hex(canonicalJson(c.context.resource)));
+  });
+});

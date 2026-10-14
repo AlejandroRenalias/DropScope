@@ -198,7 +198,7 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
           b: i.b === null ? null : { stepId: i.b.stepId, title: i.b.title, startEvent: i.b.startSequence }, changes: i.changes,
         });
         io.out(`${jsonForTerminal(JSON.stringify({
-          runA: modelA.runId, runB: modelB.runId, tooLarge: result.tooLarge, fullyAligned: result.fullyAligned, identical: result.identical,
+          runA: modelA.runId, runB: modelB.runId, tooLarge: result.tooLarge, fullyAligned: result.fullyAligned, unverifiedNesting: result.unverifiedNesting, identical: result.identical,
           counts: result.counts, firstDifference: result.first === null ? null : item(result.first), tools: result.tools, totals: result.totals,
           differences: changed.slice(0, JSON_DIFFERENCE_LIMIT).map(item), differencesOmitted: Math.max(0, changed.length - JSON_DIFFERENCE_LIMIT),
         }, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2))}\n`);

@@ -4,10 +4,10 @@ import { formatSeconds, group } from "./budget-report.js";
 import type { DiffChange, DiffItem, DiffResult, RunTotals } from "./run-diff.js";
 
 export const DIFF_NOTE =
-  "Steps are matched by what they are (kind, operation, and tool or agent name, using the full recorded names) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.";
+  "Steps are matched by what they are (kind, operation, model name, and tool or agent name, using the full recorded values) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.";
 
 export const NOT_COMPARED_NOTE =
-  "Not compared: how long each step took, step events, log record times and severities, attributes other than the names above, and content of log records that belong to no step.";
+  "Not compared: how long each step took, step events, log record times and severities, log records that carry no content, attributes that are neither a name used for matching nor recorded content, and content of log records that belong to no step.";
 
 const stepName = (item: DiffItem): string => (item.a ?? item.b)?.title ?? "a step";
 
@@ -73,6 +73,7 @@ export function totalsLines(a: RunTotals, b: RunTotals): string[] {
 export function diffCaveats(result: DiffResult): string[] {
   const notes = [DIFF_NOTE, NOT_COMPARED_NOTE, "Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference."];
   if (!result.fullyAligned) notes.push("The runs were too different to line up in full, so everything between their shared start and shared end is listed as removed and added.");
+  if (result.unverifiedNesting > 0) notes.push(`${group(result.unverifiedNesting)} step(s) have a parent that fell in the part that could not be lined up, so whether their nesting changed was not checked.`);
   if (result.contentComparable) notes.push("Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.");
   else notes.push("Neither run recorded any step content, so only structure, outcome and token counts were compared.");
   const missing = result.totals.a.stepsMissingTokens + result.totals.b.stepsMissingTokens;

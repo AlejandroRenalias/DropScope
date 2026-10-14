@@ -282,3 +282,109 @@ describe("run diff: review round 1", () => {
     expect(text).not.toContain("had no token count");
   });
 });
+
+// ---- review round 2 ----
+describe("run diff: review round 2", () => {
+  type Raw = Record<string, unknown>;
+  const T = "1".repeat(32);
+  const sAttr = (key: string, value: string) => ({ key, value: { stringValue: value } });
+  const span = (i: number, attrs: Raw[], parent?: number): Raw => ({
+    traceId: T, spanId: id(i), ...(parent === undefined ? {} : { parentSpanId: id(parent) }), name: `s${i}`,
+    startTimeUnixNano: ns(i), endTimeUnixNano: ns(i + 0.5), attributes: attrs,
+  });
+  const tool = (i: number, name: string, parent?: number, more: Raw[] = []) =>
+    span(i, [sAttr("gen_ai.operation.name", "execute_tool"), sAttr("gen_ai.tool.name", name), ...more], parent);
+  const enc = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+  const eventsOf = (spans: Raw[], logs?: Raw[]) => importTraceBytes({
+    spans: enc({ resourceSpans: [{ scopeSpans: [{ spans }] }] }),
+    ...(logs ? { logs: enc({ resourceLogs: [{ scopeLogs: [{ logRecords: logs }] }] }) } : {}),
+    contentMode: "FULL",
+  });
+  const model = (spans: Raw[], logs?: Raw[]) => buildRunModel(eventsOf(spans, logs));
+
+  /** The run's events with the first content record replaced by one record per value (same key), in the order given. */
+  function modelWithValues(values: string[]) {
+    const base = eventsOf([tool(0, "search", undefined, [sAttr("gen_ai.tool.call.result", "x")])]);
+    const at = base.findIndex((e) => e.type === "ContentRecorded");
+    const copies = values.map((v) => {
+      const copy = structuredClone(base[at]) as (typeof base)[number] & { payload: { value: unknown } };
+      copy.payload.value = { v: { t: "s", v } };
+      return copy;
+    });
+    const all = structuredClone([...base.slice(0, at), ...copies, ...base.slice(at + 1)]).map((e, k) => ({ ...e, sequenceNumber: k + 1 })) as typeof base;
+    const end = all[all.length - 1];
+    if (end.type === "RunEnded") end.payload.eventCount = all.length;
+    return buildRunModel(parseRunLog(serializeRunLog(all)));
+  }
+
+  it("keeps log records whole: an attribute moving from one record to another is a difference", () => {
+    const log = (t: number, body: string, extra: Raw[] = []) => ({ traceId: T, spanId: id(0), timeUnixNano: ns(t), observedTimeUnixNano: ns(t), body: { stringValue: body }, attributes: extra });
+    const spans = [span(0, [sAttr("gen_ai.operation.name", "chat")])];
+    const a = model(spans, [log(0.1, "A", [sAttr("gen_ai.custom", "value")]), log(0.2, "B")]);
+    const b = model(spans, [log(0.1, "A"), log(0.2, "B", [sAttr("gen_ai.custom", "value")])]);
+    const r = diffRuns(a, b);
+    expect(r.identical).toBe(false);
+    expect(r.first?.changes).toEqual([{ code: "CONTENT", a: "", b: "", fields: ["log records"] }]);
+    expect(diffRuns(a, model(spans, [log(0.1, "A", [sAttr("gen_ai.custom", "value")]), log(0.2, "B")])).identical).toBe(true);
+  });
+
+  it("does not report a moved parent it could not check when the runs are too different to line up", () => {
+    const n = 2100;
+    const side = (prefix: string, first: string) => [
+      tool(0, first), tool(1, "p"),
+      ...Array.from({ length: n }, (_v, i) => tool(2 + i, `${prefix}${i}`, 1)),
+      tool(2 + n, "tail", 1),
+    ];
+    const r = diffRuns(model(side("a", "firstA")), model(side("b", "firstB")));
+    expect(r.fullyAligned).toBe(false);
+    const tail = r.items.find((i) => i.a?.title === "Tool call: tail");
+    expect(tail?.changes).toEqual([]);
+    expect(r.unverifiedNesting).toBeGreaterThan(0);
+    expect(diffReportLines(r, { a: "x", b: "y" }).join("\n")).toContain("whether their nesting changed was not checked");
+  }, 60_000);
+
+  it("still reports a real moved parent when the runs line up in full", () => {
+    const agent = span(0, [sAttr("gen_ai.operation.name", "invoke_agent"), sAttr("gen_ai.agent.name", "boss")]);
+    const r = diffRuns(model([agent, tool(1, "search", 0)]), model([agent, tool(1, "search")]));
+    expect(r.fullyAligned).toBe(true);
+    expect(r.unverifiedNesting).toBe(0);
+    expect(r.items.flatMap((i) => i.changes.map((c) => c.code))).toEqual(["PARENT"]);
+  });
+
+  it("reports a changed parent when the old parent exists only in one run and the runs line up in full", () => {
+    const agent = span(0, [sAttr("gen_ai.operation.name", "invoke_agent"), sAttr("gen_ai.agent.name", "boss")]);
+    const r = diffRuns(model([agent, tool(1, "search", 0)]), model([tool(0, "search")]));
+    expect(r.fullyAligned).toBe(true);
+    const search = r.items.find((i) => i.a?.title === "Tool call: search");
+    expect(search?.changes.map((c) => c.code)).toEqual(["PARENT"]);
+    expect(r.unverifiedNesting).toBe(0);
+  });
+
+  it("tells apart operations the importer folds into the same label", () => {
+    const op = (o: string) => [span(0, [sAttr("gen_ai.operation.name", o)])];
+    const r = diffRuns(model(op("custom-op")), model(op("other-op")));
+    expect(r.identical).toBe(false);
+  });
+
+  it("tells apart two agents by name when everything else is equal", () => {
+    const agent = (name: string) => [span(0, [sAttr("gen_ai.operation.name", "invoke_agent"), sAttr("gen_ai.agent.name", name)])];
+    expect(diffRuns(model(agent("alpha")), model(agent("beta"))).identical).toBe(false);
+    expect(diffRuns(model(agent("alpha")), model(agent("alpha"))).identical).toBe(true);
+  });
+
+  it("tells apart two models for the same operation, and says model names are compared", () => {
+    const chat = (m: string) => [span(0, [sAttr("gen_ai.operation.name", "chat"), sAttr("gen_ai.request.model", m)])];
+    const r = diffRuns(model(chat("model-a")), model(chat("model-b")));
+    expect(r.identical).toBe(false);
+    const text = diffReportLines(r, { a: "x", b: "y" }).join("\n");
+    expect(text).toContain("model name");
+    expect(text).not.toContain("attributes other than the names above");
+  });
+
+  it("compares repeated content records in order, and counts every record", () => {
+    expect(diffRuns(modelWithValues(["early", "final"]), modelWithValues(["final", "early"])).identical).toBe(false);
+    expect(diffRuns(modelWithValues(["same", "same"]), modelWithValues(["same"])).identical).toBe(false);
+    expect(diffRuns(modelWithValues(["early", "final"]), modelWithValues(["early", "final"])).identical).toBe(true);
+    expect(diffRuns(modelWithValues(["early", "final"]), modelWithValues(["final"])).identical).toBe(false);
+  });
+});

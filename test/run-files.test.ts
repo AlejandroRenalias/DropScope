@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   FILE_ATTRIBUTE_OFFLINE, FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS, FILE_ATTRIBUTE_RECALL_ON_OPEN,
-  defaultChecks, ensureRunsDirectory, readInputFile, safeResolve, windowsChecks, type PlatformChecks,
+  defaultChecks, ensureRunsDirectory, posixChecks, readInputFile, safeResolve, windowsChecks, type PlatformChecks,
 } from "../src/run-files.js";
 import { ImportError } from "../src/run-import-error.js";
 
@@ -101,13 +101,21 @@ describe("readInputFile", () => {
 });
 
 describe("ensureRunsDirectory", () => {
+  // Version 1 supports Windows only, so defaultChecks() refuses elsewhere (tested below). These tests exercise the
+  // directory logic with the platform's own checks, which on other systems are the explicit POSIX ones.
+  const platformChecks = windows ? windowsChecks : posixChecks;
+
+  it.skipIf(windows)("refuses to run by default on a platform other than Windows", () => {
+    expect(codeOf(() => defaultChecks())).toBe("E_PLATFORM:UNSUPPORTED_PLATFORM");
+  });
+
   it("creates a directory, accepts it again, and rejects a file in its place", () => {
     const dir = path.join(root, "a", "b", "runs");
-    expect(ensureRunsDirectory(dir, defaultChecks())).toBe(path.resolve(dir));
+    expect(ensureRunsDirectory(dir, platformChecks)).toBe(path.resolve(dir));
     expect(fs.statSync(dir).isDirectory()).toBe(true);
-    expect(ensureRunsDirectory(dir, defaultChecks())).toBe(path.resolve(dir));
+    expect(ensureRunsDirectory(dir, platformChecks)).toBe(path.resolve(dir));
     const file = write("notadir", "x");
-    expect(codeOf(() => ensureRunsDirectory(file, defaultChecks()))).toBe("E_FILE_KIND:RUNS_PATH_NOT_A_DIRECTORY");
+    expect(codeOf(() => ensureRunsDirectory(file, platformChecks))).toBe("E_FILE_KIND:RUNS_PATH_NOT_A_DIRECTORY");
   }, 60_000);
 
   it("refuses a runs directory reached through a link", () => {
@@ -129,9 +137,9 @@ describe("ensureRunsDirectory", () => {
 
   it.skipIf(windows)("requires a private mode on POSIX", () => {
     const dir = path.join(root, "posix-runs");
-    ensureRunsDirectory(dir, defaultChecks());
+    ensureRunsDirectory(dir, posixChecks);
     expect(fs.statSync(dir).mode & 0o077).toBe(0);
     fs.chmodSync(dir, 0o755);
-    expect(codeOf(() => ensureRunsDirectory(dir, defaultChecks()))).toBe("E_PLATFORM:RUNS_DIR_NOT_OWNER_ONLY");
+    expect(codeOf(() => ensureRunsDirectory(dir, posixChecks))).toBe("E_PLATFORM:RUNS_DIR_NOT_OWNER_ONLY");
   });
 });

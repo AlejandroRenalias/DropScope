@@ -10,11 +10,11 @@
 //   that usage event: the tokens were already spent.
 // - Counts (model calls, tool calls, steps) are checked when a step starts. The call that would make the count
 //   exceed the limit would not have started. The stop point is that StepStarted event.
-// - Duration is measured from the earliest recorded step start, at step start and step end events (the only events
-//   that carry times). Elapsed time is the greatest elapsed time reached so far, so it never goes down even if a
+// - Duration is measured from the earliest recorded step start, at step start and step end events. Only step start
+//   and end times are used, by design: log records carry timestamps too, but they are not used here. Elapsed time is the greatest elapsed time reached so far, so it never goes down even if a
 //   hand-edited history lists events out of time order. A limit is exceeded by the first such event that makes it
 //   strictly greater than the limit. The stop point is that event. The moment the limit was really passed can be
-//   earlier than that event, because no event carries a time between steps.
+//   earlier than that event, because only step start and end times are used.
 // - Steps already running at the stop point could not be recalled: they are reported as "in flight".
 // - A token count the trace did not report counts as zero, and the result says how many were missing.
 import type { RunEvent, StepKind } from "./run-events.js";

@@ -133,7 +133,7 @@ export function budgetCaveats(result: BudgetReplayResult): string[] {
   ];
   if (result.policy.cost !== null) notes.push("Prices are the ones you typed. DropScope does not look prices up.");
   if (result.policy.maxDurationNs !== null) {
-    notes.push("Time is checked only when a step starts or ends, because no other event carries a time. The moment the limit was really passed can be earlier than the event shown.");
+    notes.push("Time is checked only at step starts and step ends: budget replay uses only those times, by design, and ignores the timestamps on log records. The moment the limit was really passed can be earlier than the event shown.");
     if (result.estimatedEnds > 0) notes.push(`${result.estimatedEnds} step end time${result.estimatedEnds === 1 ? " was" : "s were"} estimated by the importer (missing, or earlier than the start), so time results may be off.`);
   }
   const gaps = result.usageGaps;

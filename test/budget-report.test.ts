@@ -112,9 +112,26 @@ describe("budget report wording", () => {
       { traceId: "1".repeat(32), spanId: "00000000000000a2", name: "m", startTimeUnixNano: "1000000000", endTimeUnixNano: "11000000000" },
     ] }] }] })) });
     const notes = budgetCaveats(replayBudget(events, policy({ maxSeconds: "5" }))).join(" ");
-    expect(notes).toContain("Time is checked only when a step starts or ends");
+    expect(notes).toContain("Time is checked only at step starts and step ends");
     expect(notes).toContain("1 step end time was estimated");
     expect(budgetCaveats(run({ maxTotalTokens: "1" })).join(" ")).not.toContain("Time is checked");
+  });
+
+  it("states the time rule truthfully when the run also has timestamped log records", () => {
+    const events = importTraceBytes({
+      spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
+        { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000", endTimeUnixNano: "3000000000" },
+      ] }] }] })),
+      logs: new TextEncoder().encode(JSON.stringify({ resourceLogs: [{ scopeLogs: [{ logRecords: [
+        { traceId: "1".repeat(32), spanId: "00000000000000a1", timeUnixNano: "7000000000", observedTimeUnixNano: "7000000001", body: { stringValue: "late log" } },
+      ] }] }] })),
+    });
+    expect(events.some((e) => e.type === "LogRecorded" && e.payload.timeNs === "7000000000")).toBe(true); // a log really carries a time
+    const notes = budgetCaveats(replayBudget(events, policy({ maxSeconds: "1" }))).join(" ");
+    expect(notes).not.toContain("no other event carries a time");
+    expect(notes).toContain("uses only those times, by design, and ignores the timestamps on log records");
+    // The log's later timestamp does not move the result: elapsed time stops at the last step end (2 s).
+    expect(replayBudget(events, policy({ maxSeconds: "1" })).recorded.elapsedNs).toBe(2_000_000_000n);
   });
 
   it("writes a full report, with and without a breach", () => {

@@ -4,7 +4,7 @@ A new chat starts from a fresh clone and does not remember the previous conversa
 
 ## Where things stand
 
-- **Repository:** AlejandroRenalias/DropScope. Working branch: `claude/inspiring-ritchie-8n0iay` (base: `main` at `60ba704`). It is **clean but NOT pushed**: the claim check commits (`e672c7c`, `fde454a`, `e0c9cdc`, `7f40bf2`, and the documentation commit after them) exist only on this machine; GitHub still has the branch as of `cef2db3`. Nothing is half-built, no review is pending, no pull request is open. Show the user what would be pushed and wait for approval.
+- **Repository:** AlejandroRenalias/DropScope. Working branch: `claude/inspiring-ritchie-8n0iay` (base: `main` at `60ba704`). It was **pushed with the user's approval on 2026-10-14** up to `20f1e5c` (the claim check commits are on GitHub). Nothing is half-built, no review is pending, no pull request is open. Any later commit (including a small handoff correction) is local until the user approves another push.
 - **Do not touch:** the `codex/*` branches, `backup/codex-handoff-2026-10-13`, `claude/migration-config`. `.claude/launch.json` on the user's machine is theirs; never commit it.
 - **Direction:** DropScope is a **learning project** (the user's choice, repeated several times). The idea is "agent run forensics": a local, offline, deterministic auditor for AI agent runs. It imports an OTLP/JSON trace, saves a validated run file, rebuilds the recorded state at any step, and re-applies a budget to the run. Dropshipping is only the built-in demo domain. No live workers, no model calls, no API cost, no network.
 - **Sprint exception:** in effect until 2026-10-31 (see `AGENTS.md`). The learning workflow stays paused; the user decided not to resume it.

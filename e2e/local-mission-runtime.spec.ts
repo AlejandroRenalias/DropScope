@@ -75,7 +75,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
 
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Persisted local mission/)).toBeVisible();
-  await expect(page.getByText("TaskFailedTransient", { exact: true })).toBeVisible();
+  await expect(page.locator(".replay-chronology").getByText("Task failed transient", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Tribunal Room" }).click();
   await expect(page.getByRole("region", { name: "Tribunal Room" })).toContainText("deskflow-alpha");
   await page.getByRole("button", { name: "Review Office" }).click();
@@ -83,7 +83,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(page.getByRole("region", { name: "Review Office" })).toContainText("Focused re-review returned accept");
   await page.getByRole("button", { name: "Mission Replay" }).click();
   await expect(page.getByRole("region", { name: "Mission Replay" }).getByText(/Event 36 \/ 36/)).toBeVisible();
-  await expect(page.getByText("MissionCompleted", { exact: true })).toBeVisible();
+  await expect(page.locator(".replay-chronology").getByText("Mission completed", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("status")).toContainText("Reloaded the browser-saved local mission");
@@ -124,8 +124,8 @@ test("runs the isolated live-worker pilot through the injected safe browser fake
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 10 / 10");
-  await expect(replay.getByText("SubscriptionWorkerExecutionOutcomeRecorded", { exact: true })).toBeVisible();
-  await expect(replay.getByText("MissionCompleted", { exact: true })).toBeVisible();
+  await expect(replay.locator(".replay-chronology").getByText("Subscription worker execution outcome recorded", { exact: true })).toBeVisible();
+  await expect(replay.locator(".replay-chronology").getByText("Mission completed", { exact: true })).toBeVisible();
 });
 
 test("captures Google Trends only after the explicit browser action, then reloads its persisted evidence", async ({ page }) => {
@@ -145,7 +145,7 @@ test("captures Google Trends only after the explicit browser action, then reload
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 8 / 8");
-  await expect(replay.getByText("GoogleTrendsEvidenceCaptured", { exact: true })).toBeVisible();
+  await expect(replay.locator(".replay-chronology").getByText("Google trends evidence captured", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Final Report", exact: true }).click();
   const finalReport = page.getByRole("region", { name: "Final Report" });
   await expect(finalReport).toContainText("External signal context · not scored");
@@ -177,7 +177,7 @@ test("imports one selected Google Trends comparison CSV as replayed unscored con
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 8 / 8");
-  await expect(replay.getByText("GoogleTrendsComparisonImported", { exact: true })).toBeVisible();
+  await expect(replay.locator(".replay-chronology").getByText("Google trends comparison imported", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Final Report", exact: true }).click();
   const finalReport = page.getByRole("region", { name: "Final Report" });
   await expect(finalReport).toContainText("Manual comparison context · not scored");
@@ -198,8 +198,8 @@ test("replays the fixed Failure Autopsy through the shared local mission runtime
   await page.getByRole("button", { name: "Launch local mission" }).click();
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
-  await expect(replay).toContainText("MissionModeDeclared");
-  await expect(replay).toContainText("MissionTerminated");
+  await expect(replay).toContainText("Mission mode declared");
+  await expect(replay).toContainText("Mission terminated");
   await page.getByRole("button", { name: "Tribunal Room" }).click();
   await expect(page.getByRole("region", { name: "Tribunal Room" })).toContainText("STOP");
   await page.getByRole("button", { name: "Final Report", exact: true }).click();

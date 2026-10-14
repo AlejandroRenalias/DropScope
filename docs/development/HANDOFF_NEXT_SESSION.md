@@ -66,7 +66,7 @@ Last known results: typecheck clean, 717 unit tests (3 skipped), 59 end-to-end t
 - **`.claude/settings.json` rule** denying development-agent reads of `%LOCALAPPDATA%\DropScope\runs`. Required by ADR-027 before real traces are admitted; needs its own independent review and the user's approval.
 - **Pull request #48:** merged (see top of this file). Nothing left to do for it.
 - **Run diff:** done. Built, independently reviewed (four Codex rounds, approved in round 4) and **merged into `main` on 2026-10-14** as pull request #49 (https://github.com/AlejandroRenalias/DropScope/pull/49), a regular merge commit `6339838` of the tested head `99e08c5` (CI `verify` passed on that exact commit); the branch `claude/run-diff` was kept. Command line only; an optional screen like the other features is not built. Claim checking is done and reviewed. The proposal and `ROADMAP.md` dates are only indicative now.
-- Small UI items: the original Mission Replay still shows raw event names in its chronology; the Failure Autopsy and Product Investigation reports were never checked visually.
+- Small UI items: done on branch `claude/ui-visual-check` (see PROGRESS, "UI visual check"): Mission Replay chronology names, held-out reason wording, task card overlap. The Failure Autopsy and Product Investigation reports were checked visually; nothing else was found.
 - Optional: open run files from the runs folder without a file picker (would need a design decision about serving local files).
 
 ## Starter prompt for the new chat

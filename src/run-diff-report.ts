@@ -1,0 +1,108 @@
+// Plain-language reading of a run diff. Pure: used by the command line (and ready for a screen), so every
+// interface says the same thing. Titles come from the runs; the caller escapes the lines before printing.
+import { formatSeconds, group } from "./budget-report.js";
+import type { DiffChange, DiffItem, DiffResult, RunTotals } from "./run-diff.js";
+
+export const DIFF_NOTE =
+  "Steps are matched by what they are (kind and tool or agent name) in tree order, not by id, because ids differ between runs. A difference means the two recordings differ, not that either run is right.";
+
+const stepName = (item: DiffItem): string => (item.a ?? item.b)?.title ?? "a step";
+
+function changeText(change: DiffChange): string {
+  switch (change.code) {
+    case "STATUS": return `it ${change.a === "failed" ? "failed" : "succeeded"} in run A but ${change.b === "failed" ? "failed" : "succeeded"} in run B`;
+    case "INPUT_TOKENS": return `input tokens: ${change.a} in run A, ${change.b} in run B`;
+    case "OUTPUT_TOKENS": return `output tokens: ${change.a} in run A, ${change.b} in run B`;
+    case "CONTENT": return `recorded content differs (${change.fields.join(", ")})`;
+  }
+}
+
+/**
+ * One sentence per difference, in step order. A run of steps only in A followed by a run only in B is read as
+ * replacements, pairing them in order; any left over are reported as only in one run.
+ */
+export function describeDifferences(result: DiffResult, limit: number): { lines: string[]; hidden: number } {
+  const lines: string[] = [];
+  let hidden = 0;
+  const add = (text: string): void => { if (lines.length < limit) lines.push(text); else hidden += 1; };
+  const items = result.items;
+  let k = 0;
+  while (k < items.length) {
+    const item = items[k];
+    if (item.status === "same") { k += 1; continue; }
+    if (item.status === "onlyA") {
+      let endA = k;
+      while (endA < items.length && items[endA].status === "onlyA") endA += 1;
+      let endB = endA;
+      while (endB < items.length && items[endB].status === "onlyB") endB += 1;
+      const paired = Math.min(endA - k, endB - endA);
+      for (let n = 0; n < paired; n += 1) add(`Run A has "${stepName(items[k + n])}" where run B has "${stepName(items[endA + n])}".`);
+      for (let n = paired; n < endA - k; n += 1) add(`Only run A has "${stepName(items[k + n])}".`);
+      for (let n = paired; n < endB - endA; n += 1) add(`Only run B has "${stepName(items[endA + n])}".`);
+      k = endB;
+      continue;
+    }
+    if (item.status === "onlyB") add(`Only run B has "${stepName(item)}".`);
+    else add(`"${stepName(item)}" is in both runs, but ${item.changes.map(changeText).join("; ")}.`);
+    k += 1;
+  }
+  return { lines, hidden };
+}
+
+function totalsRow(label: string, a: string, b: string): string {
+  return `  ${label}: ${a} in run A, ${b} in run B${a === b ? " (same)" : ""}`;
+}
+
+export function totalsLines(a: RunTotals, b: RunTotals): string[] {
+  return [
+    totalsRow("Steps", group(a.steps), group(b.steps)),
+    totalsRow("Model calls", group(a.modelCalls), group(b.modelCalls)),
+    totalsRow("Tool calls", group(a.toolCalls), group(b.toolCalls)),
+    totalsRow("Failed steps", group(a.failedSteps), group(b.failedSteps)),
+    totalsRow("Input tokens", group(a.inputTokens), group(b.inputTokens)),
+    totalsRow("Output tokens", group(a.outputTokens), group(b.outputTokens)),
+    totalsRow("Time", formatSeconds(a.durationNs), formatSeconds(b.durationNs)),
+  ];
+}
+
+export function diffCaveats(result: DiffResult): string[] {
+  const notes = [DIFF_NOTE, "Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference."];
+  if (!result.fullyAligned) notes.push("The runs were too different to line up in full, so everything between their shared start and shared end is listed as removed and added.");
+  if (result.contentComparable) notes.push("Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.");
+  else notes.push("Neither run recorded any step content, so only structure, outcome and token counts were compared.");
+  const missing = result.totals.a.stepsMissingTokens + result.totals.b.stepsMissingTokens;
+  if (missing > 0) notes.push(`${group(missing)} model call(s) had no token count and are counted as zero.`);
+  return notes;
+}
+
+export function diffReportLines(result: DiffResult, ids: { a: string; b: string }, limit = 25): string[] {
+  const lines: string[] = [`Run A: ${ids.a}`, `Run B: ${ids.b}`, ""];
+  if (result.tooLarge) {
+    lines.push("Result: one of the runs has too many steps to compare here, so nothing was compared.");
+    return lines;
+  }
+  if (result.identical) {
+    lines.push("Result: the runs match step for step in structure, outcome, token counts and recorded content.");
+  } else {
+    const first = result.first as DiffItem;
+    const stepNumber = result.firstIndex + 1;
+    lines.push(`Result: the runs first differ at step ${group(stepNumber)} of the aligned list.`);
+    const where = [first.a ? `run A event ${first.a.startSequence}` : null, first.b ? `run B event ${first.b.startSequence}` : null].filter(Boolean).join(", ");
+    lines.push(`  Look at: ${where} (use the state command with --at to see each run there).`);
+    lines.push(`  Steps in both and unchanged: ${group(result.counts.same)}; changed: ${group(result.counts.changed)}; only in A: ${group(result.counts.onlyA)}; only in B: ${group(result.counts.onlyB)}.`);
+    const diffs = describeDifferences(result, limit);
+    lines.push("Differences:");
+    for (const line of diffs.lines) lines.push(`  ${line}`);
+    if (diffs.hidden > 0) lines.push(`  ... and ${group(diffs.hidden)} more.`);
+  }
+  if (result.tools.length > 0) {
+    lines.push("Tool use that differs:");
+    for (const t of result.tools.slice(0, limit)) lines.push(`  ${t.tool}: ${group(t.a)} call(s) in run A, ${group(t.b)} in run B`);
+    if (result.tools.length > limit) lines.push(`  ... and ${group(result.tools.length - limit)} more tools.`);
+  }
+  lines.push("Totals:");
+  lines.push(...totalsLines(result.totals.a, result.totals.b));
+  lines.push("Notes:");
+  for (const note of diffCaveats(result)) lines.push(`  - ${note}`);
+  return lines;
+}

@@ -3,12 +3,15 @@
 //   state <run.runlog.jsonl> [--at <N>]
 //   budget <run.runlog.jsonl> [limits...] [--json]   (counterfactual: re-applies a budget to a recorded run)
 //   claims <run.runlog.jsonl> --claims <claims.json> [--json]   (is each claim supported by the recorded content?)
+//   diff <run A> <run B> [--json]   (where do two recorded runs first differ?)
 // Output never echoes input text: only fixed words, counts, ids and escaped paths (spec 11.6).
 import { pathToFileURL } from "node:url";
 import { parseBudgetPolicy, replayBudget, type BudgetPolicyInput } from "./budget-replay.js";
 import { budgetReportLines } from "./budget-report.js";
 import { claimReportLines } from "./claim-report.js";
 import { CLAIM_LIMITS, checkClaims, parseClaimFile } from "./claim-check.js";
+import { diffRuns } from "./run-diff.js";
+import { diffReportLines } from "./run-diff-report.js";
 import { buildRunModel } from "./frontend/run-replay-model.js";
 import { defaultChecks, readInputFile, type PlatformChecks } from "./run-files.js";
 import { ImportError } from "./run-import-error.js";
@@ -47,6 +50,9 @@ const USAGE = [
   "",
   "  claims <run.runlog.jsonl> --claims <claims.json> [--json]",
   "         (is each claim supported by the content the run recorded? needs a run imported with --full)",
+  "",
+  "  diff <run A.runlog.jsonl> <run B.runlog.jsonl> [--json]",
+  "         (where do two recorded runs first differ? steps are matched by name and order, not by id)",
   "",
   "Run files are local-only: do not share or commit them. --full keeps content in the file.",
 ].join("\n");
@@ -175,6 +181,27 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
         }, null, 2))}\n`);
       } else {
         io.out(`${claimReportLines(check, titleOf).map(escapeForTerminal).join("\n")}\n`);
+      }
+      return 0;
+    }
+    if (command === "diff") {
+      const { positional, flags } = parseFlags(rest, [], ["--json"]);
+      if (positional.length !== 2) throw new UsageError();
+      const modelA = buildRunModel(readRunLog(positional[0], checks));
+      const modelB = buildRunModel(readRunLog(positional[1], checks));
+      const result = diffRuns(modelA, modelB);
+      if (flags.has("--json")) {
+        const item = (i: (typeof result.items)[number]) => ({
+          status: i.status, a: i.a === null ? null : { stepId: i.a.stepId, title: i.a.title, startEvent: i.a.startSequence },
+          b: i.b === null ? null : { stepId: i.b.stepId, title: i.b.title, startEvent: i.b.startSequence }, changes: i.changes,
+        });
+        io.out(`${jsonForTerminal(JSON.stringify({
+          runA: modelA.runId, runB: modelB.runId, tooLarge: result.tooLarge, fullyAligned: result.fullyAligned, identical: result.identical,
+          counts: result.counts, firstDifference: result.first === null ? null : item(result.first), tools: result.tools, totals: result.totals,
+          differences: result.items.filter((i) => i.status !== "same").slice(0, 1000).map(item),
+        }, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2))}\n`);
+      } else {
+        io.out(`${diffReportLines(result, { a: modelA.runId, b: modelB.runId }).map(escapeForTerminal).join("\n")}\n`);
       }
       return 0;
     }

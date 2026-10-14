@@ -215,3 +215,12 @@ Typecheck clean; 316 unit tests; build succeeds; 29 Playwright e2e tests pass; C
 - Local validation: typecheck clean; 669 unit tests pass (3 skipped, the Linux-only ones). The Linux-only tests have NOT run locally; pretending to be Linux, `defaultChecks()` throws the expected error. CI after the push is the real check. Not pushed yet.
 
 - Update (2026-10-14): the test fix was pushed and CI (`verify`) passed on `62b0528`. With the user's approval, PR #48 was merged into `main` as merge commit `9784085`, pinned to that exact head. The source branch was kept.
+
+### Run diff (2026-10-14)
+
+- Requested by the user (proposal phase 4): compare two recorded runs and show where they first differ. Pure and offline; no new event types, no change to the saved run format, so `schemaVersion` and `IMPORTER.version` are unchanged.
+- Rules: steps are matched by title (kind plus tool or agent name) in step-tree order, never by id (ids are random per run). The longest common sequence of titles lines them up, so one added or missing step does not shift everything after it; the shared start and end are trimmed first, and a middle too large to line up (over 4 million table cells) is listed as removed and added, with a note. Runs over 5,000 steps are refused. Matched steps are compared on failed or not, input tokens, output tokens, and recorded content. Content is compared by fingerprint (a withheld value keeps the SHA-256 of its canonical text; a stored value is fingerprinted the same way), so runs imported with and without content compare correctly; the two built-in demos come out identical. Time per step is not a difference (shown in totals only).
+- Code: `src/run-diff.ts` (core), `src/run-diff-report.ts` (plain-language lines), `diff` command in `src/run-cli.ts` (`diff <run A> <run B> [--json]`; every title is escaped for the terminal in text and JSON). No screen yet.
+- Tests: `test/run-diff.test.ts` (15) and `test/run-diff-cli.test.ts` (6): identical runs with different ids and timing, a swapped tool, a missing step, an extra step, failure and token changes, a token count not reported, content differences, cross-mode content equality, no content recorded, the step limit, the alignment fallback, report wording and caps, hostile names in text and JSON, bad arguments, missing and broken files.
+- Validation: typecheck clean; build succeeds; 690 unit tests pass (3 skipped). No Playwright run: no screen changed.
+- Pending: independent review (required by `AGENTS.md`: correctness-sensitive, reads untrusted run files). Not reviewed yet.

@@ -17,7 +17,7 @@ DropScope is a local-first software-engineering learning project with two parts.
 - "Differ" in the run diff means the recordings differ in what is compared (the README and the command list what is not compared). It does not say which run is right.
 - It has been tested on invented demo runs and on a few traces produced by instrumented libraries against a local stub server. **No real production trace has been analyzed.** Do not rely on it for audits, incident reports, compliance or legal evidence.
 - It runs on Windows only. Other operating systems are refused.
-- "No network and no model calls" is true by inspection of the code, and no automated test enforces it. The importer starts the built-in Windows tools PowerShell and `icacls` to read file properties and lock the runs folder.
+- The forensics code makes no model calls and no explicit network requests; this is true by inspection of the code, and no automated test enforces it. One known exception: Windows can access a file on a mapped network drive before DropScope refuses it. The commands start the built-in Windows tools PowerShell and `icacls` to read file properties and lock the runs folder.
 
 ## Use Fixtures Responsibly
 

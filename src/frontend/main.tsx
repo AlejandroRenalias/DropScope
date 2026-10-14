@@ -8,6 +8,7 @@ import { Warning } from "@phosphor-icons/react/dist/csr/Warning";
 import "@radix-ui/themes/styles.css";
 import "./styles.css";
 import "./command-center.css";
+import "./run-replay.css";
 import { fixtureIds } from "../fixture-model.js";
 import { officeHistories, projectOffice, type OfficeScenario } from "./office-projection.js";
 import {
@@ -29,7 +30,7 @@ import {
 } from "./editorial-views.js";
 import { CommandFrame, ResearchOfficeCenter } from "./research-office.js";
 import { uniqueAgents } from "./research-model.js";
-import { MissionReplay } from "./mission-replay.js";
+import { ReplayScreen } from "./replay-screen.js";
 import { FinalReport } from "./report-view.js";
 
 type RuntimeState = "idle" | "loading" | "success" | "error";
@@ -292,7 +293,7 @@ function Office() {
       <CommandFrame label={view === "floor" ? "Research Office floor" : undefined} floor={view === "floor"} projection={projection} history={shownHistory} onApproval={() => setApprovalOpen((value) => !value)} onNavigate={setView}>
         {view === "floor" ? <ResearchOfficeCenter projection={projection} agents={floorAgents} synthetic={synthetic} onEvidence={() => setView("agent")} onNavigate={setView} onApproval={() => setApprovalOpen((value) => !value)} />
           : view === "report" ? <FinalReport events={activeMission?.events} fixtureId={activeMission?.fixtureId} />
-            : view === "replay" ? <MissionReplay scenario={scenario} setScenario={setScenario} activeHistory={activeMission} history={history} position={replayAt} setPosition={setReplayPosition} />
+            : view === "replay" ? <ReplayScreen scenario={scenario} setScenario={setScenario} activeHistory={activeMission} history={history} position={replayAt} setPosition={setReplayPosition} />
               : <DecisionView projection={projection} history={history} view={view} onSubscriptionPreflight={activeMission ? () => void checkSubscriptionRuntime() : undefined} subscriptionPreflightLoading={subscriptionPreflightLoading} onSubscriptionConfirmation={activeMission ? () => void confirmSubscription() : undefined} subscriptionConfirmationLoading={subscriptionConfirmationLoading} onSubscriptionRun={activeMission ? () => void runSubscription() : undefined} subscriptionRunLoading={subscriptionRunLoading} subscriptionConfirmation={subscriptionConfirmation} subscriptionConfirmationEligible={activeMission?.fixtureId === "live-worker-pilot"} onGoogleTrendsCapture={activeMission ? () => void runGoogleTrendsCapture() : undefined} googleTrendsCaptureLoading={googleTrendsCaptureLoading} googleTrendsCaptureEligible={activeMission?.fixtureId === "google-trends-pilot" && projection.mission.status === "RUNNING"} onGoogleTrendsComparisonImport={activeMission ? (file) => void importGoogleTrendsComparisonCsv(file) : undefined} googleTrendsComparisonImportLoading={googleTrendsComparisonImportLoading} googleTrendsComparisonImportEligible={activeMission?.fixtureId === "google-trends-comparison-pilot" && projection.mission.status === "RUNNING"} />}
       </CommandFrame>      {approvalOpen && status === "BLOCKED" && <div className="approval-note" role="status"><Warning size={17} /><span><strong>Policy block</strong> This replay stopped with unresolved safety evidence. This local disclosure does not change mission data or policy.</span></div>}
     </main>

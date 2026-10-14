@@ -1,0 +1,3091 @@
+{
+ "resourceSpans": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "telemetry.sdk.language",
+      "value": {
+       "stringValue": "python"
+      }
+     },
+     {
+      "key": "telemetry.sdk.name",
+      "value": {
+       "stringValue": "opentelemetry"
+      }
+     },
+     {
+      "key": "telemetry.sdk.version",
+      "value": {
+       "stringValue": "1.45.1"
+      }
+     },
+     {
+      "key": "service.instance.id",
+      "value": {
+       "stringValue": "8028fd7b-4103-4868-b0dd-e2dd1541b822"
+      }
+     },
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "synthetic-agent"
+      }
+     },
+     {
+      "key": "service.version",
+      "value": {
+       "stringValue": "0.0.0-spike"
+      }
+     }
+    ]
+   },
+   "scopeSpans": [
+    {
+     "schemaUrl": "https://opentelemetry.io/schemas/1.37.0",
+     "scope": {
+      "name": "opentelemetry.util.genai.handler",
+      "version": "0.4b0"
+     },
+     "spans": [
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0001"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "107"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148097467126",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "b3be36732568b8c9",
+       "startTimeUnixNano": "1791917148068736628",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0002"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "114"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "22"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148125717595",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "9039b7d4c5beed0f",
+       "startTimeUnixNano": "1791917148103891193",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0003"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "121"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "23"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148159094812",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "d77ef8e0c4593f93",
+       "startTimeUnixNano": "1791917148132028875",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0004"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "128"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "24"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148195165282",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "f59e2e2b9bb8efdb",
+       "startTimeUnixNano": "1791917148165429974",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0005"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "135"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "25"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148214670158",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "13f39f74e4d04fa3",
+       "startTimeUnixNano": "1791917148201439256",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0006"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "142"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "26"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148238085078",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "ad154dfe67b4acef",
+       "startTimeUnixNano": "1791917148220928869",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0007"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "149"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "27"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148265609892",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "339eb20ad02f7ac5",
+       "startTimeUnixNano": "1791917148244447490",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0008"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "156"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "28"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148297152102",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "8327eae31a5ed0e9",
+       "startTimeUnixNano": "1791917148271856423",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "error.type",
+         "value": {
+          "stringValue": "RateLimitError"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148333039525",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "de8fc2a33cc58ab4",
+       "startTimeUnixNano": "1791917148303457393",
+       "status": {
+        "code": "STATUS_CODE_ERROR",
+        "message": "Error code: 429 - {'error': {'message': 'synthetic rate limit', 'type': 'rate_limit_error'}}"
+       },
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0010"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "170"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148346282493",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "885383cbae08f910",
+       "startTimeUnixNano": "1791917148333118626",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0011"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "177"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "22"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148370325528",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "8d204873ca654e51",
+       "startTimeUnixNano": "1791917148352571810",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0012"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "184"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "23"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148398146085",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "6b2b705d0f2eea66",
+       "startTimeUnixNano": "1791917148376670441",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0013"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "191"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "24"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148434402253",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "37d48ac7ff60db4f",
+       "startTimeUnixNano": "1791917148404425043",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0014"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "198"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "25"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148470103993",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "8ab762066d157e65",
+       "startTimeUnixNano": "1791917148440685607",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0015"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "205"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "26"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148490816760",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "919c723f1bea7789",
+       "startTimeUnixNano": "1791917148476445175",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0016"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "212"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "27"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148514636289",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "23a84700276d5de6",
+       "startTimeUnixNano": "1791917148497115244",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0017"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "219"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "28"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148542595575",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "a4d33ae725afa7a6",
+       "startTimeUnixNano": "1791917148520988560",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0018"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "226"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "20"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148574202818",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "022297216ec6c215",
+       "startTimeUnixNano": "1791917148548905955",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0019"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "233"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148610185243",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "b2699357c57a7834",
+       "startTimeUnixNano": "1791917148580514448",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0020"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "240"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "22"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148630290415",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "822f67e7c0b2065b",
+       "startTimeUnixNano": "1791917148616554882",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0021"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "247"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "23"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148654631598",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "64e1dd8e4cc36125",
+       "startTimeUnixNano": "1791917148636628380",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0022"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "254"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "24"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148682882572",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "3b9a333ed5dea59c",
+       "startTimeUnixNano": "1791917148660962439",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0023"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "261"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "25"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148715240492",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "3b5280d40a82ccd5",
+       "startTimeUnixNano": "1791917148689200824",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0024"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "268"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "26"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148752294501",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "46e5d7472da908db",
+       "startTimeUnixNano": "1791917148721626834",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0025"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "275"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "27"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148773612340",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "d65de5ff1b1319ac",
+       "startTimeUnixNano": "1791917148759003882",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0026"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "282"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "28"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148800901884",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "71da2debf375776c",
+       "startTimeUnixNano": "1791917148779931578",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0027"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "289"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "20"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148828924492",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "ff9db4e0a2a8df02",
+       "startTimeUnixNano": "1791917148807218093",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "41005"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "stop"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0028"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "296"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148861371652",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "566db27a660121d8",
+       "startTimeUnixNano": "1791917148836198332",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      }
+     ]
+    },
+    {
+     "scope": {
+      "name": "spike.agent",
+      "version": "0.0.0"
+     },
+     "spans": [
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148103737017",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "880ac7bbcd1858bc",
+       "startTimeUnixNano": "1791917148097570956",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148131912567",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "33e916c2b22ac84a",
+       "startTimeUnixNano": "1791917148125787758",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148165304559",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "aea0f6b807e6da05",
+       "startTimeUnixNano": "1791917148159159408",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148201360618",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "7d743264e5df8ed1",
+       "startTimeUnixNano": "1791917148195232125",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148220842092",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "ed4bd840777e8167",
+       "startTimeUnixNano": "1791917148214729471",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148244322081",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "7aa43e96ae8f9986",
+       "startTimeUnixNano": "1791917148238140101",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148271748123",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "8f4927ff8219c150",
+       "startTimeUnixNano": "1791917148265664880",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148303349706",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "fbf841d0f5827abd",
+       "startTimeUnixNano": "1791917148297209686",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148352472860",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "4e0999b6a4243564",
+       "startTimeUnixNano": "1791917148346350629",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148376569752",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "ad2bd5363f26e352",
+       "startTimeUnixNano": "1791917148370383417",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148404310525",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "03e6c5ca2eefab1f",
+       "startTimeUnixNano": "1791917148398205093",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148440588497",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "ed6054f2fe43cb5e",
+       "startTimeUnixNano": "1791917148434461338",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148476326153",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "63fac09c7b944e30",
+       "startTimeUnixNano": "1791917148470179220",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148497015536",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "dbf9bf694c75a578",
+       "startTimeUnixNano": "1791917148490886679",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148520888475",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "cace40eef3022f32",
+       "startTimeUnixNano": "1791917148514696050",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148548805197",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "3b86e3a973a926e5",
+       "startTimeUnixNano": "1791917148542669105",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148580412306",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "8b474b165fd8b4f8",
+       "startTimeUnixNano": "1791917148574282076",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148616435718",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "3e111bbe7cb0409a",
+       "startTimeUnixNano": "1791917148610292852",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148636510290",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "39ae8e6fe9235d3c",
+       "startTimeUnixNano": "1791917148630361924",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148660851394",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "8380f5a3d2a80de4",
+       "startTimeUnixNano": "1791917148654702907",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148689094024",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "c9930db884f47cfa",
+       "startTimeUnixNano": "1791917148682947504",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148721511536",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "b67a2ff730bdc546",
+       "startTimeUnixNano": "1791917148715356652",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148758673030",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "73a35107271d469b",
+       "startTimeUnixNano": "1791917148752504236",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148779828840",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "65d10daaab1065ff",
+       "startTimeUnixNano": "1791917148773701440",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148807122854",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "8b700d6c400ed433",
+       "startTimeUnixNano": "1791917148800978208",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148835148260",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "8e79443da8e01e71",
+       "spanId": "dbd717a9898613fd",
+       "startTimeUnixNano": "1791917148828977661",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "invoke_agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "research-agent"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917148861390695",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "invoke_agent research-agent",
+       "parentSpanId": "ba3e76ee7e9e59b5",
+       "spanId": "8e79443da8e01e71",
+       "startTimeUnixNano": "1791917148068611385",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      },
+      {
+       "endTimeUnixNano": "1791917148861403390",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "run research-agent",
+       "spanId": "ba3e76ee7e9e59b5",
+       "startTimeUnixNano": "1791917148068538020",
+       "status": {},
+       "traceId": "6795cdb779bb1c61cabe58e2a3101e6c"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

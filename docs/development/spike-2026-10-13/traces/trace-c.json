@@ -1,0 +1,1555 @@
+{
+ "resourceSpans": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "telemetry.sdk.language",
+      "value": {
+       "stringValue": "python"
+      }
+     },
+     {
+      "key": "telemetry.sdk.name",
+      "value": {
+       "stringValue": "opentelemetry"
+      }
+     },
+     {
+      "key": "telemetry.sdk.version",
+      "value": {
+       "stringValue": "1.45.1"
+      }
+     },
+     {
+      "key": "service.instance.id",
+      "value": {
+       "stringValue": "9b84f6d1-0e52-4fad-8379-453e97bfeb00"
+      }
+     },
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "synthetic-agents-sdk"
+      }
+     },
+     {
+      "key": "service.version",
+      "value": {
+       "stringValue": "0.0.0-spike"
+      }
+     }
+    ]
+   },
+   "scopeSpans": [
+    {
+     "schemaUrl": "https://opentelemetry.io/schemas/1.28.0",
+     "scope": {
+      "name": "opentelemetry.instrumentation.openai_agents"
+     },
+     "spans": [
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "101"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "16"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"You are the triage agent. Hand off to the researcher.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Investigate synthetic widget demand.\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.system_instructions",
+         "value": {
+          "stringValue": "[{\"type\":\"text\",\"content\":\"You are the triage agent. Hand off to the researcher.\"}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"{'content': None, 'refusal': None, 'role': 'assistant', 'annotations': None, 'audio': None, 'function_call': None, 'tool_calls': [{'id': 'call_001a', 'function': {'arguments': '{}', 'name': 'transfer_to_researcher'}, 'type': 'function'}]}\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119811550595",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "a1731869647d7d6e",
+       "spanId": "6b53a5d7131e8196",
+       "startTimeUnixNano": "1791917119582887356",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "agent_handoff"
+         }
+        },
+        {
+         "key": "gen_ai.handoff.from_agent",
+         "value": {
+          "stringValue": "triage"
+         }
+        },
+        {
+         "key": "gen_ai.handoff.to_agent",
+         "value": {
+          "stringValue": "researcher"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119812144187",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "agent_handoff OpenAI Agent",
+       "parentSpanId": "a1731869647d7d6e",
+       "spanId": "6f41b3c45b6795cc",
+       "startTimeUnixNano": "1791917119812019051",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "invoke_agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "triage"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"You are the triage agent. Hand off to the researcher.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Investigate synthetic widget demand.\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"{'content': None, 'refusal': None, 'role': 'assistant', 'annotations': None, 'audio': None, 'function_call': None, 'tool_calls': [{'id': 'call_001a', 'function': {'arguments': '{}', 'name': 'transfer_to_researcher'}, 'type': 'function'}]}\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.system_instructions",
+         "value": {
+          "stringValue": "[{\"type\":\"text\",\"content\":\"You are the triage agent. Hand off to the researcher.\"}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119812300993",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "invoke_agent triage",
+       "parentSpanId": "339c8dc8918c0fd8",
+       "spanId": "a1731869647d7d6e",
+       "startTimeUnixNano": "1791917119582420137",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "112"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "17"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Investigate synthetic widget demand.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_001a\",\"name\":\"transfer_to_researcher\",\"arguments\":\"{}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"},{\"type\":\"tool_call_response\",\"id\":\"call_001a\",\"result\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.system_instructions",
+         "value": {
+          "stringValue": "[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"{'content': None, 'refusal': None, 'role': 'assistant', 'annotations': None, 'audio': None, 'function_call': None, 'tool_calls': [{'id': 'call_0020', 'function': {'arguments': '{\\\"query\\\": \\\"synthetic topic 0\\\"}', 'name': 'search_web'}, 'type': 'function'}, {'id': 'call_0021', 'function': {'arguments': '{\\\"query\\\": \\\"synthetic topic 1\\\"}', 'name': 'search_web'}, 'type': 'function'}]}\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119828853287",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "4bd8a7d2cfe98c99",
+       "startTimeUnixNano": "1791917119812643665",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search_web"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"query\": \"synthetic topic 0\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed."
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "json"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119839876384",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search_web",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "e6025687125b5cfc",
+       "startTimeUnixNano": "1791917119829148451",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search_web"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"query\": \"synthetic topic 1\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed."
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "json"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119839960948",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search_web",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "7139f25cc33ebb14",
+       "startTimeUnixNano": "1791917119829310088",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "123"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "18"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Investigate synthetic widget demand.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_001a\",\"name\":\"transfer_to_researcher\",\"arguments\":\"{}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"},{\"type\":\"tool_call_response\",\"id\":\"call_001a\",\"result\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0020\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 0\\\"}\"},{\"type\":\"tool_call\",\"id\":\"call_0021\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 1\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0020\",\"result\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0021\",\"result\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.system_instructions",
+         "value": {
+          "stringValue": "[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"{'content': None, 'refusal': None, 'role': 'assistant', 'annotations': None, 'audio': None, 'function_call': None, 'tool_calls': [{'id': 'call_0030', 'function': {'arguments': '{\\\"query\\\": \\\"synthetic topic 2\\\"}', 'name': 'search_web'}, 'type': 'function'}]}\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119855623184",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "e6f878d47069d444",
+       "startTimeUnixNano": "1791917119840432362",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search_web"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"query\": \"synthetic topic 2\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed."
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "json"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119861263747",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search_web",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "8cef078b3a6e9748",
+       "startTimeUnixNano": "1791917119855902156",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "134"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "19"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Investigate synthetic widget demand.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_001a\",\"name\":\"transfer_to_researcher\",\"arguments\":\"{}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"},{\"type\":\"tool_call_response\",\"id\":\"call_001a\",\"result\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0020\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 0\\\"}\"},{\"type\":\"tool_call\",\"id\":\"call_0021\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 1\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0020\",\"result\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0021\",\"result\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0030\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 2\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0030\",\"result\":\"Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed.\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.system_instructions",
+         "value": {
+          "stringValue": "[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"{'content': None, 'refusal': None, 'role': 'assistant', 'annotations': None, 'audio': None, 'function_call': None, 'tool_calls': [{'id': 'call_0040', 'function': {'arguments': '{\\\"query\\\": \\\"synthetic topic 3\\\"}', 'name': 'search_web'}, 'type': 'function'}]}\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119876968536",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "adeef91c76527c31",
+       "startTimeUnixNano": "1791917119861649937",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search_web"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"query\": \"synthetic topic 3\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'synthetic topic 3': Source S0 says widget metric changed."
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "json"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119882643610",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search_web",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "65c844198f3b1075",
+       "startTimeUnixNano": "1791917119877199900",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "145"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "20"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Investigate synthetic widget demand.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_001a\",\"name\":\"transfer_to_researcher\",\"arguments\":\"{}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"},{\"type\":\"tool_call_response\",\"id\":\"call_001a\",\"result\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0020\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 0\\\"}\"},{\"type\":\"tool_call\",\"id\":\"call_0021\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 1\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0020\",\"result\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0021\",\"result\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0030\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 2\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0030\",\"result\":\"Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0040\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 3\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 3': Source S0 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0040\",\"result\":\"Synthetic result for 'synthetic topic 3': Source S0 says widget metric changed.\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.system_instructions",
+         "value": {
+          "stringValue": "[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"{'content': None, 'refusal': None, 'role': 'assistant', 'annotations': None, 'audio': None, 'function_call': None, 'tool_calls': [{'id': 'call_0050', 'function': {'arguments': '{\\\"query\\\": \\\"synthetic topic 4\\\"}', 'name': 'search_web'}, 'type': 'function'}, {'id': 'call_0051', 'function': {'arguments': '{\\\"query\\\": \\\"synthetic topic 5\\\"}', 'name': 'search_web'}, 'type': 'function'}]}\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119898775960",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "1936a944a067998f",
+       "startTimeUnixNano": "1791917119883018158",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search_web"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"query\": \"synthetic topic 4\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'synthetic topic 4': Source S5 says widget metric changed."
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "json"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119909992327",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search_web",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "4465c55cf754d51f",
+       "startTimeUnixNano": "1791917119899059686",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search_web"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"query\": \"synthetic topic 5\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'synthetic topic 5': Source S6 says widget metric changed."
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "json"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119910062294",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search_web",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "7b392f20e3c30382",
+       "startTimeUnixNano": "1791917119899151966",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "OpenAI Agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "156"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Investigate synthetic widget demand.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_001a\",\"name\":\"transfer_to_researcher\",\"arguments\":\"{}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"},{\"type\":\"tool_call_response\",\"id\":\"call_001a\",\"result\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0020\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 0\\\"}\"},{\"type\":\"tool_call\",\"id\":\"call_0021\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 1\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0020\",\"result\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0021\",\"result\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0030\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 2\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0030\",\"result\":\"Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0040\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 3\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 3': Source S0 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0040\",\"result\":\"Synthetic result for 'synthetic topic 3': Source S0 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0050\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 4\\\"}\"},{\"type\":\"tool_call\",\"id\":\"call_0051\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 5\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 4': Source S5 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0050\",\"result\":\"Synthetic result for 'synthetic topic 4': Source S5 says widget metric changed.\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 5': Source S6 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0051\",\"result\":\"Synthetic result for 'synthetic topic 5': Source S6 says widget metric changed.\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.system_instructions",
+         "value": {
+          "stringValue": "[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic finding: widget demand rose 12% [S3]. Lead time is 9 days [S12].\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119928770737",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "b4eb44760ad69b9c",
+       "spanId": "27629c818322b0cc",
+       "startTimeUnixNano": "1791917119910462121",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "invoke_agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "researcher"
+         }
+        },
+        {
+         "key": "gen_ai.agent.id",
+         "value": {
+          "stringValue": "agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.description",
+         "value": {
+          "stringValue": "OpenAI Agents instrumentation"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]},{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Investigate synthetic widget demand.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_001a\",\"name\":\"transfer_to_researcher\",\"arguments\":\"{}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"},{\"type\":\"tool_call_response\",\"id\":\"call_001a\",\"result\":\"{\\\"assistant\\\": \\\"researcher\\\"}\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0020\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 0\\\"}\"},{\"type\":\"tool_call\",\"id\":\"call_0021\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 1\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0020\",\"result\":\"Synthetic result for 'synthetic topic 0': Source S10 says widget metric changed.\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0021\",\"result\":\"Synthetic result for 'synthetic topic 1': Source S12 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0030\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 2\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0030\",\"result\":\"Synthetic result for 'synthetic topic 2': Source S3 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0040\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 3\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 3': Source S0 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0040\",\"result\":\"Synthetic result for 'synthetic topic 3': Source S0 says widget metric changed.\"}]},{\"role\":\"assistant\",\"parts\":[{\"type\":\"tool_call\",\"id\":\"call_0050\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 4\\\"}\"},{\"type\":\"tool_call\",\"id\":\"call_0051\",\"name\":\"search_web\",\"arguments\":\"{\\\"query\\\": \\\"synthetic topic 5\\\"}\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 4': Source S5 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0050\",\"result\":\"Synthetic result for 'synthetic topic 4': Source S5 says widget metric changed.\"}]},{\"role\":\"tool\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic result for 'synthetic topic 5': Source S6 says widget metric changed.\"},{\"type\":\"tool_call_response\",\"id\":\"call_0051\",\"result\":\"Synthetic result for 'synthetic topic 5': Source S6 says widget metric changed.\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"Synthetic finding: widget demand rose 12% [S3]. Lead time is 9 days [S12].\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.system_instructions",
+         "value": {
+          "stringValue": "[{\"type\":\"text\",\"content\":\"You are the researcher agent. Use search_web, then answer with citations.\"}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.type",
+         "value": {
+          "stringValue": "text"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119929170374",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "invoke_agent researcher",
+       "parentSpanId": "339c8dc8918c0fd8",
+       "spanId": "b4eb44760ad69b9c",
+       "startTimeUnixNano": "1791917119812430920",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "invoke_agent"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "39767"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917119929196736",
+       "flags": 256,
+       "kind": "SPAN_KIND_SERVER",
+       "name": "Agent workflow",
+       "spanId": "339c8dc8918c0fd8",
+       "startTimeUnixNano": "1791917119581603060",
+       "status": {
+        "code": "STATUS_CODE_OK"
+       },
+       "traceId": "a27b618fe9e9c6ab034c5cfec5d71674"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

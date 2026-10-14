@@ -76,6 +76,6 @@ Ask the user before decisions that materially change product behavior, architect
 
 Keep prompts compact, inspect only relevant files, and avoid duplicate work and reviews. Record in `docs/development/PROGRESS.md` what was done, validation results, implementation attempts per workstream, review cycles and outcomes, what remains, and open risks. `USAGE_LOG.md` is a frozen record of Codex-era usage; new entries go in `PROGRESS.md`. If effort begins rising unexpectedly, reduce the next batch size rather than weakening acceptance gates.
 
-## Temporary seven-day sprint exception
+## Temporary sprint exception
 
-During the sprint declared in `AGENTS.md`, the learning-oriented process (60/40 target, Learning Checkpoints, `LEARNING.md`) is paused, while technical explanations for architecture, security, persistence, budget, and recovery decisions and the `PROGRESS.md` reports are kept. The exception expires at 00:00 on 2026-10-20 in the user's local time zone unless the user explicitly extends or ends it earlier (see `AGENTS.md`). All gates in this document remain in force.
+During the sprint declared in `AGENTS.md`, the learning-oriented process (60/40 target, Learning Checkpoints, `LEARNING.md`) is paused, while technical explanations for architecture, security, persistence, budget, and recovery decisions and the `PROGRESS.md` reports are kept. The exception expires at 00:00 on 2026-10-31 in the user's local time zone (extended on 2026-10-13 from 2026-10-20) unless the user explicitly extends or ends it earlier (see `AGENTS.md`). The learning-oriented process stays paused after expiry unless the user decides to resume it. All gates in this document remain in force.

@@ -1,0 +1,3733 @@
+{
+ "resourceSpans": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "telemetry.sdk.language",
+      "value": {
+       "stringValue": "python"
+      }
+     },
+     {
+      "key": "telemetry.sdk.name",
+      "value": {
+       "stringValue": "opentelemetry"
+      }
+     },
+     {
+      "key": "telemetry.sdk.version",
+      "value": {
+       "stringValue": "1.45.1"
+      }
+     },
+     {
+      "key": "service.instance.id",
+      "value": {
+       "stringValue": "f1961699-f735-4647-8f87-ecf3de370673"
+      }
+     },
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "synthetic-agent"
+      }
+     },
+     {
+      "key": "service.version",
+      "value": {
+       "stringValue": "0.0.0-spike"
+      }
+     }
+    ]
+   },
+   "scopeSpans": [
+    {
+     "schemaUrl": "https://opentelemetry.io/schemas/1.37.0",
+     "scope": {
+      "name": "opentelemetry.util.genai.handler",
+      "version": "0.4b0"
+     },
+     "spans": [
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0001"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "107"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:1 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 1\"},\"name\":\"search\",\"id\":\"call_0001\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114273290576",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "dc404b91797b503c",
+       "startTimeUnixNano": "1791917114240390860",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0002"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "114"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "22"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:1 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 1\"},\"name\":\"fetch\",\"id\":\"call_0002\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114302508990",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "79c242ab95b80475",
+       "startTimeUnixNano": "1791917114279772798",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0003"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "121"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "23"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:2 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 2\"},\"name\":\"search\",\"id\":\"call_0003\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114335398733",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "2adaa9f93b981b56",
+       "startTimeUnixNano": "1791917114309000983",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0004"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "128"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "24"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:2 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 2\"},\"name\":\"fetch\",\"id\":\"call_0004\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114372150501",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "fc2dd3ab3bcd16f5",
+       "startTimeUnixNano": "1791917114341775121",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0005"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "135"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "25"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:3 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 3\"},\"name\":\"search\",\"id\":\"call_0005\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114394655519",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "7a6864c38e268132",
+       "startTimeUnixNano": "1791917114379495248",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0006"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "142"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "26"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:3 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 3\"},\"name\":\"fetch\",\"id\":\"call_0006\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114418186885",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "1e80e5b7168b59ca",
+       "startTimeUnixNano": "1791917114400941074",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0007"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "149"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "27"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:4 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 4\"},\"name\":\"search\",\"id\":\"call_0007\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114445677815",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "d8b51f576f787091",
+       "startTimeUnixNano": "1791917114424520053",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0008"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "156"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "28"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:4 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 4\"},\"name\":\"fetch\",\"id\":\"call_0008\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114477218720",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "210cf57d841c002c",
+       "startTimeUnixNano": "1791917114451988941",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:5 gather evidence for synthetic topic FORCE-429-ONCE\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "error.type",
+         "value": {
+          "stringValue": "RateLimitError"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114513101461",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "cad0c5d031d5bf5a",
+       "startTimeUnixNano": "1791917114483571130",
+       "status": {
+        "code": "STATUS_CODE_ERROR",
+        "message": "Error code: 429 - {'error': {'message': 'synthetic rate limit', 'type': 'rate_limit_error'}}"
+       },
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0010"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "170"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:5 gather evidence for synthetic topic FORCE-429-ONCE\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 5\"},\"name\":\"search\",\"id\":\"call_0010\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114526704652",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "6fd8beffc65b79e9",
+       "startTimeUnixNano": "1791917114513217694",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0011"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "177"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "22"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:5 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 5\"},\"name\":\"fetch\",\"id\":\"call_0011\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114550805395",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "e07656f17c68d721",
+       "startTimeUnixNano": "1791917114533056794",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0012"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "184"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "23"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:6 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 6\"},\"name\":\"search\",\"id\":\"call_0012\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114578443301",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "cde29d0c03f01fef",
+       "startTimeUnixNano": "1791917114557143991",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0013"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "191"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "24"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:6 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 6\"},\"name\":\"fetch\",\"id\":\"call_0013\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114609878574",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "86903114a25c3097",
+       "startTimeUnixNano": "1791917114584722232",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0014"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "198"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "25"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:7 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 7\"},\"name\":\"search\",\"id\":\"call_0014\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114645639276",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "1dc26776d2ccb1ac",
+       "startTimeUnixNano": "1791917114616175001",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0015"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "205"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "26"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:7 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 7\"},\"name\":\"fetch\",\"id\":\"call_0015\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114666075521",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "8b8f80ef8e718e2f",
+       "startTimeUnixNano": "1791917114651946571",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0016"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "212"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "27"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:8 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 8\"},\"name\":\"search\",\"id\":\"call_0016\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114690504334",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "805383ddd8395c17",
+       "startTimeUnixNano": "1791917114672388206",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0017"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "219"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "28"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:8 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 8\"},\"name\":\"fetch\",\"id\":\"call_0017\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114718837165",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "39173964ea131324",
+       "startTimeUnixNano": "1791917114696853739",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0018"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "226"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "20"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:9 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 9\"},\"name\":\"search\",\"id\":\"call_0018\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114750530693",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "2a689d0f38b3052c",
+       "startTimeUnixNano": "1791917114725125091",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0019"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "233"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:9 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 9\"},\"name\":\"fetch\",\"id\":\"call_0019\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114786126512",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "60cbc1f146a27c8f",
+       "startTimeUnixNano": "1791917114756814480",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0020"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "240"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "22"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:10 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 10\"},\"name\":\"search\",\"id\":\"call_0020\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114805888452",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "6d437d70181e11a9",
+       "startTimeUnixNano": "1791917114792404110",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0021"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "247"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "23"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:10 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 10\"},\"name\":\"fetch\",\"id\":\"call_0021\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114829468676",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "7354d8bb5b9dc328",
+       "startTimeUnixNano": "1791917114812167946",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0022"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "254"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "24"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:11 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 11\"},\"name\":\"search\",\"id\":\"call_0022\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114856689508",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "74ccd853f8b80cf9",
+       "startTimeUnixNano": "1791917114835801184",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0023"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "261"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "25"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:11 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 11\"},\"name\":\"fetch\",\"id\":\"call_0023\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114888274374",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "ed30f8af332c5b99",
+       "startTimeUnixNano": "1791917114862991259",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0024"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "268"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "26"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:12 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 12\"},\"name\":\"search\",\"id\":\"call_0024\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114929545860",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "48a71305a3e7e234",
+       "startTimeUnixNano": "1791917114894567355",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0025"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "275"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "27"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:12 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 12\"},\"name\":\"fetch\",\"id\":\"call_0025\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114949527485",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "d74241ba87c57d45",
+       "startTimeUnixNano": "1791917114935903898",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0026"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "282"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "28"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:13 gather evidence for synthetic topic\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 13\"},\"name\":\"search\",\"id\":\"call_0026\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114972922212",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "7206160490d8662b",
+       "startTimeUnixNano": "1791917114955852428",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "tool_calls"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0027"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "289"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "20"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"STEP:13 FETCH page\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"arguments\":{\"q\":\"synthetic query 13\"},\"name\":\"fetch\",\"id\":\"call_0027\",\"type\":\"tool_call\"}],\"finish_reason\":\"tool_calls\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917115000418295",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "52dff10332c98d93",
+       "startTimeUnixNano": "1791917114979273569",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.provider.name",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "server.address",
+         "value": {
+          "stringValue": "127.0.0.1"
+         }
+        },
+        {
+         "key": "server.port",
+         "value": {
+          "intValue": "36519"
+         }
+        },
+        {
+         "key": "gen_ai.response.finish_reasons",
+         "value": {
+          "arrayValue": {
+           "values": [
+            {
+             "stringValue": "stop"
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "stub-model-1"
+         }
+        },
+        {
+         "key": "gen_ai.response.id",
+         "value": {
+          "stringValue": "chatcmpl-0028"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "296"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "21"
+         }
+        },
+        {
+         "key": "gen_ai.input.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"system\",\"parts\":[{\"content\":\"You are a synthetic research agent.\",\"type\":\"text\"}]},{\"role\":\"user\",\"parts\":[{\"content\":\"FINAL write findings with citations\",\"type\":\"text\"}]}]"
+         }
+        },
+        {
+         "key": "gen_ai.output.messages",
+         "value": {
+          "stringValue": "[{\"role\":\"assistant\",\"parts\":[{\"content\":\"Synthetic finding: Widget demand rose 12% [S3] and unit cost fell 4% [S7]. Supplier lead time is 9 days [S12]. The market is saturated [S99].\",\"type\":\"text\"}],\"finish_reason\":\"stop\"}]"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917115032149335",
+       "flags": 256,
+       "kind": "SPAN_KIND_CLIENT",
+       "name": "chat stub-model-1",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "290c09c2e3dd8fc7",
+       "startTimeUnixNano": "1791917115006748764",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      }
+     ]
+    },
+    {
+     "scope": {
+      "name": "spike.agent",
+      "version": "0.0.0"
+     },
+     "spans": [
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 1\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 1': Source S9 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114279592677",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "ba0b938b883fea1f",
+       "startTimeUnixNano": "1791917114273416822",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 1\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 1': Source S2 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114308859252",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "021655aa701de9d4",
+       "startTimeUnixNano": "1791917114302609990",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 2\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 2': Source S11 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114341639515",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "bd5ee02840b39160",
+       "startTimeUnixNano": "1791917114335475374",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 2\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 2': Source S8 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114379373269",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "9bfd78049ac5935d",
+       "startTimeUnixNano": "1791917114372224497",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 3\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 3': Source S6 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114400846430",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "ad322d343b3fe743",
+       "startTimeUnixNano": "1791917114394712284",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 3\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 3': Source S8 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114424428202",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "4de9dfccafa3b466",
+       "startTimeUnixNano": "1791917114418285597",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 4\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 4': Source S8 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114451881772",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "ad63dc43a0b4cdcc",
+       "startTimeUnixNano": "1791917114445736940",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 4\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 4': Source S9 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114483480464",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "048ba7a0e7b62884",
+       "startTimeUnixNano": "1791917114477335033",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 5\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 5': Source S2 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114532915218",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "8ad6bad776fa6a7f",
+       "startTimeUnixNano": "1791917114526770809",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 5\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 5': Source S5 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114557049172",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "656e83859e3f37e8",
+       "startTimeUnixNano": "1791917114550870156",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 6\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 6': Source S11 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114584633548",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "657e8699b8cf8ec3",
+       "startTimeUnixNano": "1791917114578502141",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 6\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 6': Source S1 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114616080786",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "6943098d31fa5e22",
+       "startTimeUnixNano": "1791917114609948555",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 7\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 7': Source S5 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114651851703",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "81335b3176945fb0",
+       "startTimeUnixNano": "1791917114645709058",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 7\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 7': Source S11 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114672296824",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "558a7532c79b6cf6",
+       "startTimeUnixNano": "1791917114666141192",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 8\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 8': Source S0 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114696745498",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "5f0abcb9011ebbf8",
+       "startTimeUnixNano": "1791917114690573670",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 8\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 8': Source S4 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114725033790",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "56bb435aa9b8ffbe",
+       "startTimeUnixNano": "1791917114718897030",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 9\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 9': Source S4 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114756724135",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "09678e092ed5a5c8",
+       "startTimeUnixNano": "1791917114750590877",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 9\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 9': Source S4 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114792318549",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "e55c93cbc00ed7e5",
+       "startTimeUnixNano": "1791917114786184636",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 10\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 10': Source S11 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114812086812",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "0519d3b67b700e2a",
+       "startTimeUnixNano": "1791917114805945320",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 10\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 10': Source S12 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114835715771",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "80aebd368f2fd384",
+       "startTimeUnixNano": "1791917114829543699",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 11\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 11': Source S8 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114862902579",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "4e6b13ca5dbb8ca3",
+       "startTimeUnixNano": "1791917114856744683",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 11\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 11': Source S2 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114894482991",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "036d9fad4a77fb7b",
+       "startTimeUnixNano": "1791917114888335428",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 12\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 12': Source S6 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114935807564",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "56834891e7cd0a5b",
+       "startTimeUnixNano": "1791917114929606877",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 12\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 12': Source S9 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114955752951",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "4007983778b5a175",
+       "startTimeUnixNano": "1791917114949588380",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "search"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"topic 13\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'topic 13': Source S1 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917114979138745",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool search",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "213b4c630d79ac75",
+       "startTimeUnixNano": "1791917114972980402",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "execute_tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "fetch"
+         }
+        },
+        {
+         "key": "gen_ai.tool.type",
+         "value": {
+          "stringValue": "function"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.arguments",
+         "value": {
+          "stringValue": "{\"q\": \"page 13\"}"
+         }
+        },
+        {
+         "key": "gen_ai.tool.call.result",
+         "value": {
+          "stringValue": "Synthetic result for 'page 13': Source S0 says widget metric changed."
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917115006643484",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "execute_tool fetch",
+       "parentSpanId": "008424f567b329c9",
+       "spanId": "4c270420112b76a0",
+       "startTimeUnixNano": "1791917115000482872",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "invoke_agent"
+         }
+        },
+        {
+         "key": "gen_ai.agent.name",
+         "value": {
+          "stringValue": "research-agent"
+         }
+        }
+       ],
+       "endTimeUnixNano": "1791917115032173064",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "invoke_agent research-agent",
+       "parentSpanId": "55430ab91a5031be",
+       "spanId": "008424f567b329c9",
+       "startTimeUnixNano": "1791917114240187486",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      },
+      {
+       "endTimeUnixNano": "1791917115032184790",
+       "flags": 256,
+       "kind": "SPAN_KIND_INTERNAL",
+       "name": "run research-agent",
+       "spanId": "55430ab91a5031be",
+       "startTimeUnixNano": "1791917114240123363",
+       "status": {},
+       "traceId": "d5a862d7a1f1f9961adea4955e18b58c"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

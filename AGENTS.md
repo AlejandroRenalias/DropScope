@@ -25,9 +25,20 @@ These rules are shared by every coding agent working on this repository (Claude 
 
 Read `docs/development/DEVELOPMENT_WORKFLOW.md` before non-trivial work.
 
-## Temporary seven-day sprint exception
+## Communication with the user
 
-In effect from 2026-10-13 until 00:00 on 2026-10-20 in the user's local time zone (exclusive), unless the user explicitly ends it earlier. Continuing beyond that time requires an explicit, approved extension. After expiry without an extension, all engineering gates continue unchanged and the learning workflow stays paused until the user decides whether to resume it. It changes working style only; it does not amend the product plan, the frozen architecture, any ADR, or any product policy.
+The user is a beginner in software engineering and does not know the jargon. These rules apply to every chat reply, report and document written for the user, and they are not paused by any exception.
+
+- Use plain words and short sentences. Say what something is and why it matters before how it works.
+- Explain every technical term, acronym, tool name and abbreviation in a short phrase the first time it appears in a conversation, and again when it has not appeared for a while. If unsure whether the user knows a term, explain it.
+- Lead with the conclusion or the decision needed, then the reason. Use everyday comparisons. Do not stack identifiers (commit hashes, error codes, file paths) without saying what they are and why they matter.
+- Do not assume earlier context: restate in one sentence what a decision is about.
+- Code, ADRs and specifications may stay technical, but anything the user must decide on needs a plain-language summary at the top.
+- Reusable lessons from this repository are in `docs/development/WORKING_PRINCIPLES.md`.
+
+## Temporary sprint exception
+
+In effect from 2026-10-13 until 00:00 on 2026-10-31 in the user's local time zone (exclusive), unless the user explicitly ends it earlier. The user extended it on 2026-10-13 from its original end of 2026-10-20 and will re-decide when the first working version (phases 0 to 3 of `docs/development/PROPOSAL_AGENT_RUN_FORENSICS.md`) is reached. Continuing beyond that time requires another explicit, approved extension. After expiry without an extension, all engineering gates continue unchanged. The learning workflow stays paused: on 2026-10-13 the user decided not to resume it, and it resumes only if the user later says so. The plain-language rule in "Communication with the user" applies regardless. The exception changes working style only; it does not amend the product plan, the frozen architecture, any ADR, or any product policy.
 
 - **Paused:** the 60/40 product/learning target, Routine versus Learning Checkpoint classification, mental-model briefings, `LEARNING.md` updates, and teaching-oriented debugging exercises. Earlier Codex-era documents that mention these remain valid history.
 - **Kept:** a short technical explanation whenever a decision touches architecture, security, persistence, budget accounting, or recovery, plus the progress reports in `docs/development/PROGRESS.md` (done, in progress, remaining, risks).

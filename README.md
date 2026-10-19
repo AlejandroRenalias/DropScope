@@ -32,7 +32,7 @@ With DropScope you can ask:
 
 The screens are on the **Replay** page: open it, then choose **Imported agent run**.
 
-## Try it in five minutes
+## Try it 
 
 You need Node.js 24 and npm. From the repository root:
 
@@ -52,16 +52,6 @@ npm run forensics -- diff src/frontend/assets/demo-run-full.runlog.jsonl src/fro
 ```
 
 On Windows PowerShell, `npm.cmd` works in place of `npm` if script policies get in the way.
-
-## What the answers do and do not mean
-
-DropScope reports what a recording says. It cannot see inside the agent, and it does not fill in what the trace left out. Where it has to estimate (for example, a step with no recorded end time is closed at the latest time the run recorded), it says so in the import notes. Five things to keep in mind:
-
-1. **It shows the recording, not the agent's mind.** "State at step 24" means "what the trace had written down by step 24". If the trace never recorded the prompts, DropScope says "not recorded" instead of filling the gap.
-2. **"Supported" means the words are in the recording. It does not mean the claim is true.** Example: the claim "the refund was accepted" is supported if the recording contains the word "accepted". But "not accepted" contains it too.
-3. **Budget replay is a "what if".** DropScope does not control any agent. It takes the limit you type and checks it against the numbers the run recorded. A real guard cannot know what a model call will cost until the call has finished, so the answer says "would have stopped here" and lists what was already running.
-4. **"Differ" means the two recordings are not the same in what is compared. It does not say which one is right.** What is compared: each step's kind, operation, model, tool and agent name, nesting, failed or not, status message, token counts and recorded content. What is not: how long each step took (two honest runs never take exactly the same time), the span names, whether a status was "unset" or "ok", links between spans and trace state. The command and the screen list this under "Not compared".
-5. **By default a saved run keeps no prompts or answers.** It keeps only their size and a fingerprint (a short code worked out from the text, so two texts can be compared without keeping either). The claim check needs the text, so import with `--full` for it. Run files stay on your computer: do not share or commit them. The demo runs here are invented.
 
 ## Where files go, and what runs on your computer
 

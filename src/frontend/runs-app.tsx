@@ -11,7 +11,7 @@ export function RunsApp() {
           <a className="active" href="#" aria-current="page"><span className="nav-icon" aria-hidden="true"><ClockCounterClockwise size={17} weight="fill" /></span><span className="nav-label">Run replay</span></a>
         </nav>
         <div className="topbar-spacer" />
-        <a className="legacy-link" href="#missions">Mission simulator (legacy)</a>
+        <a className="legacy-link" href="#missions"><span className="short">Legacy simulator</span><span className="long">Mission simulator (legacy)</span></a>
       </div>
     </header>
     <main className="content runs-content" id="main">

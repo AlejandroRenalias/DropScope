@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { parseBudgetPolicy, replayBudget, type BudgetPolicyInput } from "../budget-replay.js";
 import type { RunEvent } from "../run-events.js";
-import { BudgetReplayPanel } from "./budget-replay-panel.js";
+import { BudgetReplayPanel, EXAMPLE_BUDGET } from "./budget-replay-panel.js";
 import { ClaimCheckPanel } from "./claim-check-panel.js";
 import { RunDiffPanel } from "./run-diff-panel.js";
 import { PageHead } from "./research-office.js";
@@ -41,7 +41,7 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
   const total = model.events.length;
   const bounded = Math.max(1, Math.min(position, total));
   const [filters, setFilters] = useState<RunEventCategory[]>(runEventCategories.map((c) => c.id));
-  const [budgetInput, setBudgetInput] = useState<BudgetPolicyInput>({});
+  const [budgetInput, setBudgetInput] = useState<BudgetPolicyInput>(EXAMPLE_BUDGET);
   const ticksRef = useRef<HTMLDivElement>(null);
 
   const buckets = useMemo(() => buildBuckets(model.events), [model]);
@@ -94,15 +94,29 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
   const stored = model.contentMode === "FULL";
 
   return <section className="decision-view replay-view run-replay" aria-label="Agent run replay">
-    <PageHead eyebrow="Agent run replay" title="Scrub through an agent run" description={`${sourceLabel} Drag through the recorded events and watch each step start, finish or fail. Filters change the view only; the recording never changes.`} aside={<strong className="replay-position">Event {bounded} / {total}</strong>} />
+    <PageHead eyebrow="Agent run replay" title="Scrub through an agent run" description={`${sourceLabel} Drag through the recorded events and watch each step start, finish or fail. Filters change the view only; the recording never changes.`} />
 
     <p className="rr-banner" role="note">
       <strong>Imported run · recorded replay</strong>
       <span>Steps are ordered by their recorded times (a derived order). Content is {stored ? "stored as written in this file" : "withheld: only sizes and fingerprints were kept"}. This shows what the trace says happened; nothing is re-run.</span>
     </p>
 
-    <section className="panel-card timeline-card" aria-labelledby="rr-timeline-title">
-      <div className="eyebrow" id="rr-timeline-title">Timeline</div>
+    <nav className="rr-jump" aria-label="On this page">
+      <span>On this page</span>
+      <a href="#rr-timeline">Timeline</a>
+      <a href="#rr-budget">Budget replay</a>
+      <a href="#rr-claims">Claim check</a>
+      <a href="#rr-compare">Compare runs</a>
+      <a href="#rr-steps">Step tree</a>
+      {model.notes.length > 0 && <a href="#rr-notes">Importer notes</a>}
+      <a href="#rr-chronology">Chronology</a>
+    </nav>
+
+    <section className="panel-card timeline-card" id="rr-timeline" aria-labelledby="rr-timeline-title">
+      <div className="rr-timeline-head">
+        <div className="eyebrow" id="rr-timeline-title">Timeline</div>
+        <div className="cats" role="group" aria-label="Event category filters">{runEventCategories.map((c) => <button type="button" key={c.id} className={`cat ${filters.includes(c.id) ? "on" : ""}`} aria-pressed={filters.includes(c.id)} onClick={() => toggle(c.id)}><i className={`dot rr-dot-${c.id}`} aria-hidden="true" />{c.label}</button>)}</div>
+      </div>
       <div className="ticks rr-ticks" role="group" aria-label="Recorded events" ref={ticksRef} onKeyDown={onTickKey}>
         {buckets.map((bucket, index) => {
           const isCurrent = index === currentBucket;
@@ -112,14 +126,16 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
           return <button type="button" key={bucket.from} data-bucket={index} className={`tick rr-${bucket.failed ? "failed" : bucket.category} ${bucket.to <= bounded ? "past" : "future"} ${isCurrent ? "cur" : ""} ${dim ? "dim" : ""} ${breachHere ? "rr-breach" : ""}`} tabIndex={isCurrent ? 0 : -1} aria-label={`${label}, ${bucket.failed ? "a step failed" : bucket.category}${breachHere ? ", where your budget limit would have been passed" : ""}`} aria-current={isCurrent ? "step" : undefined} onClick={() => setPosition(bucket.to)}>{(index === 0 || index % numberEvery === 0 || isCurrent) && <span className="num" aria-hidden="true">{bucket.from}</span>}</button>;
         })}
       </div>
-      <label className="sr-only" htmlFor="rr-position">Timeline position</label>
-      <input id="rr-position" className="scrubber" type="range" min="1" max={total} value={bounded} aria-valuetext={`Event ${bounded} of ${total}, ${description.title}`} style={{ "--fill": `${total > 1 ? ((bounded - 1) / (total - 1)) * 100 : 100}%` } as React.CSSProperties} onChange={(e) => setPosition(Number(e.currentTarget.value))} />
       {breachEvent !== null && <p className="rr-breach-legend"><i aria-hidden="true" /> Marked tick: where the budget limit you set would have been passed (event {breachEvent}).</p>}
       <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
-      <div className="timeline-tools">
-        <div className="cats" role="group" aria-label="Event category filters">{runEventCategories.map((c) => <button type="button" key={c.id} className={`cat ${filters.includes(c.id) ? "on" : ""}`} aria-pressed={filters.includes(c.id)} onClick={() => toggle(c.id)}><i className={`dot rr-dot-${c.id}`} aria-hidden="true" />{c.label}</button>)}</div>
-      </div>
     </section>
+
+    <div className="rr-dock">
+      <strong className="replay-position">Event {bounded} / {total}</strong>
+      <label className="sr-only" htmlFor="rr-position">Timeline position</label>
+      <input id="rr-position" className="scrubber" type="range" min="1" max={total} value={bounded} aria-valuetext={`Event ${bounded} of ${total}, ${description.title}`} style={{ "--fill": `${total > 1 ? ((bounded - 1) / (total - 1)) * 100 : 100}%` } as React.CSSProperties} onChange={(e) => setPosition(Number(e.currentTarget.value))} />
+      <span className="rr-dock-title">{description.title}</span>
+    </div>
 
     <section className="rr-stats" aria-label="Recorded state at this event">
       <div className="panel-card rr-stat"><span className="eyebrow">Tokens so far</span><strong>{formatNumber(state.inputTokens)} <small>input</small></strong><strong>{formatNumber(state.outputTokens)} <small>output</small></strong></div>
@@ -135,7 +151,7 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
     <RunDiffPanel model={model} sourceLabel={sourceLabel} setPosition={setPosition} />
 
     <div className="replay-grid rr-grid">
-      <section className="panel-card rr-steps" aria-labelledby="rr-steps-title">
+      <section className="panel-card rr-steps" id="rr-steps" aria-labelledby="rr-steps-title">
         <header className="surface-heading"><div><span className="eyebrow">Steps at this event</span><h2 id="rr-steps-title">Step tree</h2></div><small>{model.steps.length} steps · {model.durationLabel}</small></header>
         {tree.hidden > 0 && <p className="rr-hidden-note">Showing {tree.steps.length} steps: those running, failed, active near this event, or finished most recently. {tree.hidden} other steps are hidden.</p>}
         <ol className="rr-tree">
@@ -166,13 +182,13 @@ export function RunReplay({ model, position, setPosition, sourceLabel }: { model
       </section>
     </div>
 
-    {model.notes.length > 0 && <section className="panel-card rr-notes" aria-labelledby="rr-notes-title">
+    {model.notes.length > 0 && <section className="panel-card rr-notes" id="rr-notes" aria-labelledby="rr-notes-title">
       <header className="surface-heading"><div><span className="eyebrow">What the importer did</span><h2 id="rr-notes-title">Importer notes</h2></div><small>{model.notes.length} note{model.notes.length === 1 ? "" : "s"}</small></header>
       {model.notes.length > NOTE_LIST_LIMIT && <p className="rr-hidden-note">Showing the first {NOTE_LIST_LIMIT} of {model.notes.length} notes.</p>}
       <ul className="rr-note-list">{model.notes.slice(0, NOTE_LIST_LIMIT).map((note) => <li key={note.sequence} className={note.sequence <= bounded ? "seen" : ""}><div><strong>{note.title}</strong><span>{note.text}</span></div><button type="button" onClick={() => setPosition(note.sequence)}>Go to event {note.sequence}</button></li>)}</ul>
     </section>}
 
-    <section className="panel-card replay-chronology" aria-labelledby="rr-chronology-title">
+    <section className="panel-card replay-chronology" id="rr-chronology" aria-labelledby="rr-chronology-title">
       <header className="surface-heading"><div><span className="eyebrow">Recorded sequence</span><h2 id="rr-chronology-title">Event chronology</h2></div><small>{chronology.length} shown near event {bounded}</small></header>
       <div className="event-list replay-events">{chronology.map((n) => {
         const d = describeRunEvent(model.events[n - 1], model);

@@ -64,6 +64,17 @@ npm run forensics -- import my-trace.json --full     # keep content, needed for 
 
 The command prints where the run file was saved. See the [run event contract](docs/schemas/run-event-contract-v1.md) for what is kept and what is dropped. Read the note below on real traces first.
 
+## Command line
+
+The checks run as a `dropscope` command (Node.js 22.12 or newer). From a clone of this repository, run `npm install` once, then:
+
+```bash
+npx dropscope state src/frontend/assets/demo-run.runlog.jsonl --at 24
+npx dropscope import my-trace.json
+```
+
+To have the command everywhere, install it straight from GitHub: `npm install -g github:AlejandroRenalias/DropScope`. It is not published to the npm registry. The command is the same as `npm run forensics --`; the compiled files are in `dist-cli`, and `npm run build:cli` rebuilds them.
+
 ## Where files go, and what runs on your computer
 
 - Run files are saved outside the repository, in a folder only your account can use:

@@ -25,6 +25,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:web
+      - name: The committed command is up to date
+        if: runner.os == 'Linux'
+        run: npm run build:cli && git diff --exit-code -- dist-cli
 
   e2e:
     # Browser tests on Linux. Picture comparisons are skipped: their baselines are recorded on Windows only.

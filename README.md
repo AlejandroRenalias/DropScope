@@ -64,17 +64,6 @@ npm run forensics -- import my-trace.json --full     # keep content, needed for 
 
 The command prints where the run file was saved. See the [run event contract](docs/schemas/run-event-contract-v1.md) for what is kept and what is dropped. Read the note below on real traces first.
 
-## Command line
-
-The checks run as a `dropscope` command (Node.js 22.12 or newer). From a clone of this repository, run `npm install` once, then:
-
-```bash
-npx dropscope state src/frontend/assets/demo-run.runlog.jsonl --at 24
-npx dropscope import my-trace.json
-```
-
-To have the command everywhere, install it straight from GitHub: `npm install -g github:AlejandroRenalias/DropScope`. It is not published to the npm registry. The command is the same as `npm run forensics --`; the compiled files are in `dist-cli`, and `npm run build:cli` rebuilds them.
-
 ### Works with
 
 DropScope reads the standard `gen_ai.*` attributes. Whether a stack works depends on the attribute names its instrumentation writes. Each row was checked with a small synthetic trace written from the project's public documentation and source, not with a capture from a real installation.
@@ -89,6 +78,17 @@ DropScope reads the standard `gen_ai.*` attributes. Whether a stack works depend
 | OpenInference (Arize Phoenix and Arize AX) | Not supported | The trace imports, but it uses its own `openinference.*` and `llm.*` names, so every step shows as "Other" and there are no token totals. |
 
 In every row the default import keeps no prompt, answer or tool content. Details and the fixtures are in [Works with](docs/WORKS_WITH.md).
+
+## Command line
+
+The checks run as a `dropscope` command (Node.js 22.12 or newer). From a clone of this repository, run `npm install` once, then:
+
+```bash
+npx dropscope state src/frontend/assets/demo-run.runlog.jsonl --at 24
+npx dropscope import my-trace.json
+```
+
+To have the command everywhere, install it straight from GitHub: `npm install -g github:AlejandroRenalias/DropScope`. It is not published to the npm registry. The command is the same as `npm run forensics --`; the compiled files are in `dist-cli`, and `npm run build:cli` rebuilds them.
 
 ## Where files go, and what runs on your computer
 

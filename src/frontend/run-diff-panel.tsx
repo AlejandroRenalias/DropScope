@@ -101,7 +101,7 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
   };
   const useDemo = (text: string, label: string) => { choice.current += 1; setError(null); setOpen(new Set()); setOther({ model: loadRunFromBytes(encode(text)), label }); };
 
-  return <section className="panel-card cc rd" aria-labelledby={`${uid}-title`}>
+  return <section className="panel-card cc rd" id="rr-compare" aria-labelledby={`${uid}-title`}>
     <header className="surface-heading"><div><span className="eyebrow">Where do two runs first differ?</span><h2 id={`${uid}-title`}>Compare with another run</h2></div><span className="badge cc-badge">Compares two recordings</span></header>
     <p className="bp-note">Run A is the run open above ({runA}). Pick a second run to see where the two recordings first differ. A difference means the recordings differ, not that either run is right. Both files are read in this browser and sent nowhere.</p>
 

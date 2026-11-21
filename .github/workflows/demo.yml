@@ -30,7 +30,7 @@ jobs:
       - run: npm run build
         env:
           DROPSCOPE_BASE: /DropScope/
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
       - id: deployment

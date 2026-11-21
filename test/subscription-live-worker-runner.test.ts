@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
-import { CodexSubscriptionLiveWorkerAdapter, SubscriptionLiveWorkerError } from "../src/subscription-live-worker-runner.js";
+import { CodexSubscriptionLiveWorkerAdapter, type SubscriptionLiveWorkerError } from "../src/subscription-live-worker-runner.js";
 import type { AppServerProcess } from "../src/subscription-runtime-preflight.js";
 import type { WorkerRequest } from "../src/worker-adapter.js";
 

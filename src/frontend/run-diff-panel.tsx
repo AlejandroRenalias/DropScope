@@ -99,15 +99,15 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
       if (mine === choice.current) setError(explainLoadError(caught));
     }
   };
-  const useDemo = (text: string, label: string) => { choice.current += 1; setError(null); setOpen(new Set()); setOther({ model: loadRunFromBytes(encode(text)), label }); };
+  const showDemo = (text: string, label: string) => { choice.current += 1; setError(null); setOpen(new Set()); setOther({ model: loadRunFromBytes(encode(text)), label }); };
 
   return <section className="panel-card cc rd" id="rr-compare" aria-labelledby={`${uid}-title`}>
     <header className="surface-heading"><div><span className="eyebrow">Where do two runs first differ?</span><h2 id={`${uid}-title`}>Compare with another run</h2></div><span className="badge cc-badge">Compares two recordings</span></header>
     <p className="bp-note">Run A is the run open above ({runA}). Pick a second run to see where the two recordings first differ. A difference means the recordings differ, not that either run is right. Both files are read in this browser and sent nowhere.</p>
 
     <div className="bp-actions rd-actions">
-      <button type="button" className="quiet-button" onClick={() => useDemo(demoRunVariantText, "Demo variant (second refund fails)")}>Compare with the demo variant</button>
-      <button type="button" className="quiet-button" onClick={() => useDemo(demoRunFullText, "Demo run with content stored")}>Compare with the demo run kept with content</button>
+      <button type="button" className="quiet-button" onClick={() => showDemo(demoRunVariantText, "Demo variant (second refund fails)")}>Compare with the demo variant</button>
+      <button type="button" className="quiet-button" onClick={() => showDemo(demoRunFullText, "Demo run with content stored")}>Compare with the demo run kept with content</button>
       <label className="cc-file-button">Open a run file as run B<input type="file" accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain" onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) void openFile(file); }} /></label>
       <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setOther(null); setError(null); }} disabled={!other}>Clear run B</button>
     </div>

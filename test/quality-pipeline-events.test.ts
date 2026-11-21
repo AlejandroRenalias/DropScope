@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type MissionEvent } from "../src/contracts.js";
+import type { MissionEvent } from "../src/contracts.js";
 import { replay } from "../src/reducer.js";
 
 const event = (sequenceNumber: number, type: MissionEvent["type"], payload: MissionEvent["payload"]): MissionEvent => ({ schemaVersion: 1, sequenceNumber, missionId: "quality", eventId: `e-${sequenceNumber}`, timestamp: "2026-08-31T00:00:00.000Z", type, payload } as MissionEvent);

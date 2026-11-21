@@ -135,9 +135,9 @@ class JsonPrefixParser {
       if (character === '"') return "COMPLETE";
       if (character === "\\") {
         if (this.atEnd()) return "INCOMPLETE";
-        const escape = this.input[this.index++];
-        if (!'"\\/bfnrtu'.includes(escape)) throw new Error("Invalid escape.");
-        if (escape === "u") {
+        const escapeChar = this.input[this.index++];
+        if (!'"\\/bfnrtu'.includes(escapeChar)) throw new Error("Invalid escape.");
+        if (escapeChar === "u") {
           for (let count = 0; count < 4; count += 1) {
             if (this.atEnd()) return "INCOMPLETE";
             if (!/[0-9a-fA-F]/.test(this.input[this.index++])) throw new Error("Invalid unicode escape.");

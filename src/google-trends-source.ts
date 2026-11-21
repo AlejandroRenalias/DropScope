@@ -30,7 +30,7 @@ export class FixedGoogleTrendsSource implements GoogleTrendsSource {
       let response: Awaited<ReturnType<FetchLike>>;
       try {
         response = await this.fetchLike(GOOGLE_TRENDS_RSS_URL, { signal: controller.signal, headers: { accept: "application/rss+xml, application/xml;q=0.9" } });
-      } catch (error) {
+      } catch {
         if (controller.signal.aborted) throw new GoogleTrendsSourceError("TIMED_OUT");
         throw new GoogleTrendsSourceError("UNAVAILABLE");
       }

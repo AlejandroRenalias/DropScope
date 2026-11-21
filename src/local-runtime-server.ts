@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { localMissionDtoSchema, LocalMissionRuntime, MissionLaunchIncompleteError, subscriptionConfirmationDtoSchema } from "./runtime/local-mission-runtime.js";
+import { localMissionDtoSchema, type LocalMissionRuntime, MissionLaunchIncompleteError, subscriptionConfirmationDtoSchema } from "./runtime/local-mission-runtime.js";
 import { z } from "zod";
 import { GoogleTrendsComparisonImportError } from "./google-trends-comparison-import.js";
 

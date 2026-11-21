@@ -104,6 +104,7 @@ export class LocalMissionRuntime {
     } catch (error) {
       // The marker is intentionally retained. It prevents a second writer and
       // lets reload expose any valid event prefix after an interrupted launch.
+      // biome-ignore lint/complexity/noUselessCatch: the catch block documents why the reservation marker is kept.
       throw error;
     } finally {
       await historyHandle?.close();

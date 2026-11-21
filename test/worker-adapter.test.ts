@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   RecordedWorkerAdapter,
   SubscriptionWorkerAdapter,
-  WorkerResultError,
+  type WorkerResultError,
   WorkerResultGate,
   type WorkerRequest,
 } from "../src/worker-adapter.js";

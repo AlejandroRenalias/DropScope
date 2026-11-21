@@ -215,7 +215,7 @@ class Structure {
     if (value === undefined || value === null) return 0;
     const max = Math.max(...Object.values(names));
     if (typeof value === "string") {
-      if (!Object.prototype.hasOwnProperty.call(names, value)) return this.fail("E_ENUM");
+      if (!Object.hasOwn(names, value)) return this.fail("E_ENUM");
       this.enumNamesAccepted += 1;
       return names[value];
     }

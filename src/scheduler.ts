@@ -243,7 +243,7 @@ export async function runSimulatedSchedule(options: {
 import { JsonlEventStore } from "./event-store.js";
 import type { MissionEvent, WorkClass } from "./contracts.js";
 import { initialMissionState, reduce } from "./reducer.js";
-import { RecordedWorkerAdapter, WorkerResultGate } from "./worker-adapter.js";
+import { type RecordedWorkerAdapter, WorkerResultGate } from "./worker-adapter.js";
 import { googleTrendsComparisonPilotTask, googleTrendsPilotTask, liveWorkerPilotTask } from "./fixture-model.js";
 
 /** The only public way to prepare the fixed, non-executing live-worker pilot. */

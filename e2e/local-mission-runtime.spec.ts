@@ -12,16 +12,42 @@ let viteServer: ViteDevServer;
 let preflightChecks = 0;
 let resolvePreflight: (() => void) | undefined;
 let nextPreflightResult: SubscriptionPreflightResult = { accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" };
-const comparisonCsv = "Category: All categories\nWeek,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,12,24,36\n2026-01-11,18,30,42";
+const comparisonCsv =
+  "Category: All categories\nWeek,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,12,24,36\n2026-01-11,18,30,42";
 
 async function openMissionControls(page: Page) {
   const trigger = page.getByRole("button", { name: "Mission controls" });
-  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
 }
 
 test.beforeAll(async () => {
   runtimeServer = await listenLocalRuntimeServer(
-    new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")), subscriptionRuntimePreflight: { check: () => new Promise((resolve) => { preflightChecks += 1; resolvePreflight = () => resolve(nextPreflightResult); }) }, subscriptionLiveWorkerRunner: { run: async (request) => ({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED" as const, finding: "Fixed browser pilot finding." }) }, googleTrendsSource: { capture: async () => ({ sourceUrl: "https://trends.google.com/trending/rss?geo=US" as const, geo: "US" as const, attribution: "Google Trends" as const, items: [{ query: "Desk lamps", traffic: "20K+" }] }) } }),
+    new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-e2e-")),
+      subscriptionRuntimePreflight: {
+        check: () =>
+          new Promise((resolve) => {
+            preflightChecks += 1;
+            resolvePreflight = () => resolve(nextPreflightResult);
+          }),
+      },
+      subscriptionLiveWorkerRunner: {
+        run: async (request) => ({
+          taskId: request.taskId,
+          attemptId: request.attemptId,
+          status: "COMPLETED" as const,
+          finding: "Fixed browser pilot finding.",
+        }),
+      },
+      googleTrendsSource: {
+        capture: async () => ({
+          sourceUrl: "https://trends.google.com/trending/rss?geo=US" as const,
+          geo: "US" as const,
+          attribution: "Google Trends" as const,
+          items: [{ query: "Desk lamps", traffic: "20K+" }],
+        }),
+      },
+    }),
     { port: 8791, trustedUiOrigin: "http://127.0.0.1:5177" },
   );
   process.env.VITE_LOCAL_RUNTIME_BASE_URL = "http://127.0.0.1:8791";
@@ -59,7 +85,9 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
   await expect(agentDesk).toContainText("Local subscription access not checked.");
   await expect(agentDesk).toContainText("Subscription usage not itemized.");
   await expect(agentDesk).toContainText("First live worker · approval required");
-  await expect(agentDesk).toContainText("One fresh thread · one turn · 90-second maximum · inline fixed pilot evidence · read-only mode · network denied · no retry.");
+  await expect(agentDesk).toContainText(
+    "One fresh thread · one turn · 90-second maximum · inline fixed pilot evidence · read-only mode · network denied · no retry.",
+  );
   await expect(agentDesk).toContainText("Confirmation is one-use, stays only in local runtime memory, and expires after 60 seconds.");
   await expect(agentDesk).toContainText("Any command, file-change, or permission request is automatically declined and ends the run.");
   expect(preflightChecks).toBe(0);
@@ -114,17 +142,23 @@ test("runs the isolated live-worker pilot through the injected safe browser fake
   await expect(page.getByRole("status")).toContainText("Subscription runtime check recorded. No worker was started.");
   await expect(agentDesk.getByRole("button", { name: "Confirm one live worker" })).toBeEnabled();
   await agentDesk.getByRole("button", { name: "Confirm one live worker" }).click();
-  await expect(page.locator("span.runtime-message[role=status]")).toContainText("Local confirmation recorded in memory. No worker was started.");
+  await expect(page.locator("span.runtime-message[role=status]")).toContainText(
+    "Local confirmation recorded in memory. No worker was started.",
+  );
   await expect(agentDesk).toContainText("Confirmation status: confirmed locally · expires at");
   await expect(agentDesk.getByRole("button", { name: "Run one live worker now" })).toBeEnabled();
   await agentDesk.getByRole("button", { name: "Run one live worker now" }).click();
-  await expect(page.locator("span.runtime-message[role=status]")).toContainText("One live worker finished and its closed outcome was recorded.");
+  await expect(page.locator("span.runtime-message[role=status]")).toContainText(
+    "One live worker finished and its closed outcome was recorded.",
+  );
   await expect(agentDesk).toContainText("Last subscription worker outcome: COMPLETED · provider usage unknown");
 
   await page.getByRole("button", { name: "Mission Replay" }).click();
   const replay = page.getByRole("region", { name: "Mission Replay" });
   await expect(replay).toContainText("Event 10 / 10");
-  await expect(replay.locator(".replay-chronology").getByText("Subscription worker execution outcome recorded", { exact: true })).toBeVisible();
+  await expect(
+    replay.locator(".replay-chronology").getByText("Subscription worker execution outcome recorded", { exact: true }),
+  ).toBeVisible();
   await expect(replay.locator(".replay-chronology").getByText("Mission completed", { exact: true })).toBeVisible();
 });
 
@@ -166,9 +200,15 @@ test("imports one selected Google Trends comparison CSV as replayed unscored con
   await page.getByRole("button", { name: "Agent Desk" }).click();
   const agentDesk = page.getByRole("region", { name: "Agent Desk" });
   await expect(agentDesk).toContainText("Google Trends · manual comparison context");
-  await expect(agentDesk).toContainText("DropScope never contacts Google, stores the raw CSV, runs a worker, retries, polls, or uses a subscription.");
-  await agentDesk.getByLabel("Choose Google Trends comparison CSV").setInputFiles({ name: "google-trends-comparison.csv", mimeType: "text/csv", buffer: Buffer.from(comparisonCsv) });
-  await expect(page.getByRole("status")).toContainText("Google Trends comparison context was imported locally. The raw CSV was not stored.");
+  await expect(agentDesk).toContainText(
+    "DropScope never contacts Google, stores the raw CSV, runs a worker, retries, polls, or uses a subscription.",
+  );
+  await agentDesk
+    .getByLabel("Choose Google Trends comparison CSV")
+    .setInputFiles({ name: "google-trends-comparison.csv", mimeType: "text/csv", buffer: Buffer.from(comparisonCsv) });
+  await expect(page.getByRole("status")).toContainText(
+    "Google Trends comparison context was imported locally. The raw CSV was not stored.",
+  );
   await expect(agentDesk).toContainText("Imported week timeline: 2 periods · US · Google Trends");
   await expect(agentDesk.getByRole("figure", { name: /Google Trends comparison timeline/ })).toBeVisible();
   await expect(agentDesk).toContainText("desk cable organizer");
@@ -238,7 +278,9 @@ test("replays a safe account-read timeout diagnostic without starting a worker",
   resolvePreflight?.();
 
   await expect(page.getByRole("status")).toContainText("Subscription runtime check recorded. No worker was started.");
-  await expect(agentDesk).toContainText("Codex app-server started, but did not return account status within 10 seconds. No worker was started.");
+  await expect(agentDesk).toContainText(
+    "Codex app-server started, but did not return account status within 10 seconds. No worker was started.",
+  );
   await expect(agentDesk.getByRole("button", { name: "Confirm one live worker" })).toBeDisabled();
   await expect(agentDesk.getByRole("button", { name: "Run one live worker now" })).toBeDisabled();
 });

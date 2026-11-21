@@ -11,8 +11,14 @@ export function group(value: bigint | number): string {
 }
 
 export const LIMIT_LABEL: Record<LimitId, string> = {
-  totalTokens: "Total tokens", inputTokens: "Input tokens", outputTokens: "Output tokens", modelCalls: "Model calls",
-  toolCalls: "Tool calls", steps: "Steps", duration: "Time", cost: "Cost",
+  totalTokens: "Total tokens",
+  inputTokens: "Input tokens",
+  outputTokens: "Output tokens",
+  modelCalls: "Model calls",
+  toolCalls: "Tool calls",
+  steps: "Steps",
+  duration: "Time",
+  cost: "Cost",
 };
 
 export function formatSeconds(ns: bigint): string {
@@ -24,42 +30,65 @@ export function formatSeconds(ns: bigint): string {
 /** A limit's own value in its own unit: "4,000 tokens", "5 s", "0.50 USD". */
 export function formatLimitValue(limit: LimitId, value: bigint, policy: BudgetPolicy): string {
   switch (limit) {
-    case "totalTokens": case "inputTokens": case "outputTokens": return `${group(value)} token${value === 1n ? "" : "s"}`;
-    case "modelCalls": return `${group(value)} model call${value === 1n ? "" : "s"}`;
-    case "toolCalls": return `${group(value)} tool call${value === 1n ? "" : "s"}`;
-    case "steps": return `${group(value)} step${value === 1n ? "" : "s"}`;
-    case "duration": return formatSeconds(value);
-    case "cost": return `${formatPico(value)} ${policy.cost?.currency ?? ""}`.trim();
+    case "totalTokens":
+    case "inputTokens":
+    case "outputTokens":
+      return `${group(value)} token${value === 1n ? "" : "s"}`;
+    case "modelCalls":
+      return `${group(value)} model call${value === 1n ? "" : "s"}`;
+    case "toolCalls":
+      return `${group(value)} tool call${value === 1n ? "" : "s"}`;
+    case "steps":
+      return `${group(value)} step${value === 1n ? "" : "s"}`;
+    case "duration":
+      return formatSeconds(value);
+    case "cost":
+      return `${formatPico(value)} ${policy.cost?.currency ?? ""}`.trim();
   }
 }
 
 /** The limits that are set, in a fixed order, with their label and value. */
 export function activeLimits(policy: BudgetPolicy): Array<{ limit: LimitId; label: string; max: bigint; text: string }> {
   const list: Array<{ limit: LimitId; max: bigint | null }> = [
-    { limit: "totalTokens", max: policy.maxTotalTokens }, { limit: "inputTokens", max: policy.maxInputTokens },
-    { limit: "outputTokens", max: policy.maxOutputTokens }, { limit: "modelCalls", max: policy.maxModelCalls },
-    { limit: "toolCalls", max: policy.maxToolCalls }, { limit: "steps", max: policy.maxSteps },
+    { limit: "totalTokens", max: policy.maxTotalTokens },
+    { limit: "inputTokens", max: policy.maxInputTokens },
+    { limit: "outputTokens", max: policy.maxOutputTokens },
+    { limit: "modelCalls", max: policy.maxModelCalls },
+    { limit: "toolCalls", max: policy.maxToolCalls },
+    { limit: "steps", max: policy.maxSteps },
     { limit: "duration", max: policy.maxDurationNs },
     { limit: "cost", max: policy.cost === null ? null : policy.cost.maxMicro * 1_000_000n },
   ];
-  return list.filter((l): l is { limit: LimitId; max: bigint } => l.max !== null)
+  return list
+    .filter((l): l is { limit: LimitId; max: bigint } => l.max !== null)
     .map((l) => ({ limit: l.limit, label: LIMIT_LABEL[l.limit], max: l.max, text: formatLimitValue(l.limit, l.max, policy) }));
 }
 
 /** How much of each set limit the recorded run had used at a position. */
-export function gaugesAt(result: BudgetReplayResult, position: number): Array<{ limit: LimitId; label: string; used: string; max: string; percent: number; over: boolean }> {
+export function gaugesAt(
+  result: BudgetReplayResult,
+  position: number,
+): Array<{ limit: LimitId; label: string; used: string; max: string; percent: number; over: boolean }> {
   const t: Totals = result.totalsAt(position);
   const pico = result.costPicoAt(position);
   const usedOf = (limit: LimitId): bigint => {
     switch (limit) {
-      case "totalTokens": return t.totalTokens;
-      case "inputTokens": return t.inputTokens;
-      case "outputTokens": return t.outputTokens;
-      case "modelCalls": return BigInt(t.modelCalls);
-      case "toolCalls": return BigInt(t.toolCalls);
-      case "steps": return BigInt(t.steps);
-      case "duration": return t.elapsedNs;
-      case "cost": return pico ?? 0n;
+      case "totalTokens":
+        return t.totalTokens;
+      case "inputTokens":
+        return t.inputTokens;
+      case "outputTokens":
+        return t.outputTokens;
+      case "modelCalls":
+        return BigInt(t.modelCalls);
+      case "toolCalls":
+        return BigInt(t.toolCalls);
+      case "steps":
+        return BigInt(t.steps);
+      case "duration":
+        return t.elapsedNs;
+      case "cost":
+        return pico ?? 0n;
     }
   };
   return activeLimits(result.policy).map((l) => {
@@ -75,7 +104,10 @@ const stepOfEvent = (events: ReadonlyArray<{ type: string; payload: unknown }>, 
 
 /** One sentence saying why and where a limit fires. */
 export function describeBreach(
-  breach: Breach, policy: BudgetPolicy, events: ReadonlyArray<{ type: string; payload: unknown }>, titleOf: (stepId: string) => string,
+  breach: Breach,
+  policy: BudgetPolicy,
+  events: ReadonlyArray<{ type: string; payload: unknown }>,
+  titleOf: (stepId: string) => string,
 ): string {
   const limitText = formatLimitValue(breach.limit, breach.limitValue, policy);
   const usedText = formatLimitValue(breach.limit, breach.usedAtBreach, policy);
@@ -87,10 +119,16 @@ export function describeBreach(
     case "BEFORE_START":
       return `${step} would have been number ${group(breach.usedAtBreach)}, over your limit of ${limitText}, so it would not have started.`;
     case "TIME": {
-      const event = events[breach.breachEvent - 1] as { type: string; payload: { endNs?: string | null; endEffectiveNs?: string } } | undefined;
+      const event = events[breach.breachEvent - 1] as
+        | { type: string; payload: { endNs?: string | null; endEffectiveNs?: string } }
+        | undefined;
       const began = event?.type === "StepStarted";
-      const estimated = !began && event?.payload !== undefined
-        && (event.payload.endNs === null || event.payload.endNs === undefined || BigInt(event.payload.endNs) !== BigInt(event.payload.endEffectiveNs ?? "0"));
+      const estimated =
+        !began &&
+        event?.payload !== undefined &&
+        (event.payload.endNs === null ||
+          event.payload.endNs === undefined ||
+          BigInt(event.payload.endNs) !== BigInt(event.payload.endEffectiveNs ?? "0"));
       return `${formatSeconds(breach.usedAtBreach)} into the run, past your limit of ${limitText}, at the moment ${step} ${began ? "began" : "ended"}${estimated ? " (its end time was missing or invalid, so the importer estimated it)" : ""}. The agent would have been stopped before that.`;
     }
   }
@@ -108,14 +146,23 @@ export function describeRemainder(result: BudgetReplayResult, titleOf: (stepId: 
     if (steps.length > max) shown.push(`and ${steps.length - max} more`);
     return shown;
   };
-  const notStarted = r.notStarted.length === 0
-    ? ["Every step had already started."]
-    : [`${group(r.notStarted.length)} step${r.notStarted.length === 1 ? "" : "s"} would never have started (${group(r.modelCallsNotStarted)} model call${r.modelCallsNotStarted === 1 ? "" : "s"}, ${group(r.toolCallsNotStarted)} tool call${r.toolCallsNotStarted === 1 ? "" : "s"}):`, ...list(r.notStarted)];
-  const inFlight = r.inFlight.length === 0
-    ? ["No step was running at that moment."]
-    : [`${group(r.inFlight.length)} step${r.inFlight.length === 1 ? " was" : "s were"} already running and could not have been recalled:`, ...list(r.inFlight)];
+  const notStarted =
+    r.notStarted.length === 0
+      ? ["Every step had already started."]
+      : [
+          `${group(r.notStarted.length)} step${r.notStarted.length === 1 ? "" : "s"} would never have started (${group(r.modelCallsNotStarted)} model call${r.modelCallsNotStarted === 1 ? "" : "s"}, ${group(r.toolCallsNotStarted)} tool call${r.toolCallsNotStarted === 1 ? "" : "s"}):`,
+          ...list(r.notStarted),
+        ];
+  const inFlight =
+    r.inFlight.length === 0
+      ? ["No step was running at that moment."]
+      : [
+          `${group(r.inFlight.length)} step${r.inFlight.length === 1 ? " was" : "s were"} already running and could not have been recalled:`,
+          ...list(r.inFlight),
+        ];
   const tokens: string[] = [];
-  const ni = r.tokensNotStarted; const fi = r.tokensInFlight;
+  const ni = r.tokensNotStarted;
+  const fi = r.tokensInFlight;
   tokens.push(`Tokens recorded for steps that would not have started: ${group(ni.input)} in, ${group(ni.output)} out.`);
   if (r.inFlight.length > 0) tokens.push(`Tokens recorded for steps already running: ${group(fi.input)} in, ${group(fi.output)} out.`);
   if (result.policy.cost !== null) {
@@ -133,27 +180,45 @@ export function budgetCaveats(result: BudgetReplayResult): string[] {
   ];
   if (result.policy.cost !== null) notes.push("Prices are the ones you typed. DropScope does not look prices up.");
   if (result.policy.maxDurationNs !== null) {
-    notes.push("Time is checked only at step starts and step ends: budget replay uses only those times, by design, and ignores the timestamps on log records. The moment the limit was really passed can be earlier than the event shown.");
-    if (result.estimatedEnds > 0) notes.push(`${result.estimatedEnds} step end time${result.estimatedEnds === 1 ? " was" : "s were"} estimated by the importer (missing, or earlier than the start), so time results may be off.`);
+    notes.push(
+      "Time is checked only at step starts and step ends: budget replay uses only those times, by design, and ignores the timestamps on log records. The moment the limit was really passed can be earlier than the event shown.",
+    );
+    if (result.estimatedEnds > 0)
+      notes.push(
+        `${result.estimatedEnds} step end time${result.estimatedEnds === 1 ? " was" : "s were"} estimated by the importer (missing, or earlier than the start), so time results may be off.`,
+      );
   }
   const gaps = result.usageGaps;
-  if (gaps.modelCallsWithoutUsage > 0) notes.push(`${gaps.modelCallsWithoutUsage} model call${gaps.modelCallsWithoutUsage === 1 ? "" : "s"} reported no token counts, so the tokens and cost used may be higher than shown.`);
-  if (gaps.partialUsage > 0) notes.push(`${gaps.partialUsage} usage record${gaps.partialUsage === 1 ? "" : "s"} reported only input or only output tokens; the missing number is counted as zero.`);
+  if (gaps.modelCallsWithoutUsage > 0)
+    notes.push(
+      `${gaps.modelCallsWithoutUsage} model call${gaps.modelCallsWithoutUsage === 1 ? "" : "s"} reported no token counts, so the tokens and cost used may be higher than shown.`,
+    );
+  if (gaps.partialUsage > 0)
+    notes.push(
+      `${gaps.partialUsage} usage record${gaps.partialUsage === 1 ? "" : "s"} reported only input or only output tokens; the missing number is counted as zero.`,
+    );
   return notes;
 }
 
 /** The whole result as lines of text for the command line. */
 export function budgetReportLines(
-  result: BudgetReplayResult, events: ReadonlyArray<{ type: string; payload: unknown }>, titleOf: (stepId: string) => string,
+  result: BudgetReplayResult,
+  events: ReadonlyArray<{ type: string; payload: unknown }>,
+  titleOf: (stepId: string) => string,
 ): string[] {
   const lines: string[] = [COUNTERFACTUAL_NOTE, ""];
-  lines.push(`Limits: ${activeLimits(result.policy).map((l) => `${l.label.toLowerCase()} ${l.text}`).join("; ")}`);
+  lines.push(
+    `Limits: ${activeLimits(result.policy)
+      .map((l) => `${l.label.toLowerCase()} ${l.text}`)
+      .join("; ")}`,
+  );
   if (result.first === null) {
     lines.push("Result: the whole run fits inside every limit. Nothing would have been stopped.");
   } else {
     lines.push(`Result: a guard with these limits would have fired at event ${result.first.breachEvent} of ${events.length}.`);
     lines.push(`  ${describeBreach(result.first, result.policy, events, titleOf)}`);
-    if (result.alsoAtSameStop.length > 0) lines.push(`  Also exceeded at the same point: ${result.alsoAtSameStop.map((l) => LIMIT_LABEL[l].toLowerCase()).join(", ")}.`);
+    if (result.alsoAtSameStop.length > 0)
+      lines.push(`  Also exceeded at the same point: ${result.alsoAtSameStop.map((l) => LIMIT_LABEL[l].toLowerCase()).join(", ")}.`);
     const rest = describeRemainder(result, titleOf);
     lines.push("Would not have happened:");
     for (const line of [...rest.notStarted, ...rest.inFlight, ...rest.tokens]) lines.push(`  ${line}`);
@@ -164,8 +229,11 @@ export function budgetReportLines(
     }
   }
   const r = result.recorded;
-  lines.push(`Recorded in the whole run: ${group(r.inputTokens)} input and ${group(r.outputTokens)} output tokens, ${group(r.modelCalls)} model calls, ${group(r.toolCalls)} tool calls, ${group(r.steps)} steps, ${formatSeconds(r.elapsedNs)}.`);
-  if (result.policy.cost !== null) lines.push(`Recorded cost with your prices: ${formatPico(result.costPicoAt(events.length) ?? 0n)} ${result.policy.cost.currency}.`);
+  lines.push(
+    `Recorded in the whole run: ${group(r.inputTokens)} input and ${group(r.outputTokens)} output tokens, ${group(r.modelCalls)} model calls, ${group(r.toolCalls)} tool calls, ${group(r.steps)} steps, ${formatSeconds(r.elapsedNs)}.`,
+  );
+  if (result.policy.cost !== null)
+    lines.push(`Recorded cost with your prices: ${formatPico(result.costPicoAt(events.length) ?? 0n)} ${result.policy.cost.currency}.`);
   lines.push("Notes:");
   for (const note of budgetCaveats(result)) lines.push(`  - ${note}`);
   return lines;

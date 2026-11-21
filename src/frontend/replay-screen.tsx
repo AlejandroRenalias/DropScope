@@ -52,20 +52,76 @@ export function RunScreen() {
 
   const runPosition = run ? Math.max(1, Math.min(position ?? run.model.events.length, run.model.events.length)) : 1;
 
-  return <>
-    <section className="panel-card run-source-card" aria-labelledby="run-source-title">
-      <div className="eyebrow" id="run-source-title">Run file</div>
-      <p>{loaded ? loaded.label : "Showing the built-in synthetic demo run."} Open a run file that the import command saved to see your own agent run.</p>
-      <div className="run-source-actions">
-        <label className="file-button">Open a run file<input type="file" accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain" onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) void open(file); }} /></label>
-        <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setLoaded({ model: loadRunFromBytes(new TextEncoder().encode(demoRunFullText)), label: "Demo run with content stored." }); setPosition(null); setError(null); }}>Demo run with content stored</button>
-        {loaded && <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setLoaded(null); setPosition(null); setError(null); }}>Back to the demo run</button>}
-      </div>
-      {error && <p className="inline-error" role="alert">{error}</p>}
-      <details className="run-source-help"><summary>How to make a run file</summary>
-        <p>Import a trace (OTLP/JSON) with <code>npm run forensics -- import &lt;spans.json&gt; --logs &lt;logs.json&gt;</code>. The command saves a run file in a private DropScope folder and prints its path. By default prompts and answers are not kept, only their sizes and fingerprints. Run files stay on this computer: this page reads the file in your browser and sends it nowhere.</p>
-      </details>
-    </section>
-    <RunReplay model={run.model} position={runPosition} setPosition={setPosition} sourceLabel={`${run.label}${run.label.endsWith(".") ? "" : "."}`} />
-  </>;
+  return (
+    <>
+      <section className="panel-card run-source-card" aria-labelledby="run-source-title">
+        <div className="eyebrow" id="run-source-title">
+          Run file
+        </div>
+        <p>
+          {loaded ? loaded.label : "Showing the built-in synthetic demo run."} Open a run file that the import command saved to see your own
+          agent run.
+        </p>
+        <div className="run-source-actions">
+          <label className="file-button">
+            Open a run file
+            <input
+              type="file"
+              accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                e.currentTarget.value = "";
+                if (file) void open(file);
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className="quiet-button"
+            onClick={() => {
+              choice.current += 1;
+              setLoaded({ model: loadRunFromBytes(new TextEncoder().encode(demoRunFullText)), label: "Demo run with content stored." });
+              setPosition(null);
+              setError(null);
+            }}
+          >
+            Demo run with content stored
+          </button>
+          {loaded && (
+            <button
+              type="button"
+              className="quiet-button"
+              onClick={() => {
+                choice.current += 1;
+                setLoaded(null);
+                setPosition(null);
+                setError(null);
+              }}
+            >
+              Back to the demo run
+            </button>
+          )}
+        </div>
+        {error && (
+          <p className="inline-error" role="alert">
+            {error}
+          </p>
+        )}
+        <details className="run-source-help">
+          <summary>How to make a run file</summary>
+          <p>
+            Import a trace (OTLP/JSON) with <code>npm run forensics -- import &lt;spans.json&gt; --logs &lt;logs.json&gt;</code>. The
+            command saves a run file in a private DropScope folder and prints its path. By default prompts and answers are not kept, only
+            their sizes and fingerprints. Run files stay on this computer: this page reads the file in your browser and sends it nowhere.
+          </p>
+        </details>
+      </section>
+      <RunReplay
+        model={run.model}
+        position={runPosition}
+        setPosition={setPosition}
+        sourceLabel={`${run.label}${run.label.endsWith(".") ? "" : "."}`}
+      />
+    </>
+  );
 }

@@ -40,7 +40,8 @@ export function isTaggedValue(root: unknown): root is TaggedValue {
         if (typeof inner !== "string" || !DECIMAL_INTEGER.test(inner)) return false;
         break;
       case "d":
-        if (!((typeof inner === "number" && Number.isFinite(inner)) || inner === "NaN" || inner === "Infinity" || inner === "-Infinity")) return false;
+        if (!((typeof inner === "number" && Number.isFinite(inner)) || inner === "NaN" || inner === "Infinity" || inner === "-Infinity"))
+          return false;
         break;
       case "o":
         if (typeof inner !== "boolean") return false;
@@ -78,35 +79,45 @@ export type Field = z.infer<typeof fieldSchema>;
 const unsignedNs = z.string().regex(NON_NEGATIVE_DECIMAL);
 const decimalCount = z.string().regex(NON_NEGATIVE_DECIMAL);
 const count32 = z.number().int().min(0).max(4294967295);
-const traceIdSchema = z.string().regex(/^[0-9a-f]{32}$/).refine((s) => !/^0+$/.test(s));
-const spanIdSchema = z.string().regex(/^[0-9a-f]{16}$/).refine((s) => !/^0+$/.test(s));
+const traceIdSchema = z
+  .string()
+  .regex(/^[0-9a-f]{32}$/)
+  .refine((s) => !/^0+$/.test(s));
+const spanIdSchema = z
+  .string()
+  .regex(/^[0-9a-f]{16}$/)
+  .refine((s) => !/^0+$/.test(s));
 const sha256Schema = z.string().regex(SHA256_HEX);
 const ordinalSchema = z.number().int().nonnegative();
 
-export const attributeListSchema = z.array(
-  z.object({ ordinal: ordinalSchema, key: fieldSchema, value: fieldSchema }).strict(),
-);
+export const attributeListSchema = z.array(z.object({ ordinal: ordinalSchema, key: fieldSchema, value: fieldSchema }).strict());
 
 // Context ids are the importer's own ids: c0, c1, ...
 export const contextIdSchema = z.string().regex(/^c[0-9]{1,7}$/);
 
-const contextSchema = z.object({
-  contextId: contextIdSchema,
-  resource: z.object({
-    attributes: attributeListSchema,
-    schemaUrl: fieldSchema,
-    droppedAttributesCount: count32,
-    unknownFields: fieldSchema.nullable(),
-  }).strict(),
-  scope: z.object({
-    name: fieldSchema,
-    version: fieldSchema,
-    attributes: attributeListSchema,
-    schemaUrl: fieldSchema,
-    droppedAttributesCount: count32,
-    unknownFields: fieldSchema.nullable(),
-  }).strict(),
-}).strict();
+const contextSchema = z
+  .object({
+    contextId: contextIdSchema,
+    resource: z
+      .object({
+        attributes: attributeListSchema,
+        schemaUrl: fieldSchema,
+        droppedAttributesCount: count32,
+        unknownFields: fieldSchema.nullable(),
+      })
+      .strict(),
+    scope: z
+      .object({
+        name: fieldSchema,
+        version: fieldSchema,
+        attributes: attributeListSchema,
+        schemaUrl: fieldSchema,
+        droppedAttributesCount: count32,
+        unknownFields: fieldSchema.nullable(),
+      })
+      .strict(),
+  })
+  .strict();
 
 export const stepKindSchema = z.enum(["LLM_CALL", "TOOL_CALL", "AGENT", "OTHER"]);
 export type StepKind = z.infer<typeof stepKindSchema>;
@@ -162,16 +173,25 @@ export type ImportErrorCode = z.infer<typeof importErrorCodeSchema>;
 // (spec section 7). Free-form details are not allowed: a detail is a place content could hide.
 const countSchema = z.number().int().nonnegative();
 const noteShape = <C extends string, D extends z.ZodRawShape>(code: C, stepId: "step" | "none" | "either", detail: D) =>
-  z.object({
-    code: z.literal(code),
-    stepId: stepId === "step" ? spanIdSchema : stepId === "none" ? z.null() : spanIdSchema.nullable(),
-    detail: z.object(detail).strict(),
-  }).strict();
-const secretCountDetail = z.object({
-  awsAccessKey: countSchema.optional(), githubToken: countSchema.optional(), openAiKey: countSchema.optional(),
-  bearerToken: countSchema.optional(), jwt: countSchema.optional(), privateKeyBlock: countSchema.optional(),
-  email: countSchema.optional(),
-}).strict().refine((d) => Object.values(d).some((n) => n !== undefined && n > 0), { message: "needs one counted class" });
+  z
+    .object({
+      code: z.literal(code),
+      stepId: stepId === "step" ? spanIdSchema : stepId === "none" ? z.null() : spanIdSchema.nullable(),
+      detail: z.object(detail).strict(),
+    })
+    .strict();
+const secretCountDetail = z
+  .object({
+    awsAccessKey: countSchema.optional(),
+    githubToken: countSchema.optional(),
+    openAiKey: countSchema.optional(),
+    bearerToken: countSchema.optional(),
+    jwt: countSchema.optional(),
+    privateKeyBlock: countSchema.optional(),
+    email: countSchema.optional(),
+  })
+  .strict()
+  .refine((d) => Object.values(d).some((n) => n !== undefined && n > 0), { message: "needs one counted class" });
 
 const eventBase = {
   schemaVersion: z.literal(RUN_EVENT_SCHEMA_VERSION),
@@ -179,68 +199,88 @@ const eventBase = {
   runId: traceIdSchema,
 };
 
-const runStartedPayload = z.object({
-  traceId: traceIdSchema,
-  derivedOrder: z.literal(true),
-  // These header fields are structure, never content: they accept only the shapes the importer writes, so a hand-edited
-  // file cannot carry free text in them while claiming to keep none.
-  importer: z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}$/), version: z.string().regex(/^[0-9]{1,9}$/) }).strict(),
-  conventionVersion: z.string().regex(/^[0-9]{1,4}(\.[0-9]{1,4}){1,3}$/),
-  contentMode: contentModeSchema,
-  selectedTrace: z.enum(["ONLY", "EXPLICIT"]),
-  inputs: z.array(z.object({
-    role: z.enum(["spans", "logs"]),
-    byteLength: z.number().int().nonnegative(),
-    sha256: sha256Schema,
-  }).strict()).min(1).max(2),
-  limitsVersion: z.string().regex(/^[0-9]{1,4}(-[a-z]{1,16})?$/),
-  artifactId: sha256Schema,
-  contexts: z.array(contextSchema),
-}).strict();
+const runStartedPayload = z
+  .object({
+    traceId: traceIdSchema,
+    derivedOrder: z.literal(true),
+    // These header fields are structure, never content: they accept only the shapes the importer writes, so a hand-edited
+    // file cannot carry free text in them while claiming to keep none.
+    importer: z.object({ id: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}$/), version: z.string().regex(/^[0-9]{1,9}$/) }).strict(),
+    conventionVersion: z.string().regex(/^[0-9]{1,4}(\.[0-9]{1,4}){1,3}$/),
+    contentMode: contentModeSchema,
+    selectedTrace: z.enum(["ONLY", "EXPLICIT"]),
+    inputs: z
+      .array(
+        z
+          .object({
+            role: z.enum(["spans", "logs"]),
+            byteLength: z.number().int().nonnegative(),
+            sha256: sha256Schema,
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(2),
+    limitsVersion: z.string().regex(/^[0-9]{1,4}(-[a-z]{1,16})?$/),
+    artifactId: sha256Schema,
+    contexts: z.array(contextSchema),
+  })
+  .strict();
 
-const stepStartedPayload = z.object({
-  stepId: spanIdSchema,
-  parentStepId: spanIdSchema.nullable(),
-  contextId: contextIdSchema,
-  kind: stepKindSchema,
-  operationName: fieldSchema.nullable(),
-  name: fieldSchema,
-  label: z.string(),
-  otlpKind: z.number().int().min(0).max(5),
-  startNs: unsignedNs,
-  traceState: fieldSchema,
-  flags: count32,
-  droppedAttributesCount: count32,
-  droppedEventsCount: count32,
-  droppedLinksCount: count32,
-  attributes: attributeListSchema,
-  links: z.array(fieldSchema),
-  unknownFields: fieldSchema.nullable(),
-}).strict();
-
-const stepEndedPayload = z.object({
-  stepId: spanIdSchema,
-  endNs: unsignedNs.nullable(),
-  endEffectiveNs: unsignedNs,
-  statusCode: z.union([z.literal(0), z.literal(1), z.literal(2)]),
-  statusMessage: fieldSchema,
-  events: z.array(z.object({
-    ordinal: ordinalSchema,
-    timeNs: unsignedNs,
+const stepStartedPayload = z
+  .object({
+    stepId: spanIdSchema,
+    parentStepId: spanIdSchema.nullable(),
+    contextId: contextIdSchema,
+    kind: stepKindSchema,
+    operationName: fieldSchema.nullable(),
     name: fieldSchema,
-    attributes: attributeListSchema,
+    label: z.string(),
+    otlpKind: z.number().int().min(0).max(5),
+    startNs: unsignedNs,
+    traceState: fieldSchema,
+    flags: count32,
     droppedAttributesCount: count32,
+    droppedEventsCount: count32,
+    droppedLinksCount: count32,
+    attributes: attributeListSchema,
+    links: z.array(fieldSchema),
     unknownFields: fieldSchema.nullable(),
-  }).strict()),
-}).strict();
+  })
+  .strict();
 
-const usageRecordedPayload = z.object({
-  stepId: spanIdSchema,
-  inputTokens: decimalCount.nullable(),
-  outputTokens: decimalCount.nullable(),
-}).strict().refine((p) => p.inputTokens !== null || p.outputTokens !== null, {
-  message: "UsageRecorded needs at least one usable metric",
-});
+const stepEndedPayload = z
+  .object({
+    stepId: spanIdSchema,
+    endNs: unsignedNs.nullable(),
+    endEffectiveNs: unsignedNs,
+    statusCode: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+    statusMessage: fieldSchema,
+    events: z.array(
+      z
+        .object({
+          ordinal: ordinalSchema,
+          timeNs: unsignedNs,
+          name: fieldSchema,
+          attributes: attributeListSchema,
+          droppedAttributesCount: count32,
+          unknownFields: fieldSchema.nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+const usageRecordedPayload = z
+  .object({
+    stepId: spanIdSchema,
+    inputTokens: decimalCount.nullable(),
+    outputTokens: decimalCount.nullable(),
+  })
+  .strict()
+  .refine((p) => p.inputTokens !== null || p.outputTokens !== null, {
+    message: "UsageRecorded needs at least one usable metric",
+  });
 
 const KNOWN_CONTENT_FIELDS = [
   "gen_ai.input.messages",
@@ -251,39 +291,44 @@ const KNOWN_CONTENT_FIELDS = [
 ] as const;
 export const contentFieldNameSchema = z.enum([...KNOWN_CONTENT_FIELDS, "gen_ai.other"]);
 
-const contentRecordedPayload = z.object({
-  stepId: spanIdSchema.nullable(),
-  logOrdinal: ordinalSchema.nullable(),
-  channel: contentChannelSchema,
-  field: contentFieldNameSchema,
-  fieldKey: fieldSchema.optional(),
-  ordinal: ordinalSchema,
-  value: fieldSchema,
-}).strict().superRefine((p, ctx) => {
-  // Exactly one of stepId and logOrdinal is set (section 5).
-  if ((p.stepId === null) === (p.logOrdinal === null)) {
-    ctx.addIssue({ code: "custom", message: "exactly one of stepId and logOrdinal must be set" });
-  }
-  // The key is carried only for the catch-all field name.
-  if ((p.field === "gen_ai.other") !== (p.fieldKey !== undefined)) {
-    ctx.addIssue({ code: "custom", message: "fieldKey is required for gen_ai.other and forbidden otherwise" });
-  }
-});
+const contentRecordedPayload = z
+  .object({
+    stepId: spanIdSchema.nullable(),
+    logOrdinal: ordinalSchema.nullable(),
+    channel: contentChannelSchema,
+    field: contentFieldNameSchema,
+    fieldKey: fieldSchema.optional(),
+    ordinal: ordinalSchema,
+    value: fieldSchema,
+  })
+  .strict()
+  .superRefine((p, ctx) => {
+    // Exactly one of stepId and logOrdinal is set (section 5).
+    if ((p.stepId === null) === (p.logOrdinal === null)) {
+      ctx.addIssue({ code: "custom", message: "exactly one of stepId and logOrdinal must be set" });
+    }
+    // The key is carried only for the catch-all field name.
+    if ((p.field === "gen_ai.other") !== (p.fieldKey !== undefined)) {
+      ctx.addIssue({ code: "custom", message: "fieldKey is required for gen_ai.other and forbidden otherwise" });
+    }
+  });
 
-const logRecordedPayload = z.object({
-  logOrdinal: ordinalSchema,
-  stepId: spanIdSchema.nullable(),
-  contextId: contextIdSchema,
-  timeNs: unsignedNs,
-  observedTimeNs: unsignedNs,
-  severityNumber: z.number().int().min(0).max(24),
-  severityText: fieldSchema,
-  flags: count32,
-  eventName: fieldSchema,
-  droppedAttributesCount: count32,
-  attributes: attributeListSchema,
-  unknownFields: fieldSchema.nullable(),
-}).strict();
+const logRecordedPayload = z
+  .object({
+    logOrdinal: ordinalSchema,
+    stepId: spanIdSchema.nullable(),
+    contextId: contextIdSchema,
+    timeNs: unsignedNs,
+    observedTimeNs: unsignedNs,
+    severityNumber: z.number().int().min(0).max(24),
+    severityText: fieldSchema,
+    flags: count32,
+    eventName: fieldSchema,
+    droppedAttributesCount: count32,
+    attributes: attributeListSchema,
+    unknownFields: fieldSchema.nullable(),
+  })
+  .strict();
 
 const importNotePayload = z.discriminatedUnion("code", [
   noteShape("OTHER_TRACE_EXCLUDED", "none", { spans: countSchema, logs: countSchema }),
@@ -305,21 +350,25 @@ const importNotePayload = z.discriminatedUnion("code", [
   noteShape("WITHHELD_ATTRIBUTE", "step", { count: countSchema, bytes: countSchema }),
   z.object({ code: z.literal("SECRET_PATTERN_COUNT"), stepId: z.null(), detail: secretCountDetail }).strict(),
   // UNKNOWN_FIELD has four shapes: a step, a log, a context, or the outer envelope.
-  z.object({
-    code: z.literal("UNKNOWN_FIELD"),
-    stepId: spanIdSchema.nullable(),
-    detail: z.union([
-      z.object({ count: countSchema }).strict(),
-      z.object({ logOrdinal: ordinalSchema, count: countSchema }).strict(),
-      z.object({ contextId: contextIdSchema, count: countSchema }).strict(),
-      z.object({ scope: z.literal("envelope"), count: countSchema }).strict(),
-    ]),
-  }).strict(),
+  z
+    .object({
+      code: z.literal("UNKNOWN_FIELD"),
+      stepId: spanIdSchema.nullable(),
+      detail: z.union([
+        z.object({ count: countSchema }).strict(),
+        z.object({ logOrdinal: ordinalSchema, count: countSchema }).strict(),
+        z.object({ contextId: contextIdSchema, count: countSchema }).strict(),
+        z.object({ scope: z.literal("envelope"), count: countSchema }).strict(),
+      ]),
+    })
+    .strict(),
 ]);
 
-const runEndedPayload = z.object({
-  eventCount: z.number().int().positive(),
-}).strict();
+const runEndedPayload = z
+  .object({
+    eventCount: z.number().int().positive(),
+  })
+  .strict();
 
 function eventOf<T extends string, P extends z.ZodType>(type: T, payload: P) {
   return z.object({ ...eventBase, type: z.literal(type), payload }).strict();

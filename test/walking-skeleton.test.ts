@@ -88,7 +88,13 @@ describe("Milestone 1A.0 walking skeleton", () => {
   it("preserves replay compatibility for older recovery events without a truncation disposition", async () => {
     const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
     const started = await beginWalkingSkeletonMission({ missionId: "legacy-recovery-demo", totalBudget: 120, historyPath });
-    const legacyRecovery = { ...started.events[0], sequenceNumber: 6, eventId: "legacy-recovery-demo-6", type: "RecoveryStarted" as const, payload: { interruptedAttemptIds: ["system-check:a1"] } };
+    const legacyRecovery = {
+      ...started.events[0],
+      sequenceNumber: 6,
+      eventId: "legacy-recovery-demo-6",
+      type: "RecoveryStarted" as const,
+      payload: { interruptedAttemptIds: ["system-check:a1"] },
+    };
 
     const { missionEventSchema } = await import("../src/contracts.js");
     expect(missionEventSchema.parse(legacyRecovery).payload).toMatchObject({ truncatedFinalLineDiscarded: false });
@@ -99,7 +105,9 @@ describe("Milestone 1A.0 walking skeleton", () => {
     await beginWalkingSkeletonMission({ missionId: "malformed-tail-demo", totalBudget: 120, historyPath });
     await appendFile(historyPath, '{"schemaVersion":1,}', "utf8");
 
-    await expect(recoverWalkingSkeletonMission({ missionId: "malformed-tail-demo", historyPath })).rejects.toThrow("malformed rather than demonstrably truncated");
+    await expect(recoverWalkingSkeletonMission({ missionId: "malformed-tail-demo", historyPath })).rejects.toThrow(
+      "malformed rather than demonstrably truncated",
+    );
   });
 
   it("rejects a complete final record that is merely missing its newline", async () => {
@@ -108,7 +116,9 @@ describe("Milestone 1A.0 walking skeleton", () => {
     const contents = await readFile(historyPath, "utf8");
     await writeFile(historyPath, contents.trimEnd(), "utf8");
 
-    await expect(recoverWalkingSkeletonMission({ missionId: "missing-newline-demo", historyPath })).rejects.toThrow("malformed rather than demonstrably truncated");
+    await expect(recoverWalkingSkeletonMission({ missionId: "missing-newline-demo", historyPath })).rejects.toThrow(
+      "malformed rather than demonstrably truncated",
+    );
   });
 
   it("rejects a history with a skipped sequence number", async () => {
@@ -126,9 +136,25 @@ describe("Milestone 1A.0 walking skeleton", () => {
   it("enforces the single mission recovery restart cap", async () => {
     const historyPath = join(await mkdtemp(join(tmpdir(), "dropscope-")), "mission.jsonl");
     const started = await beginWalkingSkeletonMission({ missionId: "recovery-cap-demo", totalBudget: 120, historyPath });
-    const once = [...started.events, { ...started.events[0], sequenceNumber: 6, eventId: "recovery-cap-demo-6", type: "RecoveryStarted" as const, payload: { interruptedAttemptIds: ["system-check:a1"], truncatedFinalLineDiscarded: false } }];
-    expect(() => replay([...once, { ...once[5], sequenceNumber: 7, eventId: "recovery-cap-demo-7" }])).toThrow("recovery restart cap reached");
-    expect(() => replay([...started.events, { ...once[5], sequenceNumber: 6, eventId: "recovery-cap-demo-invalid", payload: { interruptedAttemptIds: ["missing"] } } as never])).toThrow("must name each current running attempt");
+    const once = [
+      ...started.events,
+      {
+        ...started.events[0],
+        sequenceNumber: 6,
+        eventId: "recovery-cap-demo-6",
+        type: "RecoveryStarted" as const,
+        payload: { interruptedAttemptIds: ["system-check:a1"], truncatedFinalLineDiscarded: false },
+      },
+    ];
+    expect(() => replay([...once, { ...once[5], sequenceNumber: 7, eventId: "recovery-cap-demo-7" }])).toThrow(
+      "recovery restart cap reached",
+    );
+    expect(() =>
+      replay([
+        ...started.events,
+        { ...once[5], sequenceNumber: 6, eventId: "recovery-cap-demo-invalid", payload: { interruptedAttemptIds: ["missing"] } } as never,
+      ]),
+    ).toThrow("must name each current running attempt");
   });
 
   it("replays every valid event-history prefix", async () => {

@@ -17,12 +17,18 @@ const stepName = (item: DiffItem): string => (item.a ?? item.b)?.title ?? "a ste
 
 export function changeText(change: DiffChange): string {
   switch (change.code) {
-    case "STATUS": return `it ${change.a === "failed" ? "failed" : "succeeded"} in run A but ${change.b === "failed" ? "failed" : "succeeded"} in run B`;
-    case "PARENT": return "it sits under a different step than in run A";
-    case "STATUS_MESSAGE": return "its status or failure message differs";
-    case "INPUT_TOKENS": return `input tokens: ${change.a} in run A, ${change.b} in run B`;
-    case "OUTPUT_TOKENS": return `output tokens: ${change.a} in run A, ${change.b} in run B`;
-    case "CONTENT": return `recorded content differs (${change.fields.join(", ")})`;
+    case "STATUS":
+      return `it ${change.a === "failed" ? "failed" : "succeeded"} in run A but ${change.b === "failed" ? "failed" : "succeeded"} in run B`;
+    case "PARENT":
+      return "it sits under a different step than in run A";
+    case "STATUS_MESSAGE":
+      return "its status or failure message differs";
+    case "INPUT_TOKENS":
+      return `input tokens: ${change.a} in run A, ${change.b} in run B`;
+    case "OUTPUT_TOKENS":
+      return `output tokens: ${change.a} in run A, ${change.b} in run B`;
+    case "CONTENT":
+      return `recorded content differs (${change.fields.join(", ")})`;
   }
 }
 
@@ -33,12 +39,18 @@ export function changeText(change: DiffChange): string {
 export function describeDifferences(result: DiffResult, limit: number): { lines: string[]; hidden: number } {
   const lines: string[] = [];
   let hidden = 0;
-  const add = (text: string): void => { if (lines.length < limit) lines.push(text); else hidden += 1; };
+  const add = (text: string): void => {
+    if (lines.length < limit) lines.push(text);
+    else hidden += 1;
+  };
   const items = result.items;
   let k = 0;
   while (k < items.length) {
     const item = items[k];
-    if (item.status === "same") { k += 1; continue; }
+    if (item.status === "same") {
+      k += 1;
+      continue;
+    }
     if (item.status === "onlyA") {
       let endA = k;
       while (endA < items.length && items[endA].status === "onlyA") endA += 1;
@@ -75,20 +87,37 @@ export function totalsLines(a: RunTotals, b: RunTotals): string[] {
 }
 
 export function diffCaveats(result: DiffResult): string[] {
-  const notes = [DIFF_NOTE, NOT_COMPARED_NOTE, "Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference."];
-  if (!result.fullyAligned) notes.push("The runs were too different to line up in full, so everything between their shared start and shared end is listed as removed and added.");
-  if (result.unverifiedNesting > 0) notes.push(`${group(result.unverifiedNesting)} step(s) sit under parents that fell in the part that could not be lined up in either run, so whether their nesting changed was not checked.`);
-  if (result.contentComparable) notes.push("Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.");
+  const notes = [
+    DIFF_NOTE,
+    NOT_COMPARED_NOTE,
+    "Time is shown in the totals only: two honest runs never take exactly as long, so it is not treated as a difference.",
+  ];
+  if (!result.fullyAligned)
+    notes.push(
+      "The runs were too different to line up in full, so everything between their shared start and shared end is listed as removed and added.",
+    );
+  if (result.unverifiedNesting > 0)
+    notes.push(
+      `${group(result.unverifiedNesting)} step(s) sit under parents that fell in the part that could not be lined up in either run, so whether their nesting changed was not checked.`,
+    );
+  if (result.contentComparable)
+    notes.push(
+      "Recorded content is compared by fingerprint, so a run kept with its content and one kept without it can still be compared.",
+    );
   else notes.push("Neither run recorded any step content, so only structure, outcome and token counts were compared.");
   const missing = result.totals.a.stepsMissingTokens + result.totals.b.stepsMissingTokens;
-  if (missing > 0) notes.push(`${group(missing)} model call(s) were missing an input or an output token count; a missing figure is counted as zero in the totals.`);
+  if (missing > 0)
+    notes.push(
+      `${group(missing)} model call(s) were missing an input or an output token count; a missing figure is counted as zero in the totals.`,
+    );
   return notes;
 }
 
 /** The verdict sentence of a diff. Shared by the command line and the screen so both say the same thing. */
 export function diffVerdictLine(result: DiffResult): string {
   if (result.tooLarge) return "Result: one of the runs has too many steps to compare here, so nothing was compared.";
-  if (result.identical) return "Result: the runs match step for step in step kind, operation, model, tool and agent names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).";
+  if (result.identical)
+    return "Result: the runs match step for step in step kind, operation, model, tool and agent names, nesting, outcome, status messages, token counts and recorded content (see the notes for what is not compared).";
   return `Result: the runs first differ at step ${group(result.firstIndex + 1)} of the aligned list.`;
 }
 
@@ -99,8 +128,14 @@ export function diffCountsLine(result: DiffResult): string {
 function diffSummaryLines(result: DiffResult): string[] {
   if (result.tooLarge || result.identical) return [diffVerdictLine(result)];
   const first = result.first as DiffItem;
-  const where = [first.a ? `run A event ${first.a.startSequence}` : null, first.b ? `run B event ${first.b.startSequence}` : null].filter(Boolean).join(", ");
-  return [diffVerdictLine(result), `  Look at: ${where} (use the state command with --at to see each run there).`, `  ${diffCountsLine(result)}`];
+  const where = [first.a ? `run A event ${first.a.startSequence}` : null, first.b ? `run B event ${first.b.startSequence}` : null]
+    .filter(Boolean)
+    .join(", ");
+  return [
+    diffVerdictLine(result),
+    `  Look at: ${where} (use the state command with --at to see each run there).`,
+    `  ${diffCountsLine(result)}`,
+  ];
 }
 
 export function diffReportLines(result: DiffResult, ids: { a: string; b: string }, limit = DIFF_TEXT_LIMIT): string[] {

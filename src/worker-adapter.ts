@@ -1,24 +1,28 @@
 import { z } from "zod";
 
 /** The data a scheduler supplies to a worker producer. */
-export const workerRequestSchema = z.object({
-  missionId: z.string().min(1),
-  taskId: z.string().min(1),
-  attemptId: z.string().min(1),
-  objective: z.string().min(1),
-  workerRole: z.string().min(1),
-  maxCost: z.number().int().positive(),
-}).strict();
+export const workerRequestSchema = z
+  .object({
+    missionId: z.string().min(1),
+    taskId: z.string().min(1),
+    attemptId: z.string().min(1),
+    objective: z.string().min(1),
+    workerRole: z.string().min(1),
+    maxCost: z.number().int().positive(),
+  })
+  .strict();
 
 export type WorkerRequest = z.infer<typeof workerRequestSchema>;
 
 /** The only shape a worker is allowed to return to the runtime boundary. */
-export const structuredWorkerResultSchema = z.object({
-  taskId: z.string().min(1),
-  attemptId: z.string().min(1),
-  status: z.literal("COMPLETED"),
-  finding: z.string().min(1),
-}).strict();
+export const structuredWorkerResultSchema = z
+  .object({
+    taskId: z.string().min(1),
+    attemptId: z.string().min(1),
+    status: z.literal("COMPLETED"),
+    finding: z.string().min(1),
+  })
+  .strict();
 
 export type StructuredWorkerResult = z.infer<typeof structuredWorkerResultSchema>;
 
@@ -28,7 +32,13 @@ export type WorkerAdapter = {
 
 export class WorkerResultError extends Error {
   constructor(
-    public readonly code: "INVALID_REQUEST" | "MISSING_RESULT" | "INVALID_RESULT" | "IDENTITY_MISMATCH" | "DUPLICATE_RESULT" | "SUBSCRIPTION_EXECUTION_DISABLED",
+    public readonly code:
+      | "INVALID_REQUEST"
+      | "MISSING_RESULT"
+      | "INVALID_RESULT"
+      | "IDENTITY_MISMATCH"
+      | "DUPLICATE_RESULT"
+      | "SUBSCRIPTION_EXECUTION_DISABLED",
     message: string,
   ) {
     super(message);
@@ -53,9 +63,7 @@ export class RecordedWorkerAdapter implements WorkerAdapter {
   private readonly results: ReadonlyMap<string, unknown>;
 
   constructor(recordedResults: ReadonlyMap<string, unknown> | Readonly<Record<string, unknown>>) {
-    this.results = recordedResults instanceof Map
-      ? recordedResults
-      : new Map(Object.entries(recordedResults));
+    this.results = recordedResults instanceof Map ? recordedResults : new Map(Object.entries(recordedResults));
   }
 
   async run(request: WorkerRequest): Promise<unknown> {

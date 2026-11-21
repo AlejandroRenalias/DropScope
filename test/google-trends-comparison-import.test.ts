@@ -37,7 +37,11 @@ describe("Google Trends manual comparison CSV parser", () => {
   });
 
   it("rejects impossible calendar periods at the durable event boundary too", () => {
-    const evidence = { attemptId: "google-trends-us-comparison:a1", importedAt: "2026-01-12T00:00:00.000Z", ...parseGoogleTrendsComparisonCsv(validCsv) };
+    const evidence = {
+      attemptId: "google-trends-us-comparison:a1",
+      importedAt: "2026-01-12T00:00:00.000Z",
+      ...parseGoogleTrendsComparisonCsv(validCsv),
+    };
     expect(googleTrendsComparisonEvidenceSchema.safeParse({ ...evidence, periods: ["2026-02-31", "2026-01-11"] }).success).toBe(false);
   });
 });

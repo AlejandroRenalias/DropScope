@@ -121,6 +121,7 @@ npm run test:e2e    # browser tests (needs Chrome; the picture baselines are Win
 
 ## Where to read more
 
+- [Contributing](CONTRIBUTING.md): set up, tests, formatting and pull requests.
 - [Guided tour](docs/GUIDED_TOUR.md): ten minutes with the demos.
 - [Architecture](docs/ARCHITECTURE.md): the path from a trace file to a saved run, the checks and the screens, with one diagram.
 - [Run event contract](docs/schemas/run-event-contract-v1.md) and [ADR-027](docs/adr/ADR-027-run-event-contract-and-trace-import-boundary.md): how a run file is built and checked.

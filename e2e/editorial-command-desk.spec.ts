@@ -83,7 +83,8 @@ for (const viewport of [
 ]) {
   test(`keeps the command center inside ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
-    if (viewport.width > COMPACT_NAVIGATION_MAX_WIDTH) await expect(page.getByRole("button", { name: "Research Office", exact: true })).toBeVisible();
+    if (viewport.width > COMPACT_NAVIGATION_MAX_WIDTH)
+      await expect(page.getByRole("button", { name: "Research Office", exact: true })).toBeVisible();
     else await expect(page.getByRole("button", { name: "Workspace Research Office" })).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByRole("region", { name: "Research Office floor" })).toBeVisible();
     const officeDimensions = await page.evaluate(() => ({
@@ -191,9 +192,15 @@ test("recorded decisions and activity navigate to their screens", async ({ page 
 });
 
 test("research office is honest when a saved history has no research attempts", async ({ page }) => {
-  await page.route("**/api/missions", (route) => route.fulfill({
-    json: { missionId: officeHistories.RUNNING[0]!.missionId, fixtureId: "crosscurrent-workspace-market", events: [officeHistories.RUNNING[0]!] },
-  }));
+  await page.route("**/api/missions", (route) =>
+    route.fulfill({
+      json: {
+        missionId: officeHistories.RUNNING[0]!.missionId,
+        fixtureId: "crosscurrent-workspace-market",
+        events: [officeHistories.RUNNING[0]!],
+      },
+    }),
+  );
   await page.getByRole("button", { name: "Mission controls", exact: true }).click();
   await page.getByRole("button", { name: "Launch local mission", exact: true }).click();
   const office = page.getByRole("region", { name: "Research Office floor" });
@@ -212,12 +219,22 @@ for (const width of [1440, 768, 375]) {
     await expect(page.locator(".source-label")).toHaveText("Synthetic demo · recorded replay");
     await expect(page.locator(".live-status")).toContainText("2 researchers working");
     await expect(page.getByRole("button", { name: "RUNNING", exact: true })).toBeHidden();
-    if (width === 1440) expect(await page.locator(".work-graph").evaluate((node) => node.getBoundingClientRect().bottom)).toBeLessThanOrEqual(901);
+    if (width === 1440)
+      expect(await page.locator(".work-graph").evaluate((node) => node.getBoundingClientRect().bottom)).toBeLessThanOrEqual(901);
     await page.screenshot({ path: testInfo.outputPath(`clarity-${width}.png`), fullPage: true, animations: "disabled" });
     const contrast = await page.evaluate(() => {
       type Rgba = [number, number, number, number];
-      const parse = (value: string): Rgba => { const parts = value.match(/[\d.]+/g)!.map(Number); return [parts[0]!, parts[1]!, parts[2]!, parts[3] ?? 1]; };
-      const luminance = (values: number[]) => values.map((value) => { const s = value / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }).reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i]!, 0);
+      const parse = (value: string): Rgba => {
+        const parts = value.match(/[\d.]+/g)!.map(Number);
+        return [parts[0]!, parts[1]!, parts[2]!, parts[3] ?? 1];
+      };
+      const luminance = (values: number[]) =>
+        values
+          .map((value) => {
+            const s = value / 255;
+            return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i]!, 0);
       const backdrop = (node: Element): number[] => {
         const layers: Rgba[] = [];
         for (let ancestor: Element | null = node; ancestor; ancestor = ancestor.parentElement) {
@@ -226,24 +243,59 @@ for (const width of [1440, 768, 375]) {
           if (color[3] === 1) break;
         }
         let base: number[] = [255, 255, 255];
-        for (const [r, g, b, a] of layers.reverse()) base = [r * a + base[0]! * (1 - a), g * a + base[1]! * (1 - a), b * a + base[2]! * (1 - a)];
+        for (const [r, g, b, a] of layers.reverse())
+          base = [r * a + base[0]! * (1 - a), g * a + base[1]! * (1 - a), b * a + base[2]! * (1 - a)];
         return base;
       };
-      const selectors = [".source-label", ".source-copy", ".live-status b", ".chip", ".eyebrow", ".cnode-copy small", ".cnode-copy strong", ".cnode-copy em", ".tl-item summary", ".decisions small", ".roster small", ".note", ".inspector dt", ".finding-top", ".facts dt", ".facts dd", ".finding-text > span", ".finding-source", ".stages li"];
-      return selectors.flatMap((selector) => [...document.querySelectorAll(selector)].filter((node) => (node as HTMLElement).offsetParent !== null).map((node) => {
-        const color = parse(getComputedStyle(node).color);
-        const a = luminance([color[0], color[1], color[2]]); const b = luminance(backdrop(node));
-        return { selector, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
-      }));
+      const selectors = [
+        ".source-label",
+        ".source-copy",
+        ".live-status b",
+        ".chip",
+        ".eyebrow",
+        ".cnode-copy small",
+        ".cnode-copy strong",
+        ".cnode-copy em",
+        ".tl-item summary",
+        ".decisions small",
+        ".roster small",
+        ".note",
+        ".inspector dt",
+        ".finding-top",
+        ".facts dt",
+        ".facts dd",
+        ".finding-text > span",
+        ".finding-source",
+        ".stages li",
+      ];
+      return selectors.flatMap((selector) =>
+        [...document.querySelectorAll(selector)]
+          .filter((node) => (node as HTMLElement).offsetParent !== null)
+          .map((node) => {
+            const color = parse(getComputedStyle(node).color);
+            const a = luminance([color[0], color[1], color[2]]);
+            const b = luminance(backdrop(node));
+            return { selector, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+          }),
+      );
     });
     for (const item of contrast) expect(item.ratio, `${item.selector} contrast`).toBeGreaterThanOrEqual(4.5);
 
-    await page.route("**/api/missions", (route) => route.fulfill({ json: { missionId: researchLayoutHistory[0]!.missionId, fixtureId: "crosscurrent-workspace-market", events: researchLayoutHistory } }));
+    await page.route("**/api/missions", (route) =>
+      route.fulfill({
+        json: { missionId: researchLayoutHistory[0]!.missionId, fixtureId: "crosscurrent-workspace-market", events: researchLayoutHistory },
+      }),
+    );
     await page.getByRole("button", { name: "Mission controls", exact: true }).click();
     await page.getByRole("button", { name: "Launch local mission", exact: true }).click();
     await expect(page.locator(".earlier .finding-text").first()).toContainText("Layout-only sample");
     await expect(page.locator(".earlier .finding-text").nth(1).locator(":scope > span")).toHaveCount(3);
-    const metrics = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, proseWidth: document.querySelector(".earlier .finding-text")!.getBoundingClientRect().width, maxWidth: getComputedStyle(document.querySelector(".earlier .finding-text")!).maxWidth }));
+    const metrics = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+      proseWidth: document.querySelector(".earlier .finding-text")!.getBoundingClientRect().width,
+      maxWidth: getComputedStyle(document.querySelector(".earlier .finding-text")!).maxWidth,
+    }));
     expect(metrics.scroll).toBe(metrics.width);
     expect(metrics.proseWidth).toBeLessThanOrEqual(parseFloat(metrics.maxWidth));
     await page.screenshot({ path: testInfo.outputPath(`long-findings-${width}.png`), fullPage: true, animations: "disabled" });
@@ -340,7 +392,9 @@ test("agent desk shows worker cards, a selectable provenance chain and usage by 
   await expect(chain.locator(".chain li")).toHaveCount(4);
   await expect(chain.locator(".chain li.final")).toHaveCount(0);
 
-  await expect(desk.getByRole("img", { name: /Market Researcher 25, Evidence Researcher 30, Operations Researcher 20, 65 available of 140/ })).toBeVisible();
+  await expect(
+    desk.getByRole("img", { name: /Market Researcher 25, Evidence Researcher 30, Operations Researcher 20, 65 available of 140/ }),
+  ).toBeVisible();
   await expect(desk.locator(".ops-none")).toContainText("No guarded actions are available for this mission.");
   expect(await desk.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
@@ -425,7 +479,12 @@ test("compact navigation returns focus after a choice and phones keep roster and
   await expect(toggle).toBeFocused();
 
   const replay = page.getByRole("region", { name: "Mission Replay" });
-  for (const locator of [replay.locator(".cat"), replay.locator(".replay-scenarios button"), replay.locator(".replay-chronology .event button"), replay.locator(".tick")]) {
+  for (const locator of [
+    replay.locator(".cat"),
+    replay.locator(".replay-scenarios button"),
+    replay.locator(".replay-chronology .event button"),
+    replay.locator(".tick"),
+  ]) {
     const boxes = await locator.evaluateAll((items) => items.map((item) => item.getBoundingClientRect()));
     expect(boxes.length).toBeGreaterThan(0);
     for (const box of boxes) expect(box.height).toBeGreaterThanOrEqual(39.5);

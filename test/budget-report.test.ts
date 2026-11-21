@@ -3,7 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parseBudgetPolicy, replayBudget } from "../src/budget-replay.js";
-import { activeLimits, budgetCaveats, budgetReportLines, describeBreach, describeRemainder, formatSeconds, gaugesAt, group } from "../src/budget-report.js";
+import {
+  activeLimits,
+  budgetCaveats,
+  budgetReportLines,
+  describeBreach,
+  describeRemainder,
+  formatSeconds,
+  gaugesAt,
+  group,
+} from "../src/budget-report.js";
 import { runCli } from "../src/run-cli.js";
 import type { PlatformChecks } from "../src/run-files.js";
 import { importTraceBytes } from "../src/run-import.js";
@@ -68,7 +77,10 @@ describe("budget report wording", () => {
   it("gives gauges that follow the position and say 'over' in words", () => {
     const r = run({ maxTotalTokens: "4000", maxModelCalls: "4" });
     const early = gaugesAt(r, 1);
-    expect(early.map((g) => [g.label, g.used, g.percent, g.over])).toEqual([["Total tokens", "0 tokens", 0, false], ["Model calls", "0 model calls", 0, false]]);
+    expect(early.map((g) => [g.label, g.used, g.percent, g.over])).toEqual([
+      ["Total tokens", "0 tokens", 0, false],
+      ["Model calls", "0 model calls", 0, false],
+    ]);
     const end = gaugesAt(r, model.events.length);
     expect(end[0]).toMatchObject({ used: "6,315 tokens", max: "4,000 tokens", percent: 100, over: true });
     expect(end[1]).toMatchObject({ used: "4 model calls", percent: 100, over: false });
@@ -77,40 +89,132 @@ describe("budget report wording", () => {
 
   it("always carries the counterfactual caveats and warns about missing token counts", () => {
     expect(budgetCaveats(run({ maxTotalTokens: "1" })).length).toBeGreaterThanOrEqual(2);
-    const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
-      { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "5", endTimeUnixNano: "9", attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }] },
-    ] }] }] })) });
+    const events = importTraceBytes({
+      spans: new TextEncoder().encode(
+        JSON.stringify({
+          resourceSpans: [
+            {
+              scopeSpans: [
+                {
+                  spans: [
+                    {
+                      traceId: "1".repeat(32),
+                      spanId: "00000000000000a1",
+                      name: "n",
+                      startTimeUnixNano: "5",
+                      endTimeUnixNano: "9",
+                      attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
     const r = replayBudget(events, policy({ maxTotalTokens: "5" }));
     expect(budgetCaveats(r).join(" ")).toMatch(/1 model call reported no token counts/);
   });
 
   it("explains a breach by less than a millionth of a currency unit, instead of showing 0.00 over 0.00", () => {
-    const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
-      { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "5", endTimeUnixNano: "9", attributes: [
-        { key: "gen_ai.operation.name", value: { stringValue: "chat" } }, { key: "gen_ai.usage.input_tokens", value: { intValue: "1" } }] },
-    ] }] }] })) });
+    const events = importTraceBytes({
+      spans: new TextEncoder().encode(
+        JSON.stringify({
+          resourceSpans: [
+            {
+              scopeSpans: [
+                {
+                  spans: [
+                    {
+                      traceId: "1".repeat(32),
+                      spanId: "00000000000000a1",
+                      name: "n",
+                      startTimeUnixNano: "5",
+                      endTimeUnixNano: "9",
+                      attributes: [
+                        { key: "gen_ai.operation.name", value: { stringValue: "chat" } },
+                        { key: "gen_ai.usage.input_tokens", value: { intValue: "1" } },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
     const r = replayBudget(events, policy({ maxCost: "0", inputPrice: "0.000001", outputPrice: "0" }));
     const text = describeBreach(r.first!, r.policy, events, () => "the step");
     expect(text).toContain("used 0.000000000001 USD, over your limit of 0.00 USD");
   });
 
   it("says when a time breach rests on an end time the importer had to estimate", () => {
-    const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
-      { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000", attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }] },
-      { traceId: "1".repeat(32), spanId: "00000000000000a2", name: "m", startTimeUnixNano: "1000000000", endTimeUnixNano: "11000000000" },
-    ] }] }] })) });
+    const events = importTraceBytes({
+      spans: new TextEncoder().encode(
+        JSON.stringify({
+          resourceSpans: [
+            {
+              scopeSpans: [
+                {
+                  spans: [
+                    {
+                      traceId: "1".repeat(32),
+                      spanId: "00000000000000a1",
+                      name: "n",
+                      startTimeUnixNano: "1000000000",
+                      attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }],
+                    },
+                    {
+                      traceId: "1".repeat(32),
+                      spanId: "00000000000000a2",
+                      name: "m",
+                      startTimeUnixNano: "1000000000",
+                      endTimeUnixNano: "11000000000",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
     const r = replayBudget(events, policy({ maxSeconds: "5" }));
     const text = describeBreach(r.first!, r.policy, events, () => "Model call");
     expect(text).toContain("its end time was missing or invalid, so the importer estimated it");
     // A recorded end is stated as a fact, without the disclosure.
-    expect(describeBreach(run({ maxSeconds: "5" }).first!, policy({ maxSeconds: "5" }), model.events, titleOf)).not.toContain("estimated it");
+    expect(describeBreach(run({ maxSeconds: "5" }).first!, policy({ maxSeconds: "5" }), model.events, titleOf)).not.toContain(
+      "estimated it",
+    );
   });
 
   it("tells the reader that time is checked only at step events, and how many ends were estimated", () => {
-    const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
-      { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000" },
-      { traceId: "1".repeat(32), spanId: "00000000000000a2", name: "m", startTimeUnixNano: "1000000000", endTimeUnixNano: "11000000000" },
-    ] }] }] })) });
+    const events = importTraceBytes({
+      spans: new TextEncoder().encode(
+        JSON.stringify({
+          resourceSpans: [
+            {
+              scopeSpans: [
+                {
+                  spans: [
+                    { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000" },
+                    {
+                      traceId: "1".repeat(32),
+                      spanId: "00000000000000a2",
+                      name: "m",
+                      startTimeUnixNano: "1000000000",
+                      endTimeUnixNano: "11000000000",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
     const notes = budgetCaveats(replayBudget(events, policy({ maxSeconds: "5" }))).join(" ");
     expect(notes).toContain("Time is checked only at step starts and step ends");
     expect(notes).toContain("1 step end time was estimated");
@@ -119,12 +223,48 @@ describe("budget report wording", () => {
 
   it("states the time rule truthfully when the run also has timestamped log records", () => {
     const events = importTraceBytes({
-      spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [
-        { traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000", endTimeUnixNano: "3000000000" },
-      ] }] }] })),
-      logs: new TextEncoder().encode(JSON.stringify({ resourceLogs: [{ scopeLogs: [{ logRecords: [
-        { traceId: "1".repeat(32), spanId: "00000000000000a1", timeUnixNano: "7000000000", observedTimeUnixNano: "7000000001", body: { stringValue: "late log" } },
-      ] }] }] })),
+      spans: new TextEncoder().encode(
+        JSON.stringify({
+          resourceSpans: [
+            {
+              scopeSpans: [
+                {
+                  spans: [
+                    {
+                      traceId: "1".repeat(32),
+                      spanId: "00000000000000a1",
+                      name: "n",
+                      startTimeUnixNano: "1000000000",
+                      endTimeUnixNano: "3000000000",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+      logs: new TextEncoder().encode(
+        JSON.stringify({
+          resourceLogs: [
+            {
+              scopeLogs: [
+                {
+                  logRecords: [
+                    {
+                      traceId: "1".repeat(32),
+                      spanId: "00000000000000a1",
+                      timeUnixNano: "7000000000",
+                      observedTimeUnixNano: "7000000001",
+                      body: { stringValue: "late log" },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
     });
     expect(events.some((e) => e.type === "LogRecorded" && e.payload.timeNs === "7000000000")).toBe(true); // a log really carries a time
     const notes = budgetCaveats(replayBudget(events, policy({ maxSeconds: "1" }))).join(" ");
@@ -157,8 +297,20 @@ describe("budget command", () => {
   });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
   const cli = (args: string[]) => {
-    let out = ""; let err = "";
-    const code = runCli(args, { out: (t) => { out += t; }, err: (t) => { err += t; } }, { checks: fake });
+    let out = "";
+    let err = "";
+    const code = runCli(
+      args,
+      {
+        out: (t) => {
+          out += t;
+        },
+        err: (t) => {
+          err += t;
+        },
+      },
+      { checks: fake },
+    );
     return { code, out, err };
   };
 
@@ -204,10 +356,31 @@ describe("budget command", () => {
   it("never lets a trace put terminal control codes or a forged line into the report", () => {
     const hostile = "\u001b[2JINJECT\nFORGED \u202eevil";
     const events = importTraceBytes({
-      spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [{
-        traceId: "1".repeat(32), spanId: "00000000000000a1", name: "n", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000",
-        attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } }, { key: "gen_ai.tool.name", value: { stringValue: hostile } }],
-      }] }] }] })),
+      spans: new TextEncoder().encode(
+        JSON.stringify({
+          resourceSpans: [
+            {
+              scopeSpans: [
+                {
+                  spans: [
+                    {
+                      traceId: "1".repeat(32),
+                      spanId: "00000000000000a1",
+                      name: "n",
+                      startTimeUnixNano: "1000000000",
+                      endTimeUnixNano: "2000000000",
+                      attributes: [
+                        { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
+                        { key: "gen_ai.tool.name", value: { stringValue: hostile } },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
       contentMode: "FULL", // a file that keeps its content keeps the tool name as written
     });
     const hostileFile = path.join(dir, "hostile.runlog.jsonl");

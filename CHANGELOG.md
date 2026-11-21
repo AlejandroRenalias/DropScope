@@ -9,6 +9,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - A `dropscope` command: `npx dropscope <command>` after `npm install` in a clone (or `npm link`). It runs the same commands as `npm run forensics` (`import`, `state`, `budget`, `claims`, `diff`).
 - A "Works with" table for common trace emitters, with synthetic fixtures and tests.
 - Browser tests run on Linux in CI (picture comparisons stay Windows only).
+- Linting and formatting with Biome (`npm run lint`, `npm run format`), checked in CI.
+- A contributing guide and issue forms.
 
 ### Changed
 

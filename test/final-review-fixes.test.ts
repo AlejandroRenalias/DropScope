@@ -18,20 +18,37 @@ const attr = (key: string, value: string) => ({ key, value: { stringValue: value
 
 function runOf(tools: string[], mode: "FULL" | "HASH_ONLY", result = "result") {
   const spans = tools.map((tool, i) => ({
-    traceId: "1".repeat(32), spanId: (i + 1).toString(16).padStart(16, "0"), name: `s${i}`,
-    startTimeUnixNano: ns(i), endTimeUnixNano: ns(i + 1),
+    traceId: "1".repeat(32),
+    spanId: (i + 1).toString(16).padStart(16, "0"),
+    name: `s${i}`,
+    startTimeUnixNano: ns(i),
+    endTimeUnixNano: ns(i + 1),
     attributes: [attr("gen_ai.operation.name", "execute_tool"), attr("gen_ai.tool.name", tool), attr("gen_ai.tool.call.result", result)],
   }));
-  return importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })), contentMode: mode });
+  return importTraceBytes({
+    spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })),
+    contentMode: mode,
+  });
 }
 const claim = (over: Partial<Claim> = {}): Claim => ({
-  id: "c1", text: "a claim", tool: "tool with spaces", stepId: null, field: "result", mustContain: ["result"], caseSensitive: true, atEvent: null, ...over,
+  id: "c1",
+  text: "a claim",
+  tool: "tool with spaces",
+  stepId: null,
+  field: "result",
+  mustContain: ["result"],
+  caseSensitive: true,
+  atEvent: null,
+  ...over,
 });
 
 describe("claim check: a tool name that the run file withheld", () => {
   it("is supported with content stored but cannot be checked when the tool name was kept only as a fingerprint", () => {
     expect(checkClaims(runOf(["tool with spaces"], "FULL"), [claim()]).results[0]).toMatchObject({ verdict: "SUPPORTED" });
-    expect(checkClaims(runOf(["tool with spaces"], "HASH_ONLY"), [claim()]).results[0]).toMatchObject({ verdict: "CANNOT_CHECK", reason: "TOOL_NAME_WITHHELD" });
+    expect(checkClaims(runOf(["tool with spaces"], "HASH_ONLY"), [claim()]).results[0]).toMatchObject({
+      verdict: "CANNOT_CHECK",
+      reason: "TOOL_NAME_WITHHELD",
+    });
   });
 
   it("also cannot be checked when another step of the claimed tool was readable but lacked the text", () => {
@@ -43,12 +60,19 @@ describe("claim check: a tool name that the run file withheld", () => {
     const events = runOf(["lookup", "tool with spaces"], "HASH_ONLY");
     const contentEvents = events.filter((e) => e.type === "ContentRecorded").map((e) => e.sequenceNumber);
     const cutoff = contentEvents[0] - 1; // before the readable tool's content, so everything arrives too late
-    expect(checkClaims(events, [claim({ tool: "lookup", atEvent: cutoff })]).results[0]).toMatchObject({ verdict: "NOT_SUPPORTED", reason: "TOO_LATE" });
+    expect(checkClaims(events, [claim({ tool: "lookup", atEvent: cutoff })]).results[0]).toMatchObject({
+      verdict: "NOT_SUPPORTED",
+      reason: "TOO_LATE",
+    });
   });
 
   it("keeps the doubt when the nameless step never recorded the claimed field", () => {
     const span = {
-      traceId: "1".repeat(32), spanId: "0000000000000001", name: "s", startTimeUnixNano: ns(0), endTimeUnixNano: ns(1),
+      traceId: "1".repeat(32),
+      spanId: "0000000000000001",
+      name: "s",
+      startTimeUnixNano: ns(0),
+      endTimeUnixNano: ns(1),
       attributes: [attr("gen_ai.operation.name", "execute_tool"), attr("gen_ai.tool.name", "tool with spaces")],
     };
     const bytes = new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] }));
@@ -59,7 +83,10 @@ describe("claim check: a tool name that the run file withheld", () => {
   });
 
   it("still says not supported for a missing tool when every tool name in the run is readable", () => {
-    expect(checkClaims(runOf(["lookup"], "HASH_ONLY"), [claim({ tool: "nothing" })]).results[0]).toMatchObject({ verdict: "NOT_SUPPORTED", reason: "NO_MATCHING_STEP" });
+    expect(checkClaims(runOf(["lookup"], "HASH_ONLY"), [claim({ tool: "nothing" })]).results[0]).toMatchObject({
+      verdict: "NOT_SUPPORTED",
+      reason: "NO_MATCHING_STEP",
+    });
   });
 });
 
@@ -74,16 +101,28 @@ describe("run diff: tool use is counted by the recorded tool name", () => {
     const long = "x".repeat(90);
     const r = diffRuns(buildRunModel(runOf([`${long}x`], "FULL")), buildRunModel(runOf([`${long}y`], "FULL")));
     expect(r.counts.onlyA).toBe(1);
-    expect(r.tools.map((t) => [t.a, t.b])).toEqual([[0, 1], [1, 0]]);
+    expect(r.tools.map((t) => [t.a, t.b])).toEqual([
+      [0, 1],
+      [1, 0],
+    ]);
   });
 
   it("counts every tool name a step records, so a changed second name is still a difference", () => {
     const twoNames = (second: string) => {
       const span = {
-        traceId: "1".repeat(32), spanId: "0000000000000001", name: "s", startTimeUnixNano: ns(0), endTimeUnixNano: ns(1),
+        traceId: "1".repeat(32),
+        spanId: "0000000000000001",
+        name: "s",
+        startTimeUnixNano: ns(0),
+        endTimeUnixNano: ns(1),
         attributes: [attr("gen_ai.operation.name", "execute_tool"), attr("gen_ai.tool.name", "0 hidden"), attr("gen_ai.tool.name", second)],
       };
-      return buildRunModel(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] })), contentMode: "HASH_ONLY" }));
+      return buildRunModel(
+        importTraceBytes({
+          spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] })),
+          contentMode: "HASH_ONLY",
+        }),
+      );
     };
     const r = diffRuns(twoNames("lookup"), twoNames("write"));
     expect(r.tools.length).toBe(2);
@@ -93,10 +132,19 @@ describe("run diff: tool use is counted by the recorded tool name", () => {
   it("does not depend on the order in which a step recorded its tool names, but counts repeats", () => {
     const names = (list: string[]) => {
       const span = {
-        traceId: "1".repeat(32), spanId: "0000000000000001", name: "s", startTimeUnixNano: ns(0), endTimeUnixNano: ns(1),
+        traceId: "1".repeat(32),
+        spanId: "0000000000000001",
+        name: "s",
+        startTimeUnixNano: ns(0),
+        endTimeUnixNano: ns(1),
         attributes: [attr("gen_ai.operation.name", "execute_tool"), ...list.map((n) => attr("gen_ai.tool.name", n))],
       };
-      return buildRunModel(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] })), contentMode: "FULL" }));
+      return buildRunModel(
+        importTraceBytes({
+          spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] })),
+          contentMode: "FULL",
+        }),
+      );
     };
     expect(diffRuns(names(["lookup", "alpha", "beta"]), names(["lookup", "beta", "alpha"])).tools).toEqual([]);
     expect(diffRuns(names(["lookup", "alpha"]), names(["lookup", "alpha", "alpha"])).tools.length).toBe(2);
@@ -112,7 +160,10 @@ describe("run diff: tool use is counted by the recorded tool name", () => {
 });
 
 describe("run file header fields cannot carry free text", () => {
-  const demo = fs.readFileSync(new URL("../src/frontend/assets/demo-run.runlog.jsonl", import.meta.url), "utf8").trimEnd().split("\n");
+  const demo = fs
+    .readFileSync(new URL("../src/frontend/assets/demo-run.runlog.jsonl", import.meta.url), "utf8")
+    .trimEnd()
+    .split("\n");
   const tamper = (edit: (payload: Record<string, any>) => void): Uint8Array => {
     const header = JSON.parse(demo[0]);
     edit(header.payload);
@@ -125,10 +176,30 @@ describe("run file header fields cannot carry free text", () => {
   });
 
   it.each([
-    ["importer.id", (p: Record<string, any>) => { p.importer.id = note; }],
-    ["importer.version", (p: Record<string, any>) => { p.importer.version = note; }],
-    ["conventionVersion", (p: Record<string, any>) => { p.conventionVersion = note; }],
-    ["limitsVersion", (p: Record<string, any>) => { p.limitsVersion = note; }],
+    [
+      "importer.id",
+      (p: Record<string, any>) => {
+        p.importer.id = note;
+      },
+    ],
+    [
+      "importer.version",
+      (p: Record<string, any>) => {
+        p.importer.version = note;
+      },
+    ],
+    [
+      "conventionVersion",
+      (p: Record<string, any>) => {
+        p.conventionVersion = note;
+      },
+    ],
+    [
+      "limitsVersion",
+      (p: Record<string, any>) => {
+        p.limitsVersion = note;
+      },
+    ],
   ])("refuses free text in %s", (_name, edit) => {
     expect(() => parseRunLog(tamper(edit))).toThrow();
   });
@@ -150,7 +221,11 @@ describe("path rules, resolved form", () => {
     const touched = vi.spyOn(fs, "lstatSync");
     try {
       let reason = "";
-      try { safeResolve("a/b", true); } catch (error) { reason = `${(error as ImportError).code}:${(error as ImportError).reason}`; }
+      try {
+        safeResolve("a/b", true);
+      } catch (error) {
+        reason = `${(error as ImportError).code}:${(error as ImportError).reason}`;
+      }
       expect(reason).toBe("E_PATH:UNC_OR_DEVICE_PATH");
       expect(touched).not.toHaveBeenCalled();
     } finally {
@@ -176,7 +251,18 @@ describe("command line seams", () => {
   const run = (args: string[], checks?: typeof fake) => {
     let out = "";
     let err = "";
-    const code = runCli(args, { out: (t) => { out += t; }, err: (t) => { err += t; } }, checks ? { checks } : {});
+    const code = runCli(
+      args,
+      {
+        out: (t) => {
+          out += t;
+        },
+        err: (t) => {
+          err += t;
+        },
+      },
+      checks ? { checks } : {},
+    );
     return { code, out, err };
   };
 
@@ -194,7 +280,13 @@ describe("command line seams", () => {
     const original = Object.getOwnPropertyDescriptor(process, "platform") as PropertyDescriptor;
     Object.defineProperty(process, "platform", { value: "aix" });
     try {
-      for (const args of [["state", "x"], ["budget", "x", "--max-steps", "1"], ["claims", "x", "--claims", "y"], ["diff", "x", "y"], ["import", "x"]]) {
+      for (const args of [
+        ["state", "x"],
+        ["budget", "x", "--max-steps", "1"],
+        ["claims", "x", "--claims", "y"],
+        ["diff", "x", "y"],
+        ["import", "x"],
+      ]) {
         const r = run(args);
         expect(r.code, args[0]).toBe(1);
         expect(r.err, args[0]).toMatch(/^error: /);

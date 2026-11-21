@@ -6,7 +6,12 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { canonicalJson } from "../src/canonical.js";
 import {
-  defaultChecks, evaluateFolderAcl, readInputFile, syncedRootWarning, windowsChecks, type PlatformChecks,
+  defaultChecks,
+  evaluateFolderAcl,
+  readInputFile,
+  syncedRootWarning,
+  windowsChecks,
+  type PlatformChecks,
 } from "../src/run-files.js";
 import { ImportError } from "../src/run-import-error.js";
 import { importTraceBytes } from "../src/run-import.js";
@@ -19,7 +24,14 @@ const windows = process.platform === "win32";
 const T = "1".repeat(32);
 const S = "00000000000000a1";
 const enc = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
-const span = (extra: Record<string, unknown> = {}) => ({ traceId: T, spanId: S, name: "n", startTimeUnixNano: "1", endTimeUnixNano: "2", ...extra });
+const span = (extra: Record<string, unknown> = {}) => ({
+  traceId: T,
+  spanId: S,
+  name: "n",
+  startTimeUnixNano: "1",
+  endTimeUnixNano: "2",
+  ...extra,
+});
 const spansFile = (spans: unknown[], resource: unknown = {}, scope: unknown = { name: "s" }) =>
   enc({ resourceSpans: [{ resource, scopeSpans: [{ scope, spans }] }] });
 const logsFile = (logs: unknown[]) => enc({ resourceLogs: [{ scopeLogs: [{ logRecords: logs }] }] });
@@ -28,20 +40,30 @@ const fake: PlatformChecks = { name: "fake", fileAttributes: () => 0, prepareRun
 
 let root: string;
 let counter = 0;
-beforeAll(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-review-")); });
-afterAll(() => { fs.rmSync(root, { recursive: true, force: true }); });
-afterEach(() => { vi.restoreAllMocks(); });
+beforeAll(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-review-"));
+});
+afterAll(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 const fresh = (name: string) => path.join(root, `${name}-${(counter += 1)}`);
 
 function codeOf(fn: () => unknown): string {
-  try { fn(); return "OK"; } catch (error) {
+  try {
+    fn();
+    return "OK";
+  } catch (error) {
     if (error instanceof ImportError) return `${error.code}:${(error.reason ?? "").split(" ")[0]}`;
     throw error;
   }
 }
 const clone = (events: RunEvent[]): any[] => JSON.parse(JSON.stringify(events)); // eslint-disable-line @typescript-eslint/no-explicit-any
 const find = (events: any[], type: string) => events.find((e) => e.type === type); // eslint-disable-line @typescript-eslint/no-explicit-any
-const ofType = <T extends RunEvent["type"]>(events: RunEvent[], type: T) => events.filter((e): e is Extract<RunEvent, { type: T }> => e.type === type);
+const ofType = <T extends RunEvent["type"]>(events: RunEvent[], type: T) =>
+  events.filter((e): e is Extract<RunEvent, { type: T }> => e.type === type);
 
 describe("finding 1: the folder-permission check cannot fail open", () => {
   const USER = "S-1-5-21-1-2-3-1001";
@@ -51,14 +73,21 @@ describe("finding 1: the folder-permission check cannot fail open", () => {
   });
   it("refuses an empty, missing, malformed or loosened list", () => {
     for (const bad of [{ sids: [] }, {}, null, { sids: "" }, { sids: [5] }, { sids: ["not-a-sid"] }]) {
-      expect(codeOf(() => evaluateFolderAcl(bad, USER)), JSON.stringify(bad)).toBe("E_PLATFORM:ACL_UNREADABLE");
+      expect(
+        codeOf(() => evaluateFolderAcl(bad, USER)),
+        JSON.stringify(bad),
+      ).toBe("E_PLATFORM:ACL_UNREADABLE");
     }
     expect(codeOf(() => evaluateFolderAcl({ sids: ["S-1-5-18"] }, USER))).toBe("E_PLATFORM:ACL_MISSING_CURRENT_USER");
     expect(codeOf(() => evaluateFolderAcl({ sids: [USER, "S-1-1-0"] }, USER))).toBe("E_PLATFORM:RUNS_DIR_NOT_OWNER_ONLY");
   });
-  it.skipIf(!windows)("a PowerShell failure stops the check instead of producing an empty list", () => {
-    expect(codeOf(() => windowsChecks.prepareRunsDirectory(path.join(root, "does-not-exist"), false))).toMatch(/^E_PLATFORM:/);
-  }, 60_000);
+  it.skipIf(!windows)(
+    "a PowerShell failure stops the check instead of producing an empty list",
+    () => {
+      expect(codeOf(() => windowsChecks.prepareRunsDirectory(path.join(root, "does-not-exist"), false))).toMatch(/^E_PLATFORM:/);
+    },
+    60_000,
+  );
 });
 
 describe("finding 2: many associated logs do not overflow the stack", () => {
@@ -74,16 +103,25 @@ describe("finding 2: many associated logs do not overflow the stack", () => {
 describe("finding 3: pipeline-wide limits", () => {
   it("shares one node budget across both input files", () => {
     const bigArray = `[${"1,".repeat(99_999)}1]`;
-    const spans = new TextEncoder().encode(`{"resourceSpans":[{"scopeSpans":[{"spans":[${Array.from({ length: 11 }, (_, i) =>
-      `{"traceId":"${T}","spanId":"${(i + 1).toString(16).padStart(16, "0")}","startTimeUnixNano":"1","weird":${bigArray}}`).join(",")}]}]}]}`);
-    const logs = new TextEncoder().encode(`{"resourceLogs":[{"scopeLogs":[{"logRecords":[${Array.from({ length: 11 }, () => `{"custom":${bigArray}}`).join(",")}]}]}]}`);
+    const spans = new TextEncoder().encode(
+      `{"resourceSpans":[{"scopeSpans":[{"spans":[${Array.from(
+        { length: 11 },
+        (_, i) => `{"traceId":"${T}","spanId":"${(i + 1).toString(16).padStart(16, "0")}","startTimeUnixNano":"1","weird":${bigArray}}`,
+      ).join(",")}]}]}]}`,
+    );
+    const logs = new TextEncoder().encode(
+      `{"resourceLogs":[{"scopeLogs":[{"logRecords":[${Array.from({ length: 11 }, () => `{"custom":${bigArray}}`).join(",")}]}]}]}`,
+    );
     // Each file alone is under 2,000,000 nodes; together they are over.
     expect(codeOf(() => importTraceBytes({ spans, logs }))).toBe("E_LIMIT:");
   }, 60_000);
 
   it("fails closed on shared-resource amplification before building the output", () => {
     const hugeResource = { attributes: [sattr("service.name", "x".repeat(800_000))] };
-    const scopes = Array.from({ length: 200 }, (_, i) => ({ scope: { name: `scope${i}` }, spans: [span({ spanId: (i + 1).toString(16).padStart(16, "0") })] }));
+    const scopes = Array.from({ length: 200 }, (_, i) => ({
+      scope: { name: `scope${i}` },
+      spans: [span({ spanId: (i + 1).toString(16).padStart(16, "0") })],
+    }));
     const file = enc({ resourceSpans: [{ resource: hugeResource, scopeSpans: scopes }] });
     expect(file.length).toBeLessThan(1_000_000);
     const started = performance.now();
@@ -106,26 +144,53 @@ describe("finding 3: pipeline-wide limits", () => {
   }, 60_000);
 
   it("keeps checkpoint memory bounded and still gives exact state at every boundary", () => {
-    const many = Array.from({ length: 10_000 }, (_, i) => span({
-      spanId: (i + 1).toString(16).padStart(16, "0"), startTimeUnixNano: String(100 + i), endTimeUnixNano: String(200 + i),
-      attributes: [sattr("gen_ai.operation.name", "chat"), { key: "gen_ai.usage.input_tokens", value: { intValue: "2" } }, sattr("gen_ai.input.messages", "m")],
-      status: { code: i % 7 === 0 ? 2 : 1 },
-    }));
+    const many = Array.from({ length: 10_000 }, (_, i) =>
+      span({
+        spanId: (i + 1).toString(16).padStart(16, "0"),
+        startTimeUnixNano: String(100 + i),
+        endTimeUnixNano: String(200 + i),
+        attributes: [
+          sattr("gen_ai.operation.name", "chat"),
+          { key: "gen_ai.usage.input_tokens", value: { intValue: "2" } },
+          sattr("gen_ai.input.messages", "m"),
+        ],
+        status: { code: i % 7 === 0 ? 2 : 1 },
+      }),
+    );
     const events = importTraceBytes({ spans: spansFile(many) });
     const replay = createReplay(events);
     expect(replay.length).toBeGreaterThan(256 * 64);
     const expected = (n: number) => {
-      const open = new Set<string>(); const closed = new Set<string>(); const errors = new Set<string>();
+      const open = new Set<string>();
+      const closed = new Set<string>();
+      const errors = new Set<string>();
       const byKind: Record<string, number> = { LLM_CALL: 0, TOOL_CALL: 0, AGENT: 0, OTHER: 0 };
-      let input = 0n; let content = 0; const notes: Record<string, number> = {};
+      let input = 0n;
+      let content = 0;
+      const notes: Record<string, number> = {};
       for (const e of events.slice(0, n)) {
-        if (e.type === "StepStarted") { open.add(e.payload.stepId); byKind[e.payload.kind] += 1; }
-        if (e.type === "StepEnded") { open.delete(e.payload.stepId); closed.add(e.payload.stepId); if (e.payload.statusCode === 2) errors.add(e.payload.stepId); }
+        if (e.type === "StepStarted") {
+          open.add(e.payload.stepId);
+          byKind[e.payload.kind] += 1;
+        }
+        if (e.type === "StepEnded") {
+          open.delete(e.payload.stepId);
+          closed.add(e.payload.stepId);
+          if (e.payload.statusCode === 2) errors.add(e.payload.stepId);
+        }
         if (e.type === "UsageRecorded" && e.payload.inputTokens) input += BigInt(e.payload.inputTokens);
         if (e.type === "ContentRecorded") content += 1;
         if (e.type === "ImportNote") notes[e.payload.code] = (notes[e.payload.code] ?? 0) + 1;
       }
-      return { open: [...open].sort(), closed: [...closed].sort(), errors: [...errors].sort(), byKind, input: input.toString(), content, notes };
+      return {
+        open: [...open].sort(),
+        closed: [...closed].sort(),
+        errors: [...errors].sort(),
+        byKind,
+        input: input.toString(),
+        content,
+        notes,
+      };
     };
     const interval = Math.ceil(events.length / 64);
     for (const n of [1, interval - 1, interval, interval + 1, 2 * interval, 2 * interval + 1, 5000, events.length]) {
@@ -162,8 +227,8 @@ describe("finding 4: a folder swapped for a junction during the open is caught",
 
   it("accepts an ordinary file and reads it exactly", () => {
     const file = path.join(root, "plain.json");
-    fs.writeFileSync(file, "{\"a\":1}");
-    expect(Buffer.from(readInputFile(file, 100, fake)).toString()).toBe("{\"a\":1}");
+    fs.writeFileSync(file, '{"a":1}');
+    expect(Buffer.from(readInputFile(file, 100, fake)).toString()).toBe('{"a":1}');
   });
 });
 
@@ -178,10 +243,19 @@ describe("finding 5: privacy and structure are enforced on read", () => {
   });
 
   it("accepts the derived label in both modes", () => {
-    const withModel = (mode: "HASH_ONLY" | "FULL") => importTraceBytes({
-      contentMode: mode,
-      spans: spansFile([span({ attributes: [sattr("gen_ai.operation.name", "chat"), sattr("gen_ai.request.model", "m-1"), sattr("gen_ai.response.model", "other")] })]),
-    });
+    const withModel = (mode: "HASH_ONLY" | "FULL") =>
+      importTraceBytes({
+        contentMode: mode,
+        spans: spansFile([
+          span({
+            attributes: [
+              sattr("gen_ai.operation.name", "chat"),
+              sattr("gen_ai.request.model", "m-1"),
+              sattr("gen_ai.response.model", "other"),
+            ],
+          }),
+        ]),
+      });
     for (const mode of ["HASH_ONLY", "FULL"] as const) {
       const events = withModel(mode);
       expect(ofType(events, "StepStarted")[0].payload.label).toBe("LLM_CALL chat m-1");
@@ -193,12 +267,16 @@ describe("finding 5: privacy and structure are enforced on read", () => {
     const withNote = (note: unknown) => {
       const e = clone(base());
       e.splice(e.length - 1, 0, { schemaVersion: 2, runId: T, type: "ImportNote", payload: note });
-      e.forEach((x, i) => { x.sequenceNumber = i + 1; });
+      e.forEach((x, i) => {
+        x.sequenceNumber = i + 1;
+      });
       e[e.length - 1].payload.eventCount = e.length;
       return e;
     };
     expect(reason(withNote({ code: "DUPLICATE_SPAN_COLLAPSED", stepId: null, detail: { count: 1 } }))).toBe("OK");
-    expect(reason(withNote({ code: "DUPLICATE_SPAN_COLLAPSED", stepId: null, detail: { count: 1, SECRET_PROMPT: "x" } }))).toBe("E_INVALID_LOG:EVENT_SCHEMA");
+    expect(reason(withNote({ code: "DUPLICATE_SPAN_COLLAPSED", stepId: null, detail: { count: 1, SECRET_PROMPT: "x" } }))).toBe(
+      "E_INVALID_LOG:EVENT_SCHEMA",
+    );
     expect(reason(withNote({ code: "DUPLICATE_SPAN_COLLAPSED", stepId: null, detail: { other: 1 } }))).toBe("E_INVALID_LOG:EVENT_SCHEMA");
     expect(reason(withNote({ code: "CONTENT_ABSENT", stepId: null, detail: {} }))).toBe("E_INVALID_LOG:EVENT_SCHEMA");
     expect(reason(withNote({ code: "SECRET_PATTERN_COUNT", stepId: null, detail: { notAClass: 3 } }))).toBe("E_INVALID_LOG:EVENT_SCHEMA");
@@ -227,11 +305,20 @@ describe("finding 5: privacy and structure are enforced on read", () => {
     });
     expect(reason(events)).toBe("OK");
     const leak = { v: { t: "s", v: "leak" } };
-    const targets: Array<(e: any[]) => void> = [ // eslint-disable-line @typescript-eslint/no-explicit-any
-      (e) => { e[0].payload.contexts[0].resource.unknownFields = leak; },
-      (e) => { e[0].payload.contexts[0].scope.unknownFields = leak; },
-      (e) => { find(e, "StepEnded").payload.events[0].unknownFields = leak; },
-      (e) => { find(e, "LogRecorded").payload.unknownFields = leak; },
+    const targets: Array<(e: any[]) => void> = [
+      // eslint-disable-line @typescript-eslint/no-explicit-any
+      (e) => {
+        e[0].payload.contexts[0].resource.unknownFields = leak;
+      },
+      (e) => {
+        e[0].payload.contexts[0].scope.unknownFields = leak;
+      },
+      (e) => {
+        find(e, "StepEnded").payload.events[0].unknownFields = leak;
+      },
+      (e) => {
+        find(e, "LogRecorded").payload.unknownFields = leak;
+      },
     ];
     for (const target of targets) {
       const e = clone(events);
@@ -246,7 +333,10 @@ describe("finding 6: every valid import can be read back", () => {
 
   it("round-trips a large header: one shared resource and 60 scopes in FULL mode", () => {
     const resource = { attributes: [sattr("service.name", "r".repeat(600_000))] };
-    const scopes = Array.from({ length: 60 }, (_, i) => ({ scope: { name: `s${i}` }, spans: [span({ spanId: (i + 1).toString(16).padStart(16, "0") })] }));
+    const scopes = Array.from({ length: 60 }, (_, i) => ({
+      scope: { name: `s${i}` },
+      spans: [span({ spanId: (i + 1).toString(16).padStart(16, "0") })],
+    }));
     const events = importTraceBytes({ spans: enc({ resourceSpans: [{ resource, scopeSpans: scopes }] }), contentMode: "FULL" });
     const bytes = serializeRunLog(events);
     expect(bytes.length).toBeGreaterThan(32 * 1024 * 1024);
@@ -269,7 +359,11 @@ describe("finding 6: every valid import can be read back", () => {
 
 describe("finding 7: resource and scope data is kept and takes part in duplicate identity", () => {
   it("keeps dropped counts and unknown resource and scope properties (FULL: readable, default: fingerprint only)", () => {
-    const spans = spansFile([span()], { droppedAttributesCount: 4, entityRefs: [{ type: "SECRETENTITY" }] }, { name: "s", droppedAttributesCount: 5, extra: "SECRETSCOPE" });
+    const spans = spansFile(
+      [span()],
+      { droppedAttributesCount: 4, entityRefs: [{ type: "SECRETENTITY" }] },
+      { name: "s", droppedAttributesCount: 5, extra: "SECRETSCOPE" },
+    );
     const full = importTraceBytes({ spans, contentMode: "FULL" });
     const text = JSON.stringify(full);
     expect(text.includes("SECRETENTITY") && text.includes("SECRETSCOPE")).toBe(true);
@@ -283,18 +377,28 @@ describe("finding 7: resource and scope data is kept and takes part in duplicate
   });
 
   it("does not collapse spans whose resources differ only in dropped counts", () => {
-    const spans = enc({ resourceSpans: [
-      { resource: { droppedAttributesCount: 1 }, scopeSpans: [{ spans: [span()] }] },
-      { resource: { droppedAttributesCount: 2 }, scopeSpans: [{ spans: [span()] }] },
-    ] });
+    const spans = enc({
+      resourceSpans: [
+        { resource: { droppedAttributesCount: 1 }, scopeSpans: [{ spans: [span()] }] },
+        { resource: { droppedAttributesCount: 2 }, scopeSpans: [{ spans: [span()] }] },
+      ],
+    });
     expect(codeOf(() => importTraceBytes({ spans }))).toBe("E_CONFLICTING_DUPLICATE:");
   });
 });
 
 describe("finding 8: unknown log and span-event properties are kept", () => {
   it("keeps the value in FULL mode and only its fingerprint by default", () => {
-    const request = { spans: spansFile([span({ events: [{ timeUnixNano: "1", name: "e", mystery: "SECRETEVENT" }], status: { code: 1, oddity: "SECRETSTATUS" }, links: [{ traceId: T, spanId: S, linkOdd: "SECRETLINK" }] })]),
-      logs: logsFile([{ traceId: T, spanId: S, custom: { string: "SECRETLOG" } }]) };
+    const request = {
+      spans: spansFile([
+        span({
+          events: [{ timeUnixNano: "1", name: "e", mystery: "SECRETEVENT" }],
+          status: { code: 1, oddity: "SECRETSTATUS" },
+          links: [{ traceId: T, spanId: S, linkOdd: "SECRETLINK" }],
+        }),
+      ]),
+      logs: logsFile([{ traceId: T, spanId: S, custom: { string: "SECRETLOG" } }]),
+    };
     const full = JSON.stringify(importTraceBytes({ ...request, contentMode: "FULL" }));
     for (const s of ["SECRETEVENT", "SECRETSTATUS", "SECRETLINK", "SECRETLOG"]) expect(full.includes(s), s).toBe(true);
     const hashed = JSON.stringify(importTraceBytes(request));
@@ -306,7 +410,9 @@ describe("finding 8: unknown log and span-event properties are kept", () => {
 
 describe("findings 9 to 11", () => {
   it("9: counts only attribute parts in the withheld-attribute note", () => {
-    const events = importTraceBytes({ spans: spansFile([span({ attributes: [sattr("custom.key", "v")], events: [{ timeUnixNano: "1", name: "event" }] })]) });
+    const events = importTraceBytes({
+      spans: spansFile([span({ attributes: [sattr("custom.key", "v")], events: [{ timeUnixNano: "1", name: "event" }] })]),
+    });
     const note = ofType(events, "ImportNote").find((n) => n.payload.code === "WITHHELD_ATTRIBUTE");
     const started = ofType(events, "StepStarted")[0].payload;
     const attr = started.attributes[0];
@@ -315,7 +421,10 @@ describe("findings 9 to 11", () => {
   });
 
   it("10: the 20-digit rule covers decimals in kept unknown properties", () => {
-    const raw = (token: string) => new TextEncoder().encode(`{"resourceSpans":[{"scopeSpans":[{"spans":[{"traceId":"${T}","spanId":"${S}","startTimeUnixNano":"1","weird":${token}}]}]}]}`);
+    const raw = (token: string) =>
+      new TextEncoder().encode(
+        `{"resourceSpans":[{"scopeSpans":[{"spans":[{"traceId":"${T}","spanId":"${S}","startTimeUnixNano":"1","weird":${token}}]}]}]}`,
+      );
     expect(codeOf(() => importTraceBytes({ spans: raw("0.123456789012345678901") }))).toBe("E_NUMBER:");
     expect(codeOf(() => importTraceBytes({ spans: raw("1.5e10") }))).toBe("OK");
     expect(codeOf(() => importTraceBytes({ spans: raw("12345678901234567890.5") }))).toBe("E_NUMBER:");
@@ -323,7 +432,10 @@ describe("findings 9 to 11", () => {
   });
 
   it("11: all-zero link identifiers are rejected", () => {
-    for (const link of [{ traceId: "0".repeat(32), spanId: S }, { traceId: T, spanId: "0".repeat(16) }]) {
+    for (const link of [
+      { traceId: "0".repeat(32), spanId: S },
+      { traceId: T, spanId: "0".repeat(16) },
+    ]) {
       expect(codeOf(() => importTraceBytes({ spans: spansFile([span({ links: [link] })]) }))).toBe("E_ID:");
     }
     expect(codeOf(() => importTraceBytes({ spans: spansFile([span({ links: [{ traceId: T, spanId: S }] })]) }))).toBe("OK");
@@ -357,7 +469,16 @@ describe("spec deviations reported by the review", () => {
     const input = path.join(root, "cli-in.json");
     fs.writeFileSync(input, spansFile([span()]));
     let out = "";
-    const code = runCli(["import", input], { out: (t) => { out += t; }, err: () => {} }, { runsDirectory: path.join(root, "OneDrive - Test", "runs-cli"), checks: fake });
+    const code = runCli(
+      ["import", input],
+      {
+        out: (t) => {
+          out += t;
+        },
+        err: () => {},
+      },
+      { runsDirectory: path.join(root, "OneDrive - Test", "runs-cli"), checks: fake },
+    );
     expect(code).toBe(0);
     expect(out).toContain("warning: RUNS_DIR_IN_SYNCED_FOLDER");
   });
@@ -378,12 +499,15 @@ import { parseStrictJson } from "../src/strict-json.js";
 
 describe("round 2, finding 1: a shared resource is not expanded once per scope", () => {
   const spanN = (n: number) => span({ spanId: n.toString(16).padStart(16, "0") });
-  const sharedResourceFile = (scopes: number, elements = 100_000) => enc({
-    resourceSpans: [{
-      resource: { custom: Array.from({ length: elements }, () => 0) },
-      scopeSpans: Array.from({ length: scopes }, (_, i) => ({ scope: { name: `s${i}` }, spans: [spanN(i + 1)] })),
-    }],
-  });
+  const sharedResourceFile = (scopes: number, elements = 100_000) =>
+    enc({
+      resourceSpans: [
+        {
+          resource: { custom: Array.from({ length: elements }, () => 0) },
+          scopeSpans: Array.from({ length: scopes }, (_, i) => ({ scope: { name: `s${i}` }, spans: [spanN(i + 1)] })),
+        },
+      ],
+    });
   const json = (bytes: Uint8Array) => parseStrictJson(bytes, "parse");
 
   it("converts the resource once and shares it between its contexts", () => {
@@ -427,20 +551,45 @@ describe("round 2, finding 2: output accounting counts complete persisted lines"
   const shapes: Array<[string, () => Parameters<typeof importTraceBytes>[0]]> = [
     ["spike trace a", () => ({ spans: read("trace-a.json") })],
     ["spike trace d with logs", () => ({ spans: read("trace-d.json"), logs: read("trace-d.logs.json") })],
-    ["30 logs of 1,024 attributes", () => {
-      const attrs = Array.from({ length: 1024 }, (_, i) => sattr(`k${i}`, "v"));
-      return { spans: spansFile([span()]), logs: logsFile(Array.from({ length: 30 }, (_, i) => ({ traceId: T, spanId: S, timeUnixNano: String(i + 1), attributes: attrs }))) };
-    }],
-    ["many scopes", () => ({ spans: enc({ resourceSpans: [{ resource: { attributes: [sattr("a", "b")] }, scopeSpans: Array.from({ length: 50 }, (_, i) => ({ scope: { name: `s${i}` }, spans: [span({ spanId: (i + 1).toString(16).padStart(16, "0") })] })) }] }) })],
+    [
+      "30 logs of 1,024 attributes",
+      () => {
+        const attrs = Array.from({ length: 1024 }, (_, i) => sattr(`k${i}`, "v"));
+        return {
+          spans: spansFile([span()]),
+          logs: logsFile(Array.from({ length: 30 }, (_, i) => ({ traceId: T, spanId: S, timeUnixNano: String(i + 1), attributes: attrs }))),
+        };
+      },
+    ],
+    [
+      "many scopes",
+      () => ({
+        spans: enc({
+          resourceSpans: [
+            {
+              resource: { attributes: [sattr("a", "b")] },
+              scopeSpans: Array.from({ length: 50 }, (_, i) => ({
+                scope: { name: `s${i}` },
+                spans: [span({ spanId: (i + 1).toString(16).padStart(16, "0") })],
+              })),
+            },
+          ],
+        }),
+      }),
+    ],
   ];
   for (const mode of ["HASH_ONLY", "FULL"] as const) {
-    it.each(shapes)(`${mode}: %s - the estimate is never below the real size and stays close to it`, (_name, make) => {
-      const request = { ...make(), contentMode: mode };
-      const events = importTraceBytes(request);
-      const actual = serializeRunLog(events).length;
-      expect(codeOf(() => importTraceBytes({ ...request, maxOutputBytes: actual - 1 }))).toBe("E_LIMIT:OUTPUT_BYTES");
-      expect(codeOf(() => importTraceBytes({ ...request, maxOutputBytes: actual + 20 * events.length + 4000 }))).toBe("OK");
-    }, 60_000);
+    it.each(shapes)(
+      `${mode}: %s - the estimate is never below the real size and stays close to it`,
+      (_name, make) => {
+        const request = { ...make(), contentMode: mode };
+        const events = importTraceBytes(request);
+        const actual = serializeRunLog(events).length;
+        expect(codeOf(() => importTraceBytes({ ...request, maxOutputBytes: actual - 1 }))).toBe("E_LIMIT:OUTPUT_BYTES");
+        expect(codeOf(() => importTraceBytes({ ...request, maxOutputBytes: actual + 20 * events.length + 4000 }))).toBe("OK");
+      },
+      60_000,
+    );
   }
 
   it("refuses 327 logs of 1,024 attributes during emission, not after", () => {
@@ -471,7 +620,10 @@ describe("round 2: no recursion and maximum nesting", () => {
     for (const kind of ["array", "object", "mixed"] as const) {
       const events = importTraceBytes({ spans: spansFile([span({ weird: nest(57, kind) })]), contentMode: "FULL" });
       expect(parseRunLog(serializeRunLog(events)).length, kind).toBe(events.length);
-      expect(codeOf(() => importTraceBytes({ spans: spansFile([span({ weird: nest(58, kind) })]), contentMode: "FULL" })), kind).toBe("E_LIMIT:");
+      expect(
+        codeOf(() => importTraceBytes({ spans: spansFile([span({ weird: nest(58, kind) })]), contentMode: "FULL" })),
+        kind,
+      ).toBe("E_LIMIT:");
     }
   });
 });
@@ -486,15 +638,30 @@ describe("round 3: scan counts and histories do not depend on input order or obj
   const spanId = (n: number) => n.toString(16).padStart(16, "0");
   const planted = { attributes: [sattr("service.name", "bob@example.com"), sattr("note", "key AKIAABCDEFGHIJKLMNOP")] };
   const mk = (n: number) => span({ spanId: spanId(n), startTimeUnixNano: String(10 + n), endTimeUnixNano: String(50 + n) });
-  const groupA = { resource: planted, scopeSpans: [{ scope: { name: "a" }, spans: [mk(1)] }, { scope: { name: "b" }, spans: [mk(2)] }] };
+  const groupA = {
+    resource: planted,
+    scopeSpans: [
+      { scope: { name: "a" }, spans: [mk(1)] },
+      { scope: { name: "b" }, spans: [mk(2)] },
+    ],
+  };
   const groupB = { resource: planted, scopeSpans: [{ scope: { name: "a" }, spans: [mk(1)] }] };
-  const groupC = { resource: { attributes: [sattr("service.name", "other@example.org")] }, scopeSpans: [{ scope: { name: "a" }, spans: [mk(3)] }, { scope: { name: "c" }, spans: [mk(4), mk(5)] }] };
-  const request = (groups: unknown[], mode: "HASH_ONLY" | "FULL" = "HASH_ONLY") => importTraceBytes({ spans: enc({ resourceSpans: groups }), contentMode: mode });
-  const comparable = (events: RunEvent[]) => events.map((e) => {
-    if (e.type !== "RunStarted") return e;
-    return { ...e, payload: { ...e.payload, inputs: [], artifactId: "" } };
-  });
-  const secretNote = (events: RunEvent[]) => ofType(events, "ImportNote").find((n) => n.payload.code === "SECRET_PATTERN_COUNT")?.payload.detail;
+  const groupC = {
+    resource: { attributes: [sattr("service.name", "other@example.org")] },
+    scopeSpans: [
+      { scope: { name: "a" }, spans: [mk(3)] },
+      { scope: { name: "c" }, spans: [mk(4), mk(5)] },
+    ],
+  };
+  const request = (groups: unknown[], mode: "HASH_ONLY" | "FULL" = "HASH_ONLY") =>
+    importTraceBytes({ spans: enc({ resourceSpans: groups }), contentMode: mode });
+  const comparable = (events: RunEvent[]) =>
+    events.map((e) => {
+      if (e.type !== "RunStarted") return e;
+      return { ...e, payload: { ...e.payload, inputs: [], artifactId: "" } };
+    });
+  const secretNote = (events: RunEvent[]) =>
+    ofType(events, "ImportNote").find((n) => n.payload.code === "SECRET_PATTERN_COUNT")?.payload.detail;
 
   it("the reviewer's example: groups A,B and B,A give the same count and the same history", () => {
     const ab = request([groupA, groupB]);
@@ -504,7 +671,7 @@ describe("round 3: scan counts and histories do not depend on input order or obj
     expect(JSON.stringify(comparable(ab))).toBe(JSON.stringify(comparable(ba)));
   });
 
-  const shuffle = <U,>(items: U[], seed: number): U[] => {
+  const shuffle = <U>(items: U[], seed: number): U[] => {
     const copy = [...items];
     let state = seed;
     for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -544,17 +711,41 @@ describe("round 3: scan counts and histories do not depend on input order or obj
 describe("round 4: equal resources across span and log inputs", () => {
   const resource = { attributes: [sattr("service.name", "carol@example.com")] };
   const spanFor = (n: number) => span({ spanId: n.toString(16).padStart(16, "0") });
-  const spans = (order: number[]) => enc({ resourceSpans: [{ resource, scopeSpans: order.map((n) => ({ scope: { name: `s${n}` }, spans: [spanFor(n)] })) }] });
-  const logs = (order: number[]) => enc({
-    resourceLogs: [{ resource: JSON.parse(JSON.stringify(resource)), scopeLogs: order.map((n) => ({ scope: { name: `s${n}` }, logRecords: [{ traceId: T, spanId: n.toString(16).padStart(16, "0"), body: { stringValue: `log ${n}` } }] })) }],
-  });
+  const spans = (order: number[]) =>
+    enc({ resourceSpans: [{ resource, scopeSpans: order.map((n) => ({ scope: { name: `s${n}` }, spans: [spanFor(n)] })) }] });
+  const logs = (order: number[]) =>
+    enc({
+      resourceLogs: [
+        {
+          resource: JSON.parse(JSON.stringify(resource)),
+          scopeLogs: order.map((n) => ({
+            scope: { name: `s${n}` },
+            logRecords: [{ traceId: T, spanId: n.toString(16).padStart(16, "0"), body: { stringValue: `log ${n}` } }],
+          })),
+        },
+      ],
+    });
   const note = (events: RunEvent[]) => ofType(events, "ImportNote").find((n) => n.payload.code === "SECRET_PATTERN_COUNT")?.payload.detail;
-  const stable = (events: RunEvent[]) => JSON.stringify(events.map((e) => (e.type === "RunStarted" ? { ...e, payload: { ...e.payload, inputs: [], artifactId: "" } } : e)));
+  const stable = (events: RunEvent[]) =>
+    JSON.stringify(events.map((e) => (e.type === "RunStarted" ? { ...e, payload: { ...e.payload, inputs: [], artifactId: "" } } : e)));
 
   it("counts the shared resource content once and gives one history for any order of scopes in either file", () => {
     const base = importTraceBytes({ spans: spans([1, 2, 3]), logs: logs([1, 2, 3]) });
     expect(note(base)).toEqual({ email: 1 });
-    for (const [a, b] of [[[3, 2, 1], [1, 2, 3]], [[2, 3, 1], [3, 1, 2]], [[1, 3, 2], [2, 1, 3]]]) {
+    for (const [a, b] of [
+      [
+        [3, 2, 1],
+        [1, 2, 3],
+      ],
+      [
+        [2, 3, 1],
+        [3, 1, 2],
+      ],
+      [
+        [1, 3, 2],
+        [2, 1, 3],
+      ],
+    ]) {
       expect(stable(importTraceBytes({ spans: spans(a), logs: logs(b) }))).toBe(stable(base));
     }
   });

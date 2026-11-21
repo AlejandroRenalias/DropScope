@@ -102,7 +102,9 @@ export function normalizeRun(input: NormalizeInput): NormalizedRun {
     const known = keyOfContext.get(context);
     if (known !== undefined) return known;
     // The (possibly large) resource is shared by every scope under it, so only its hash is combined here.
-    const key = sha256Hex(canonicalJson({ resource: resourceKeyOf(context.resource), scope: context.scope, unknownCount: context.unknownCount }));
+    const key = sha256Hex(
+      canonicalJson({ resource: resourceKeyOf(context.resource), scope: context.scope, unknownCount: context.unknownCount }),
+    );
     keyOfContext.set(context, key);
     if (!contextByKey.has(key)) contextByKey.set(key, context);
     return key;
@@ -244,9 +246,7 @@ export function normalizeRun(input: NormalizeInput): NormalizedRun {
   // Logs associate by (trace id, span id). Anything else of the selected trace is an orphan.
   const normalLogs: NormalLog[] = [...logByIdentity.entries()]
     .map(([canonical, entry]) => {
-      const stepId = entry.log.traceId === traceId && entry.log.spanId !== null && spanById.has(entry.log.spanId)
-        ? entry.log.spanId
-        : null;
+      const stepId = entry.log.traceId === traceId && entry.log.spanId !== null && spanById.has(entry.log.spanId) ? entry.log.spanId : null;
       return { ...entry.log, contextId: contextIdOf.get(entry.contextKey) as string, stepId, canonical };
     })
     .sort((a, b) => compareUtf8(a.canonical, b.canonical));

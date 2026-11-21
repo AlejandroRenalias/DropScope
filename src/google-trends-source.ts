@@ -5,7 +5,9 @@ const MAX_ITEMS = 10;
 
 export type GoogleTrendsCaptureFailure = "UNAVAILABLE" | "TIMED_OUT" | "INVALID_RESPONSE" | "RESPONSE_TOO_LARGE";
 export class GoogleTrendsSourceError extends Error {
-  constructor(readonly outcome: GoogleTrendsCaptureFailure) { super(`Google Trends capture ${outcome.toLowerCase()}.`); }
+  constructor(readonly outcome: GoogleTrendsCaptureFailure) {
+    super(`Google Trends capture ${outcome.toLowerCase()}.`);
+  }
 }
 
 export interface GoogleTrendsCapture {
@@ -15,7 +17,9 @@ export interface GoogleTrendsCapture {
   items: Array<{ query: string; traffic: string }>;
 }
 
-export interface GoogleTrendsSource { capture(): Promise<GoogleTrendsCapture>; }
+export interface GoogleTrendsSource {
+  capture(): Promise<GoogleTrendsCapture>;
+}
 export type FetchResponse = { ok: boolean; body: ReadableStream<Uint8Array> | null };
 export type FetchLike = (input: string, init: { signal: AbortSignal; headers: Record<string, string> }) => Promise<FetchResponse>;
 
@@ -29,15 +33,20 @@ export class FixedGoogleTrendsSource implements GoogleTrendsSource {
     try {
       let response: Awaited<ReturnType<FetchLike>>;
       try {
-        response = await this.fetchLike(GOOGLE_TRENDS_RSS_URL, { signal: controller.signal, headers: { accept: "application/rss+xml, application/xml;q=0.9" } });
-      } catch (error) {
+        response = await this.fetchLike(GOOGLE_TRENDS_RSS_URL, {
+          signal: controller.signal,
+          headers: { accept: "application/rss+xml, application/xml;q=0.9" },
+        });
+      } catch {
         if (controller.signal.aborted) throw new GoogleTrendsSourceError("TIMED_OUT");
         throw new GoogleTrendsSourceError("UNAVAILABLE");
       }
       if (!response.ok) throw new GoogleTrendsSourceError("UNAVAILABLE");
       const xml = await readBoundedBody(response.body, controller.signal);
       return { sourceUrl: GOOGLE_TRENDS_RSS_URL, geo: "US", attribution: "Google Trends", items: parseGoogleTrendsRss(xml) };
-    } finally { clearTimeout(timer); }
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 
@@ -60,22 +69,39 @@ async function readBoundedBody(body: ReadableStream<Uint8Array> | null, signal: 
     if (error instanceof GoogleTrendsSourceError) throw error;
     if (signal.aborted) throw new GoogleTrendsSourceError("TIMED_OUT");
     throw new GoogleTrendsSourceError("UNAVAILABLE");
-  } finally { void reader.cancel().catch(() => undefined); reader.releaseLock(); }
+  } finally {
+    void reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
   const combined = new Uint8Array(bytes);
   let offset = 0;
-  for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.byteLength; }
-  try { return new TextDecoder("utf-8", { fatal: true }).decode(combined); }
-  catch { throw new GoogleTrendsSourceError("INVALID_RESPONSE"); }
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(combined);
+  } catch {
+    throw new GoogleTrendsSourceError("INVALID_RESPONSE");
+  }
 }
 
-async function readWithAbort(reader: ReadableStreamDefaultReader<Uint8Array>, signal: AbortSignal): Promise<ReadableStreamReadResult<Uint8Array>> {
+async function readWithAbort(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal: AbortSignal,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
   if (signal.aborted) throw new GoogleTrendsSourceError("TIMED_OUT");
   let rejectAbort: ((reason: GoogleTrendsSourceError) => void) | undefined;
-  const aborted = new Promise<never>((_, reject) => { rejectAbort = reject; });
+  const aborted = new Promise<never>((_, reject) => {
+    rejectAbort = reject;
+  });
   const onAbort = () => rejectAbort?.(new GoogleTrendsSourceError("TIMED_OUT"));
   signal.addEventListener("abort", onAbort, { once: true });
-  try { return await Promise.race([reader.read(), aborted]); }
-  finally { signal.removeEventListener("abort", onAbort); }
+  try {
+    return await Promise.race([reader.read(), aborted]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 }
 
 export function parseGoogleTrendsRss(xml: string): Array<{ query: string; traffic: string }> {
@@ -94,7 +120,13 @@ export function parseGoogleTrendsRss(xml: string): Array<{ query: string; traffi
 function readTag(xml: string, tag: string): string | null {
   const match = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i").exec(xml);
   if (!match) return null;
-  const value = match[1]!.replace(/^<!\[CDATA\[|\]\]>$/g, "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+  const value = match[1]!
+    .replace(/^<!\[CDATA\[|\]\]>$/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
   return value || null;
 }
 

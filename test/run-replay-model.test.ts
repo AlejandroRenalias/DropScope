@@ -5,8 +5,16 @@ import { importTraceBytes } from "../src/run-import.js";
 import { importNoteCodeSchema } from "../src/run-events.js";
 import { serializeRunLog } from "../src/run-store.js";
 import {
-  buildRunModel, categoryOf, describeField, describeNote, describeRunEvent, formatBytes, formatDuration, formatNumber,
-  loadRunFromBytes, stepStatusAt,
+  buildRunModel,
+  categoryOf,
+  describeField,
+  describeNote,
+  describeRunEvent,
+  formatBytes,
+  formatDuration,
+  formatNumber,
+  loadRunFromBytes,
+  stepStatusAt,
 } from "../src/frontend/run-replay-model.js";
 
 const asset = (name: string) => new URL(`../src/frontend/assets/${name}`, import.meta.url);
@@ -64,17 +72,27 @@ describe("run model", () => {
   it("gives every step a status that follows the position and agrees with the reducer", () => {
     for (const position of [1, 10, 20, model.events.length]) {
       const state = model.replay.stateAt(position);
-      const running = model.steps.filter((s) => stepStatusAt(s, position) === "running").map((s) => s.stepId).sort();
+      const running = model.steps
+        .filter((s) => stepStatusAt(s, position) === "running")
+        .map((s) => s.stepId)
+        .sort();
       expect(running, `position ${position}`).toEqual(state.openStepIds);
-      const done = model.steps.filter((s) => ["finished", "failed"].includes(stepStatusAt(s, position))).map((s) => s.stepId).sort();
+      const done = model.steps
+        .filter((s) => ["finished", "failed"].includes(stepStatusAt(s, position)))
+        .map((s) => s.stepId)
+        .sort();
       expect(done).toEqual(state.closedStepIds);
-      const failed = model.steps.filter((s) => stepStatusAt(s, position) === "failed").map((s) => s.stepId).sort();
+      const failed = model.steps
+        .filter((s) => stepStatusAt(s, position) === "failed")
+        .map((s) => s.stepId)
+        .sort();
       expect(failed).toEqual(state.errorStepIds);
     }
   });
 
   it("describes every event in plain words, never with raw event names", () => {
-    const raw = /StepStarted|StepEnded|UsageRecorded|ContentRecorded|LogRecorded|ImportNote|RunStarted|RunEnded|LLM_CALL|TOOL_CALL|gen_ai\./;
+    const raw =
+      /StepStarted|StepEnded|UsageRecorded|ContentRecorded|LogRecorded|ImportNote|RunStarted|RunEnded|LLM_CALL|TOOL_CALL|gen_ai\./;
     for (const event of model.events) {
       const d = describeRunEvent(event, model);
       expect(d.title.length, `event ${event.sequenceNumber}`).toBeGreaterThan(3);
@@ -106,9 +124,15 @@ describe("run model", () => {
 
   it("explains every importer note code in a sentence", () => {
     const details: Record<string, Record<string, unknown>> = {
-      OTHER_TRACE_EXCLUDED: { spans: 1, logs: 2 }, DUPLICATE_SPAN_COLLAPSED: { count: 2 }, DUPLICATE_LOG_COLLAPSED: { count: 1 },
-      ORPHAN_LOG_RECORD: { logOrdinal: 3 }, UNKNOWN_FIELD: { count: 2 }, USAGE_NOT_SUMMED: { count: 1, scope: "log" },
-      UNUSABLE_USAGE: { count: 1 }, ENUM_NAME_ACCEPTED: { role: "spans", count: 1 }, WITHHELD_ATTRIBUTE: { count: 2, bytes: 100 },
+      OTHER_TRACE_EXCLUDED: { spans: 1, logs: 2 },
+      DUPLICATE_SPAN_COLLAPSED: { count: 2 },
+      DUPLICATE_LOG_COLLAPSED: { count: 1 },
+      ORPHAN_LOG_RECORD: { logOrdinal: 3 },
+      UNKNOWN_FIELD: { count: 2 },
+      USAGE_NOT_SUMMED: { count: 1, scope: "log" },
+      UNUSABLE_USAGE: { count: 1 },
+      ENUM_NAME_ACCEPTED: { role: "spans", count: 1 },
+      WITHHELD_ATTRIBUTE: { count: 2, bytes: 100 },
       SECRET_PATTERN_COUNT: { email: 1 },
     };
     for (const code of importNoteCodeSchema.options) {
@@ -121,7 +145,10 @@ describe("run model", () => {
   });
 
   it("cannot hang on a parent loop in a hand-edited history", () => {
-    const events = JSON.parse(JSON.stringify(model.events)) as Array<{ type: string; payload: { stepId?: string; parentStepId: string | null } }>;
+    const events = JSON.parse(JSON.stringify(model.events)) as Array<{
+      type: string;
+      payload: { stepId?: string; parentStepId: string | null };
+    }>;
     const starts = events.filter((e) => e.type === "StepStarted");
     starts[0].payload.parentStepId = starts[starts.length - 1].payload.stepId as string;
     const looped = buildRunModel(events);
@@ -166,7 +193,9 @@ describe("browser safety", () => {
     }
     return [...seen];
   };
-  const entries = ["frontend/run-replay-model.ts", "frontend/run-replay.tsx", "frontend/replay-screen.tsx"].map((e) => path.join(root, e)).filter(existsSync);
+  const entries = ["frontend/run-replay-model.ts", "frontend/run-replay.tsx", "frontend/replay-screen.tsx"]
+    .map((e) => path.join(root, e))
+    .filter(existsSync);
 
   it("the replay screen's import graph uses no Node modules, Buffer or process", () => {
     expect(entries.length).toBeGreaterThan(0);

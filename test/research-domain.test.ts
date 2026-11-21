@@ -1,16 +1,55 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  blindReviewResultSchema,
-  divergenceRecordSchema,
-  researchDatasetSchema,
-} from "../src/research-domain.js";
+import { blindReviewResultSchema, divergenceRecordSchema, researchDatasetSchema } from "../src/research-domain.js";
 
 const dataset = {
   candidates: [{ candidateId: "desk-organizer", name: "Cable organizer", category: "Home office" }],
-  sources: [{ sourceId: "review-source", sourceType: "CUSTOMER_REVIEW", title: "Cable organizer reviews", canonicalLocation: "fixture://reviews/cable-organizer", publisherOrOrigin: "Fixture review corpus", observedAt: "2026-08-29T10:00:00.000Z", capturedAt: "2026-08-29T10:00:00.000Z", geography: "US", fixtureAnnotation: null }],
-  claims: [{ claimId: "cable-clutter", candidateId: "desk-organizer", claimTopic: "customer-problem", text: "Users report cable clutter.", decisive: true, tentative: false, confidenceClass: "MEDIUM", evidenceIds: ["review-evidence"] , status: "PROPOSED" }],
-  evidence: [{ evidenceId: "review-evidence", sourceId: "review-source", independenceGroupId: "reviewers", factId: "reviews-cable-clutter", candidateId: "desk-organizer", claimId: "cable-clutter", claimTopic: "customer-problem", content: "Review corpus reports cable clutter.", sourceType: "CUSTOMER_REVIEW", geography: "US", observedAt: "2026-08-29T10:00:00.000Z", capturedAt: "2026-08-29T10:00:00.000Z", reliabilityClass: "MEDIUM", direction: "SUPPORTS", strength: 3, fixtureAnnotation: null }],
+  sources: [
+    {
+      sourceId: "review-source",
+      sourceType: "CUSTOMER_REVIEW",
+      title: "Cable organizer reviews",
+      canonicalLocation: "fixture://reviews/cable-organizer",
+      publisherOrOrigin: "Fixture review corpus",
+      observedAt: "2026-08-29T10:00:00.000Z",
+      capturedAt: "2026-08-29T10:00:00.000Z",
+      geography: "US",
+      fixtureAnnotation: null,
+    },
+  ],
+  claims: [
+    {
+      claimId: "cable-clutter",
+      candidateId: "desk-organizer",
+      claimTopic: "customer-problem",
+      text: "Users report cable clutter.",
+      decisive: true,
+      tentative: false,
+      confidenceClass: "MEDIUM",
+      evidenceIds: ["review-evidence"],
+      status: "PROPOSED",
+    },
+  ],
+  evidence: [
+    {
+      evidenceId: "review-evidence",
+      sourceId: "review-source",
+      independenceGroupId: "reviewers",
+      factId: "reviews-cable-clutter",
+      candidateId: "desk-organizer",
+      claimId: "cable-clutter",
+      claimTopic: "customer-problem",
+      content: "Review corpus reports cable clutter.",
+      sourceType: "CUSTOMER_REVIEW",
+      geography: "US",
+      observedAt: "2026-08-29T10:00:00.000Z",
+      capturedAt: "2026-08-29T10:00:00.000Z",
+      reliabilityClass: "MEDIUM",
+      direction: "SUPPORTS",
+      strength: 3,
+      fixtureAnnotation: null,
+    },
+  ],
 };
 
 describe("research domain validation", () => {
@@ -35,7 +74,7 @@ describe("research domain validation", () => {
 
   it("requires fixture annotations to be explicit objects or null", () => {
     const missing = structuredClone(dataset);
-    delete (missing.sources[0] as Partial<typeof missing.sources[number]>).fixtureAnnotation;
+    delete (missing.sources[0] as Partial<(typeof missing.sources)[number]>).fixtureAnnotation;
     const invalid = structuredClone(dataset);
     invalid.evidence[0].fixtureAnnotation = "not-an-object" as never;
 
@@ -47,21 +86,23 @@ describe("research domain validation", () => {
 describe("frozen quality-pipeline contracts", () => {
   const review = {
     reviewId: "review-1",
-    candidateAssessments: [{
-      anonymizedCandidateId: "candidate-a",
-      reviewerScore: 82,
-      reviewerEligible: true,
-      confidenceClass: "HIGH",
-      dimensionScores: {
-        sourceIndependence: 90,
-        decisionCriticalCoverage: 75,
-        contradictionHandling: 100,
-        claimEvidenceAlignment: 85,
-        uncertaintyCalibration: 80,
+    candidateAssessments: [
+      {
+        anonymizedCandidateId: "candidate-a",
+        reviewerScore: 82,
+        reviewerEligible: true,
+        confidenceClass: "HIGH",
+        dimensionScores: {
+          sourceIndependence: 90,
+          decisionCriticalCoverage: 75,
+          contradictionHandling: 100,
+          claimEvidenceAlignment: 85,
+          uncertaintyCalibration: 80,
+        },
+        blockingDefects: [],
+        missingResearchKeys: ["pricing"],
       },
-      blockingDefects: [],
-      missingResearchKeys: ["pricing"],
-    }],
+    ],
     ranking: ["candidate-a"],
     verdict: "REVISE",
   };
@@ -72,31 +113,45 @@ describe("frozen quality-pipeline contracts", () => {
 
   it("enforces blind review enums, score range, and strict fields", () => {
     expect(() => blindReviewResultSchema.parse({ ...review, verdict: "MAYBE" })).toThrow();
-    expect(() => blindReviewResultSchema.parse({
-      ...review,
-      candidateAssessments: [{ ...review.candidateAssessments[0], reviewerScore: 101 }],
-    })).toThrow();
+    expect(() =>
+      blindReviewResultSchema.parse({
+        ...review,
+        candidateAssessments: [{ ...review.candidateAssessments[0], reviewerScore: 101 }],
+      }),
+    ).toThrow();
     expect(() => blindReviewResultSchema.parse({ ...review, unexpected: true })).toThrow();
     expect(() => blindReviewResultSchema.parse({ ...review, ranking: ["candidate", "candidate"] })).toThrow();
-    expect(() => blindReviewResultSchema.parse({ ...review, candidateAssessments: [review.candidateAssessments[0], review.candidateAssessments[0]] })).toThrow();
-    expect(() => blindReviewResultSchema.parse({
-      ...review,
-      candidateAssessments: [{ ...review.candidateAssessments[0], unexpected: true }],
-    })).toThrow();
-    expect(() => blindReviewResultSchema.parse({
-      ...review,
-      candidateAssessments: [{
-        ...review.candidateAssessments[0],
-        dimensionScores: { ...review.candidateAssessments[0].dimensionScores, sourceIndependence: 101 },
-      }],
-    })).toThrow();
-    expect(() => blindReviewResultSchema.parse({
-      ...review,
-      candidateAssessments: [{
-        ...review.candidateAssessments[0],
-        dimensionScores: { ...review.candidateAssessments[0].dimensionScores, unexpected: 50 },
-      }],
-    })).toThrow();
+    expect(() =>
+      blindReviewResultSchema.parse({ ...review, candidateAssessments: [review.candidateAssessments[0], review.candidateAssessments[0]] }),
+    ).toThrow();
+    expect(() =>
+      blindReviewResultSchema.parse({
+        ...review,
+        candidateAssessments: [{ ...review.candidateAssessments[0], unexpected: true }],
+      }),
+    ).toThrow();
+    expect(() =>
+      blindReviewResultSchema.parse({
+        ...review,
+        candidateAssessments: [
+          {
+            ...review.candidateAssessments[0],
+            dimensionScores: { ...review.candidateAssessments[0].dimensionScores, sourceIndependence: 101 },
+          },
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      blindReviewResultSchema.parse({
+        ...review,
+        candidateAssessments: [
+          {
+            ...review.candidateAssessments[0],
+            dimensionScores: { ...review.candidateAssessments[0].dimensionScores, unexpected: 50 },
+          },
+        ],
+      }),
+    ).toThrow();
   });
 
   it("accepts divergence records with nullable research and resolution fields", () => {

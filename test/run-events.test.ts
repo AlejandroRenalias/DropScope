@@ -9,7 +9,23 @@ const withheld = { w: { n: 5, h: hash } };
 
 describe("tagged values and fields", () => {
   it("accepts every tag and nesting", () => {
-    const value = { t: "k", v: [["a", { t: "a", v: [{ t: "i", v: "-12" }, { t: "d", v: "NaN" }, { t: "o", v: true }, { t: "b", v: "aGk=" }] }]] };
+    const value = {
+      t: "k",
+      v: [
+        [
+          "a",
+          {
+            t: "a",
+            v: [
+              { t: "i", v: "-12" },
+              { t: "d", v: "NaN" },
+              { t: "o", v: true },
+              { t: "b", v: "aGk=" },
+            ],
+          },
+        ],
+      ],
+    };
     expect(taggedValueSchema.safeParse(value).success).toBe(true);
   });
 
@@ -38,7 +54,9 @@ describe("tagged values and fields", () => {
 
 describe("run events", () => {
   const stepEnded = {
-    ...base, sequenceNumber: 3, type: "StepEnded",
+    ...base,
+    sequenceNumber: 3,
+    type: "StepEnded",
     payload: { stepId: span, endNs: "10", endEffectiveNs: "10", statusCode: 1, statusMessage: withheld, events: [] },
   };
 
@@ -62,7 +80,8 @@ describe("run events", () => {
 
   it("UsageRecorded takes decimal strings or null, never numbers or zero metrics", () => {
     const usage = (inputTokens: unknown, outputTokens: unknown) =>
-      runEventSchema.safeParse({ ...base, sequenceNumber: 4, type: "UsageRecorded", payload: { stepId: span, inputTokens, outputTokens } }).success;
+      runEventSchema.safeParse({ ...base, sequenceNumber: 4, type: "UsageRecorded", payload: { stepId: span, inputTokens, outputTokens } })
+        .success;
     expect(usage("12", null)).toBe(true);
     expect(usage("9007199254740993", "0")).toBe(true);
     expect(usage(12, "1")).toBe(false);
@@ -73,8 +92,18 @@ describe("run events", () => {
   it("ContentRecorded needs exactly one of stepId and logOrdinal, and fieldKey only for gen_ai.other", () => {
     const content = (payload: object) =>
       runEventSchema.safeParse({
-        ...base, sequenceNumber: 5, type: "ContentRecorded",
-        payload: { stepId: span, logOrdinal: null, channel: "SPAN_ATTRIBUTE", field: "gen_ai.input.messages", ordinal: 0, value: withheld, ...payload },
+        ...base,
+        sequenceNumber: 5,
+        type: "ContentRecorded",
+        payload: {
+          stepId: span,
+          logOrdinal: null,
+          channel: "SPAN_ATTRIBUTE",
+          field: "gen_ai.input.messages",
+          ordinal: 0,
+          value: withheld,
+          ...payload,
+        },
       }).success;
     expect(content({})).toBe(true);
     expect(content({ stepId: null })).toBe(false);
@@ -88,7 +117,8 @@ describe("run events", () => {
 
   it("ImportNote details allow only counts and plain names", () => {
     const note = (detail: unknown) =>
-      runEventSchema.safeParse({ ...base, sequenceNumber: 6, type: "ImportNote", payload: { code: "UNKNOWN_FIELD", stepId: null, detail } }).success;
+      runEventSchema.safeParse({ ...base, sequenceNumber: 6, type: "ImportNote", payload: { code: "UNKNOWN_FIELD", stepId: null, detail } })
+        .success;
     expect(note({ count: 2 })).toBe(true);
     expect(note({ count: "has spaces and secrets" })).toBe(false);
     expect(note({ "bad key!": 1 })).toBe(false);
@@ -97,11 +127,21 @@ describe("run events", () => {
   it("RunStarted requires a hash-only or full mode and 1 to 2 inputs", () => {
     const started = (overrides: object) =>
       runEventSchema.safeParse({
-        ...base, sequenceNumber: 1, type: "RunStarted",
+        ...base,
+        sequenceNumber: 1,
+        type: "RunStarted",
         payload: {
-          traceId: trace, derivedOrder: true, importer: { id: "x", version: "1" }, conventionVersion: "1.37",
-          contentMode: "HASH_ONLY", selectedTrace: "ONLY", inputs: [{ role: "spans", byteLength: 10, sha256: hash }],
-          limitsVersion: "1", artifactId: hash, contexts: [], ...overrides,
+          traceId: trace,
+          derivedOrder: true,
+          importer: { id: "x", version: "1" },
+          conventionVersion: "1.37",
+          contentMode: "HASH_ONLY",
+          selectedTrace: "ONLY",
+          inputs: [{ role: "spans", byteLength: 10, sha256: hash }],
+          limitsVersion: "1",
+          artifactId: hash,
+          contexts: [],
+          ...overrides,
         },
       }).success;
     expect(started({})).toBe(true);

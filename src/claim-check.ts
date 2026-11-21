@@ -64,7 +64,15 @@ export type Claim = {
 };
 
 export type ClaimVerdict = "SUPPORTED" | "NOT_SUPPORTED" | "CANNOT_CHECK";
-export type ClaimReason = "FOUND" | "NO_MATCHING_STEP" | "NOT_FOUND" | "TOO_LATE" | "CONTENT_WITHHELD" | "NO_CONTENT" | "TOO_MUCH_WORK" | "TOOL_NAME_WITHHELD";
+export type ClaimReason =
+  | "FOUND"
+  | "NO_MATCHING_STEP"
+  | "NOT_FOUND"
+  | "TOO_LATE"
+  | "CONTENT_WITHHELD"
+  | "NO_CONTENT"
+  | "TOO_MUCH_WORK"
+  | "TOOL_NAME_WITHHELD";
 
 export type ClaimResult = {
   claim: Claim;
@@ -97,7 +105,10 @@ const MAX_ERRORS = 20;
 
 /** Cleans a name for a one-line message: control and bidirectional characters become spaces, at most 80 characters. */
 export function tidyName(text: string): string {
-  const flat = text.replace(/[\u0000-\u001f\u007f-\u009f؜‎‏‪-‮⁦-⁩]/g, " ").replace(/\s+/g, " ").trim();
+  const flat = text
+    .replace(/[\u0000-\u001f\u007f-\u009f؜‎‏‪-‮⁦-⁩]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   return flat.length > 80 ? `${flat.slice(0, 80)}…` : flat;
 }
 
@@ -123,17 +134,23 @@ function closestAllowed(unknown: string): string {
   return best === null ? "" : ` (did you mean "${best.name}"?)`;
 }
 
-export type ParsedClaims ={ claims: Claim[]; errors: string[] };
+export type ParsedClaims = { claims: Claim[]; errors: string[] };
 
 /** Reads a claims file (UTF-8 JSON bytes). Never repeats text from the file except claim ids, which are restricted. */
 export function parseClaimFile(rawBytes: Uint8Array): ParsedClaims {
   // Windows editors often save UTF-8 with a byte order mark. One leading mark is accepted and ignored, so the
   // command line and the screen (whose text decoder drops it) treat the same file the same way.
-  const bytes = rawBytes.length >= 3 && rawBytes[0] === 0xef && rawBytes[1] === 0xbb && rawBytes[2] === 0xbf ? rawBytes.subarray(3) : rawBytes;
+  const bytes =
+    rawBytes.length >= 3 && rawBytes[0] === 0xef && rawBytes[1] === 0xbb && rawBytes[2] === 0xbf ? rawBytes.subarray(3) : rawBytes;
   let root: JsonValue;
   try {
     root = parseStrictJson(bytes, "claims", {
-      ...DEFAULT_JSON_LIMITS, maxBytes: CLAIM_LIMITS.maxBytes, maxDepth: 8, maxNodes: 20_000, maxElements: 1_000, maxStringBytes: 8 * 1024,
+      ...DEFAULT_JSON_LIMITS,
+      maxBytes: CLAIM_LIMITS.maxBytes,
+      maxDepth: 8,
+      maxNodes: 20_000,
+      maxElements: 1_000,
+      maxStringBytes: 8 * 1024,
     });
   } catch (error) {
     if (error instanceof ImportError) {
@@ -143,36 +160,47 @@ export function parseClaimFile(rawBytes: Uint8Array): ParsedClaims {
     return { claims: [], errors: ["The claims file is not valid JSON (check commas and quotes, and that no field name is repeated)."] };
   }
   const errors: string[] = [];
-  const add = (message: string): void => { errors.push(message); };
+  const add = (message: string): void => {
+    errors.push(message);
+  };
   if (!(root instanceof Map)) return { claims: [], errors: ['The claims file must be a JSON object like {"claims": [ ... ]}.'] };
   for (const key of root.keys()) if (key !== "claims") add(`The claims file has an unknown top-level field (only "claims" is allowed).`);
   const list = root.get("claims");
   if (!Array.isArray(list)) return { claims: [], errors: [...errors, 'The claims file needs a "claims" list.'] };
   if (list.length === 0) return { claims: [], errors: [...errors, "The claims file lists no claims."] };
-  if (list.length > CLAIM_LIMITS.maxClaims) return { claims: [], errors: [...errors, `The claims file lists ${list.length} claims; the limit is ${CLAIM_LIMITS.maxClaims}.`] };
+  if (list.length > CLAIM_LIMITS.maxClaims)
+    return { claims: [], errors: [...errors, `The claims file lists ${list.length} claims; the limit is ${CLAIM_LIMITS.maxClaims}.`] };
 
   const claims: Claim[] = [];
   const seenIds = new Set<string>();
   list.forEach((entry, index) => {
     const where = `Claim ${index + 1}`;
     const before = errors.length;
-    if (!(entry instanceof Map)) { add(`${where}: must be an object.`); return; }
+    if (!(entry instanceof Map)) {
+      add(`${where}: must be an object.`);
+      return;
+    }
     const id = entry.get("id");
     if (typeof id !== "string" || !ID_PATTERN.test(id)) add(`${where}: "id" must be 1 to 64 letters, digits, dots, dashes or underscores.`);
     else if (seenIds.has(id)) add(`${where}: the id "${id}" is used twice.`);
     else seenIds.add(id);
     const label = typeof id === "string" && ID_PATTERN.test(id) ? `${where} (${id})` : where;
     // The unknown name is never copied into the message (it is file content). A close allowed name is suggested instead.
-    for (const key of entry.keys()) if (!CLAIM_KEYS.has(key)) add(`${label}: a field name is not allowed${closestAllowed(key)} (allowed: ${[...CLAIM_KEYS].join(", ")}).`);
+    for (const key of entry.keys())
+      if (!CLAIM_KEYS.has(key))
+        add(`${label}: a field name is not allowed${closestAllowed(key)} (allowed: ${[...CLAIM_KEYS].join(", ")}).`);
 
     const text = entry.get("text");
-    if (typeof text !== "string" || text.trim() === "" || text.length > CLAIM_LIMITS.maxTextLength) add(`${label}: "text" must say what was claimed, in 1 to ${CLAIM_LIMITS.maxTextLength} characters.`);
+    if (typeof text !== "string" || text.trim() === "" || text.length > CLAIM_LIMITS.maxTextLength)
+      add(`${label}: "text" must say what was claimed, in 1 to ${CLAIM_LIMITS.maxTextLength} characters.`);
 
     const tool = entry.get("tool");
     const stepId = entry.get("stepId");
     if ((tool === undefined) === (stepId === undefined)) add(`${label}: give exactly one of "tool" (a tool name) or "stepId" (a step id).`);
-    if (tool !== undefined && (typeof tool !== "string" || tool === "" || tool.length > CLAIM_LIMITS.maxToolNameLength)) add(`${label}: "tool" must be a tool name.`);
-    if (stepId !== undefined && (typeof stepId !== "string" || !STEP_ID_PATTERN.test(stepId))) add(`${label}: "stepId" must be 16 lowercase hexadecimal characters.`);
+    if (tool !== undefined && (typeof tool !== "string" || tool === "" || tool.length > CLAIM_LIMITS.maxToolNameLength))
+      add(`${label}: "tool" must be a tool name.`);
+    if (stepId !== undefined && (typeof stepId !== "string" || !STEP_ID_PATTERN.test(stepId)))
+      add(`${label}: "stepId" must be 16 lowercase hexadecimal characters.`);
 
     const fieldValue = entry.get("field");
     let field: ClaimField = "result";
@@ -183,11 +211,16 @@ export function parseClaimFile(rawBytes: Uint8Array): ParsedClaims {
 
     const must = entry.get("mustContain");
     const strings: string[] = [];
-    if (!Array.isArray(must) || must.length === 0 || must.length > CLAIM_LIMITS.maxStrings) add(`${label}: "mustContain" must list 1 to ${CLAIM_LIMITS.maxStrings} texts.`);
-    else for (const piece of must) {
-      if (typeof piece !== "string" || piece === "" || piece.length > CLAIM_LIMITS.maxStringLength) { add(`${label}: each "mustContain" text must be 1 to ${CLAIM_LIMITS.maxStringLength} characters.`); break; }
-      strings.push(piece);
-    }
+    if (!Array.isArray(must) || must.length === 0 || must.length > CLAIM_LIMITS.maxStrings)
+      add(`${label}: "mustContain" must list 1 to ${CLAIM_LIMITS.maxStrings} texts.`);
+    else
+      for (const piece of must) {
+        if (typeof piece !== "string" || piece === "" || piece.length > CLAIM_LIMITS.maxStringLength) {
+          add(`${label}: each "mustContain" text must be 1 to ${CLAIM_LIMITS.maxStringLength} characters.`);
+          break;
+        }
+        strings.push(piece);
+      }
 
     const caseSensitive = entry.get("caseSensitive");
     if (caseSensitive !== undefined && typeof caseSensitive !== "boolean") add(`${label}: "caseSensitive" must be true or false.`);
@@ -201,8 +234,14 @@ export function parseClaimFile(rawBytes: Uint8Array): ParsedClaims {
 
     if (errors.length === before) {
       claims.push({
-        id: id as string, text: text as string, tool: typeof tool === "string" ? tool : null, stepId: typeof stepId === "string" ? stepId : null,
-        field, mustContain: strings, caseSensitive: caseSensitive !== false, atEvent,
+        id: id as string,
+        text: text as string,
+        tool: typeof tool === "string" ? tool : null,
+        stepId: typeof stepId === "string" ? stepId : null,
+        field,
+        mustContain: strings,
+        caseSensitive: caseSensitive !== false,
+        atEvent,
       });
     }
   });
@@ -231,7 +270,14 @@ export function parseClaimText(text: string): ParsedClaims {
 
 // ---- reading the evidence out of a run ----
 type Item = { sequence: number; value: Field };
-type StepInfo = { stepId: string; startSequence: number; tool: string | null; toolWithheld: boolean; failed: boolean; content: Map<string, Item[]> };
+type StepInfo = {
+  stepId: string;
+  startSequence: number;
+  tool: string | null;
+  toolWithheld: boolean;
+  failed: boolean;
+  content: Map<string, Item[]>;
+};
 
 function verbatimAttribute(attributes: Array<{ key: Field; value: Field }>, key: string): string | null {
   for (const a of attributes) {
@@ -252,11 +298,22 @@ export function searchableLeaves(value: TaggedValue): string[] {
   while (stack.length > 0) {
     const current = stack.pop() as TaggedValue;
     switch (current.t) {
-      case "s": leaves.push(current.v); break;
-      case "i": case "d": case "o": leaves.push(String(current.v)); break;
-      case "b": break;
-      case "a": for (let i = current.v.length - 1; i >= 0; i -= 1) stack.push(current.v[i]); break;
-      case "k": for (let i = current.v.length - 1; i >= 0; i -= 1) stack.push(current.v[i][1]); break;
+      case "s":
+        leaves.push(current.v);
+        break;
+      case "i":
+      case "d":
+      case "o":
+        leaves.push(String(current.v));
+        break;
+      case "b":
+        break;
+      case "a":
+        for (let i = current.v.length - 1; i >= 0; i -= 1) stack.push(current.v[i]);
+        break;
+      case "k":
+        for (let i = current.v.length - 1; i >= 0; i -= 1) stack.push(current.v[i][1]);
+        break;
     }
   }
   return leaves;
@@ -269,8 +326,12 @@ function indexSteps(events: readonly RunEvent[]): Map<string, StepInfo> {
     switch (event.type) {
       case "StepStarted":
         steps.set(event.payload.stepId, {
-          stepId: event.payload.stepId, startSequence: event.sequenceNumber, tool: verbatimAttribute(event.payload.attributes, "gen_ai.tool.name"),
-          toolWithheld: toolNameWithheld(event.payload.attributes), failed: false, content: new Map(),
+          stepId: event.payload.stepId,
+          startSequence: event.sequenceNumber,
+          tool: verbatimAttribute(event.payload.attributes, "gen_ai.tool.name"),
+          toolWithheld: toolNameWithheld(event.payload.attributes),
+          failed: false,
+          content: new Map(),
         });
         break;
       case "StepEnded": {
@@ -278,9 +339,11 @@ function indexSteps(events: readonly RunEvent[]): Map<string, StepInfo> {
         if (step) step.failed = event.payload.statusCode === 2;
         break;
       }
-      case "LogRecorded": logStep.set(event.payload.logOrdinal, event.payload.stepId); break;
+      case "LogRecorded":
+        logStep.set(event.payload.logOrdinal, event.payload.stepId);
+        break;
       case "ContentRecorded": {
-        const owner = event.payload.stepId ?? (event.payload.logOrdinal === null ? null : logStep.get(event.payload.logOrdinal) ?? null);
+        const owner = event.payload.stepId ?? (event.payload.logOrdinal === null ? null : (logStep.get(event.payload.logOrdinal) ?? null));
         const step = owner === null ? undefined : steps.get(owner);
         if (!step) break;
         const list = step.content.get(event.payload.field) ?? [];
@@ -288,7 +351,8 @@ function indexSteps(events: readonly RunEvent[]): Map<string, StepInfo> {
         step.content.set(event.payload.field, list);
         break;
       }
-      default: break;
+      default:
+        break;
     }
   }
   return steps;
@@ -358,7 +422,10 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
         if (scanBudget < 0) return { kind: "TOO_MUCH_WORK" };
         const haystack = claim.caseSensitive ? leaf : leaf.toLowerCase();
         for (let i = 0; i < needles.length; i += 1) {
-          if (foundAt[i] === null && haystack.includes(needles[i])) { foundAt[i] = item.sequence; unresolved -= 1; }
+          if (foundAt[i] === null && haystack.includes(needles[i])) {
+            foundAt[i] = item.sequence;
+            unresolved -= 1;
+          }
         }
         if (unresolved === 0) break search;
       }
@@ -379,7 +446,8 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
         const items = step.content.get(CLAIM_FIELD_NAME[claim.field]) ?? [];
         return items.length === 0 || items.some((item) => item.sequence <= limit);
       });
-      if (possible !== undefined) return { ...result, verdict: "CANNOT_CHECK" as const, reason: "TOOL_NAME_WITHHELD" as const, stepId: possible.stepId };
+      if (possible !== undefined)
+        return { ...result, verdict: "CANNOT_CHECK" as const, reason: "TOOL_NAME_WITHHELD" as const, stepId: possible.stepId };
     }
     return result;
   });
@@ -393,12 +461,20 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
     const supported = outcomes.find((o) => o.outcome.kind === "SUPPORTED");
     if (supported !== undefined) {
       const outcome = supported.outcome as Extract<StepOutcome, { kind: "SUPPORTED" }>;
-      return { ...common, verdict: "SUPPORTED", reason: "FOUND", stepId: supported.step.stepId, evidenceEvent: outcome.evidenceEvent, stepFailed: supported.step.failed };
+      return {
+        ...common,
+        verdict: "SUPPORTED",
+        reason: "FOUND",
+        stepId: supported.step.stepId,
+        evidenceEvent: outcome.evidenceEvent,
+        stepFailed: supported.step.failed,
+      };
     }
     const closest = (): { stepId: string; missing: string[] } | null => {
       let best: { stepId: string; missing: string[] } | null = null;
       for (const o of outcomes) {
-        if (o.outcome.kind === "MISSING" && (best === null || o.outcome.missing.length < best.missing.length)) best = { stepId: o.step.stepId, missing: o.outcome.missing };
+        if (o.outcome.kind === "MISSING" && (best === null || o.outcome.missing.length < best.missing.length))
+          best = { stepId: o.step.stepId, missing: o.outcome.missing };
       }
       return best;
     };
@@ -415,10 +491,23 @@ export function checkClaims(events: readonly RunEvent[], claims: readonly Claim[
     const best = closest();
     if (best !== null) return { ...common, verdict: "NOT_SUPPORTED", reason: "NOT_FOUND", stepId: best.stepId, missing: best.missing };
     const lateOutcome = late?.outcome as Extract<StepOutcome, { kind: "LATE" }>;
-    return { ...common, verdict: "NOT_SUPPORTED", reason: "TOO_LATE", stepId: (late as NonNullable<typeof late>).step.stepId, evidenceEvent: lateOutcome.lateEvent };
+    return {
+      ...common,
+      verdict: "NOT_SUPPORTED",
+      reason: "TOO_LATE",
+      stepId: (late as NonNullable<typeof late>).step.stepId,
+      evidenceEvent: lateOutcome.lateEvent,
+    };
   }
 
-  const tools = [...new Set(ordered.map((s) => s.tool).filter((t): t is string => t !== null).map(tidyName))];
+  const tools = [
+    ...new Set(
+      ordered
+        .map((s) => s.tool)
+        .filter((t): t is string => t !== null)
+        .map(tidyName),
+    ),
+  ];
   return {
     results,
     counts: {

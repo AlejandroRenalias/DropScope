@@ -51,8 +51,21 @@ describe("four-state budget ledger", () => {
     });
     const initialReservationHistory = result.events.slice(0, 4);
     const unaffordableAuthorization: MissionEvent = {
-      schemaVersion: 1, sequenceNumber: 5, missionId: "unaffordable-reservation-demo", eventId: "unaffordable-reservation-demo-5", timestamp: "2026-08-28T00:00:05.000Z", type: "TaskAuthorized",
-      payload: { taskId: "too-expensive", objective: "Exceed the remaining budget", cost: 111, workClass: "MANDATORY", researchKey: "too-expensive", authorizationReason: "MANDATORY_BASELINE", dependencies: [] },
+      schemaVersion: 1,
+      sequenceNumber: 5,
+      missionId: "unaffordable-reservation-demo",
+      eventId: "unaffordable-reservation-demo-5",
+      timestamp: "2026-08-28T00:00:05.000Z",
+      type: "TaskAuthorized",
+      payload: {
+        taskId: "too-expensive",
+        objective: "Exceed the remaining budget",
+        cost: 111,
+        workClass: "MANDATORY",
+        researchKey: "too-expensive",
+        authorizationReason: "MANDATORY_BASELINE",
+        dependencies: [],
+      },
     };
     const unaffordableSchedule: MissionEvent = {
       schemaVersion: 1,
@@ -61,7 +74,16 @@ describe("four-state budget ledger", () => {
       eventId: "unaffordable-reservation-demo-6",
       timestamp: "2026-08-28T00:00:06.000Z",
       type: "TaskScheduled",
-      payload: { taskId: "too-expensive", attemptId: "too-expensive:a1", objective: "Exceed the remaining budget", cost: 111, workClass: "MANDATORY", researchKey: "too-expensive", workerRole: "BUDGET_WORKER", dependencies: [] },
+      payload: {
+        taskId: "too-expensive",
+        attemptId: "too-expensive:a1",
+        objective: "Exceed the remaining budget",
+        cost: 111,
+        workClass: "MANDATORY",
+        researchKey: "too-expensive",
+        workerRole: "BUDGET_WORKER",
+        dependencies: [],
+      },
     };
     const unaffordableReservation: MissionEvent = {
       schemaVersion: 1,
@@ -79,9 +101,7 @@ describe("four-state budget ledger", () => {
 
     expect(rejected.events.at(-1)?.type).toBe("TransitionRejected");
     expect(rejected.state.budget).toEqual(stateBeforeReservation.budget);
-    expect(rejected.state.rejections).toEqual([
-      { attemptedEventType: "BudgetReserved", reason: "Insufficient available budget." },
-    ]);
+    expect(rejected.state.rejections).toEqual([{ attemptedEventType: "BudgetReserved", reason: "Insufficient available budget." }]);
   });
 
   it("maintains the ledger invariant after every valid event prefix", async () => {

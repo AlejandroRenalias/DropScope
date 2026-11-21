@@ -13,7 +13,9 @@ export const FOLD_FROM = 2;
 export type IndexedItem = { item: DiffItem; index: number };
 export type Entry = { kind: "row"; item: DiffItem; index: number } | { kind: "fold"; start: number; items: IndexedItem[] };
 /** What is drawn: a row, or a fold line with the number of its steps drawn (0 while it is closed). */
-export type Shown = { kind: "row"; item: DiffItem; index: number } | { kind: "fold"; start: number; total: number; drawn: number; items: IndexedItem[] };
+export type Shown =
+  | { kind: "row"; item: DiffItem; index: number }
+  | { kind: "fold"; start: number; total: number; drawn: number; items: IndexedItem[] };
 
 export function foldEntries(items: readonly DiffItem[]): Entry[] {
   const all: Entry[] = [];
@@ -25,7 +27,10 @@ export function foldEntries(items: readonly DiffItem[]): Entry[] {
   };
   items.forEach((item, index) => {
     if (item.status === "same") run.push({ item, index });
-    else { flush(); all.push({ kind: "row", item, index }); }
+    else {
+      flush();
+      all.push({ kind: "row", item, index });
+    }
   });
   flush();
   return all;
@@ -36,13 +41,20 @@ export function foldEntries(items: readonly DiffItem[]): Entry[] {
  * but the cap runs out inside it, only the first steps are drawn (`drawn < total`). `hidden` counts the steps and
  * rows that are not drawn, so the card can say so.
  */
-export function limitEntries(entries: readonly Entry[], open: ReadonlySet<number>, limit: number = ROW_LIMIT): { shown: Shown[]; hidden: number } {
+export function limitEntries(
+  entries: readonly Entry[],
+  open: ReadonlySet<number>,
+  limit: number = ROW_LIMIT,
+): { shown: Shown[]; hidden: number } {
   const shown: Shown[] = [];
   let budget = limit;
   let hidden = 0;
   for (const entry of entries) {
     if (entry.kind === "row") {
-      if (budget > 0) { shown.push(entry); budget -= 1; } else hidden += 1;
+      if (budget > 0) {
+        shown.push(entry);
+        budget -= 1;
+      } else hidden += 1;
     } else if (open.has(entry.start)) {
       const drawn = Math.min(entry.items.length, budget);
       shown.push({ kind: "fold", start: entry.start, total: entry.items.length, drawn, items: entry.items });

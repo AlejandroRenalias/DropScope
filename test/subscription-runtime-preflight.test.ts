@@ -2,7 +2,13 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
-import { appServerSpawnSpec, appServerTerminationSpec, CodexAppServerPreflight, mapAccountReadResponse, type AppServerProcess } from "../src/subscription-runtime-preflight.js";
+import {
+  appServerSpawnSpec,
+  appServerTerminationSpec,
+  CodexAppServerPreflight,
+  mapAccountReadResponse,
+  type AppServerProcess,
+} from "../src/subscription-runtime-preflight.js";
 
 class FakeAppServer extends EventEmitter implements AppServerProcess {
   readonly stdin = new PassThrough();
@@ -15,7 +21,15 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
 
   constructor(
     accountResponse: unknown,
-    private readonly options: { initializationResponseDelayMs?: number; accountResponseDelayMs?: number; rejectInitialization?: boolean; exitDuringInitialization?: boolean; invalidInitializationResponse?: boolean; requireInitializedBeforeInitializationResponse?: boolean; failAccountRead?: boolean } = {},
+    private readonly options: {
+      initializationResponseDelayMs?: number;
+      accountResponseDelayMs?: number;
+      rejectInitialization?: boolean;
+      exitDuringInitialization?: boolean;
+      invalidInitializationResponse?: boolean;
+      requireInitializedBeforeInitializationResponse?: boolean;
+      failAccountRead?: boolean;
+    } = {},
   ) {
     super();
     this.stdin.on("data", (chunk: Buffer) => {
@@ -29,14 +43,25 @@ class FakeAppServer extends EventEmitter implements AppServerProcess {
               return;
             }
             const initializedWasConfirmed = this.messages.some((candidate) => isInitializedNotification(candidate));
-            const response = this.options.rejectInitialization || (this.options.requireInitializedBeforeInitializationResponse && !initializedWasConfirmed)
-              ? { id: 1, error: { message: "private initialization failure" } }
-              : { id: 1, result: this.options.invalidInitializationResponse ? null : {} };
+            const response =
+              this.options.rejectInitialization || (this.options.requireInitializedBeforeInitializationResponse && !initializedWasConfirmed)
+                ? { id: 1, error: { message: "private initialization failure" } }
+                : { id: 1, result: this.options.invalidInitializationResponse ? null : {} };
             this.stdout.write(JSON.stringify(response) + "\n");
           }, this.options.initializationResponseDelayMs ?? 0);
         }
         if (message.id === 2) {
-          setTimeout(() => this.stdout.write(JSON.stringify(this.options.failAccountRead ? { id: 2, error: { message: "private account failure" } } : { id: 2, result: accountResponse }) + "\n"), this.options.accountResponseDelayMs ?? 0);
+          setTimeout(
+            () =>
+              this.stdout.write(
+                JSON.stringify(
+                  this.options.failAccountRead
+                    ? { id: 2, error: { message: "private account failure" } }
+                    : { id: 2, result: accountResponse },
+                ) + "\n",
+              ),
+            this.options.accountResponseDelayMs ?? 0,
+          );
         }
       }
     });
@@ -60,7 +85,10 @@ describe("Codex app-server subscription preflight", () => {
   });
 
   it("initializes then reads only sanitized ChatGPT auth status without a thread or turn", async () => {
-    const process = new FakeAppServer({ account: { type: "chatgpt", email: "private@example.com", planType: "pro" }, requiresOpenaiAuth: true });
+    const process = new FakeAppServer({
+      account: { type: "chatgpt", email: "private@example.com", planType: "pro" },
+      requiresOpenaiAuth: true,
+    });
     const result = await new CodexAppServerPreflight(() => process, 100).check();
 
     expect(result).toEqual({ accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" });
@@ -94,14 +122,28 @@ describe("Codex app-server subscription preflight", () => {
     expect(mapAccountReadResponse({ account: { type: "apiKey" }, requiresOpenaiAuth: true })).toBe("UNSUPPORTED_AUTH_MODE");
     expect(mapAccountReadResponse({ account: null, requiresOpenaiAuth: false })).toBe("UNSUPPORTED_AUTH_MODE");
     expect(mapAccountReadResponse({ account: { type: "chatgpt" }, requiresOpenaiAuth: true })).toBe("CHATGPT_AUTHENTICATED");
-    await expect(new CodexAppServerPreflight(() => { throw new Error("private start failure"); }, 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_START_FAILED" });
+    await expect(
+      new CodexAppServerPreflight(() => {
+        throw new Error("private start failure");
+      }, 10).check(),
+    ).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_START_FAILED" });
     const rejected = await new CodexAppServerPreflight(() => new FakeAppServer({}, { rejectInitialization: true }), 10).check();
     expect(rejected).toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "INITIALIZATION_REJECTED" });
     expect(JSON.stringify(rejected)).not.toContain("private initialization failure");
-    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { invalidInitializationResponse: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "INITIALIZATION_RESPONSE_INVALID" });
-    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { exitDuringInitialization: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_EXITED_DURING_INITIALIZATION" });
-    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { failAccountRead: true }), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_FAILED" });
-    await expect(new CodexAppServerPreflight(() => new FakeAppServer("not-an-account-response"), 10).check()).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_RESPONSE_INVALID" });
+    await expect(
+      new CodexAppServerPreflight(() => new FakeAppServer({}, { invalidInitializationResponse: true }), 10).check(),
+    ).resolves.toEqual({ accessStatus: "UNAVAILABLE", diagnosticCode: "INITIALIZATION_RESPONSE_INVALID" });
+    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { exitDuringInitialization: true }), 10).check()).resolves.toEqual(
+      { accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_EXITED_DURING_INITIALIZATION" },
+    );
+    await expect(new CodexAppServerPreflight(() => new FakeAppServer({}, { failAccountRead: true }), 10).check()).resolves.toEqual({
+      accessStatus: "UNAVAILABLE",
+      diagnosticCode: "ACCOUNT_READ_FAILED",
+    });
+    await expect(new CodexAppServerPreflight(() => new FakeAppServer("not-an-account-response"), 10).check()).resolves.toEqual({
+      accessStatus: "UNAVAILABLE",
+      diagnosticCode: "ACCOUNT_RESPONSE_INVALID",
+    });
   });
 
   it("uses a ten-second default window for a cold local app-server start", async () => {

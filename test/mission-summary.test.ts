@@ -4,15 +4,20 @@ import type { MissionEvent } from "../src/contracts.js";
 import { formatMissionSummary } from "../src/mission-summary.js";
 import { replay } from "../src/reducer.js";
 
-const event = <T extends MissionEvent["type"]>(sequenceNumber: number, type: T, payload: Extract<MissionEvent, { type: T }>["payload"]): Extract<MissionEvent, { type: T }> => ({
-  schemaVersion: 1,
-  sequenceNumber,
-  missionId: "summary-test",
-  eventId: `summary-test-${sequenceNumber}`,
-  timestamp: "2026-01-01T00:00:00.000Z",
-  type,
-  payload,
-} as Extract<MissionEvent, { type: T }>);
+const event = <T extends MissionEvent["type"]>(
+  sequenceNumber: number,
+  type: T,
+  payload: Extract<MissionEvent, { type: T }>["payload"],
+): Extract<MissionEvent, { type: T }> =>
+  ({
+    schemaVersion: 1,
+    sequenceNumber,
+    missionId: "summary-test",
+    eventId: `summary-test-${sequenceNumber}`,
+    timestamp: "2026-01-01T00:00:00.000Z",
+    type,
+    payload,
+  }) as Extract<MissionEvent, { type: T }>;
 
 describe("formatMissionSummary", () => {
   it("reports the terminal state, complete ledger, no gaps, and event sequence", () => {
@@ -31,7 +36,12 @@ describe("formatMissionSummary", () => {
     const events = [
       event(1, "MissionCreated", { totalBudget: 20, missionSeed: 1 }),
       event(2, "GapOpened", { gapId: "gap-open", researchKey: "key-open", affectedDecisionType: "ELIGIBILITY", reason: "missing" }),
-      event(3, "GapOpened", { gapId: "gap-reopened", researchKey: "key-reopened", affectedDecisionType: "CONFIDENCE", reason: "uncertain" }),
+      event(3, "GapOpened", {
+        gapId: "gap-reopened",
+        researchKey: "key-reopened",
+        affectedDecisionType: "CONFIDENCE",
+        reason: "uncertain",
+      }),
       event(4, "GapResolved", { gapId: "gap-reopened", reason: "temporarily addressed" }),
       event(5, "GapReopened", { gapId: "gap-reopened", reason: "new conflict" }),
       event(6, "MissionTerminated", { status: "BLOCKED_POLICY", reason: "unresolved evidence" }),

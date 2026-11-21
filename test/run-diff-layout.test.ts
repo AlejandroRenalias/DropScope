@@ -11,13 +11,19 @@ const drawnRows = (shown: ReturnType<typeof limitEntries>["shown"]): number =>
 
 describe("run diff layout: folding", () => {
   it("folds runs of matching steps and keeps single ones as rows", () => {
-    const entries = foldEntries(items("same", "changed", [ "same", 3 ], "onlyA", "same", "same"));
-    expect(entries.map((e) => (e.kind === "row" ? `row:${e.item.status}` : `fold:${e.items.length}`))).toEqual(["row:same", "row:changed", "fold:3", "row:onlyA", "fold:2"]);
+    const entries = foldEntries(items("same", "changed", ["same", 3], "onlyA", "same", "same"));
+    expect(entries.map((e) => (e.kind === "row" ? `row:${e.item.status}` : `fold:${e.items.length}`))).toEqual([
+      "row:same",
+      "row:changed",
+      "fold:3",
+      "row:onlyA",
+      "fold:2",
+    ]);
     expect(FOLD_FROM).toBe(2);
   });
 
   it("gives every step its own index and the fold the index of its first step", () => {
-    const entries = foldEntries(items("changed", [ "same", 2 ], "onlyB"));
+    const entries = foldEntries(items("changed", ["same", 2], "onlyB"));
     expect(entries.map((e) => (e.kind === "row" ? e.index : e.start))).toEqual([0, 1, 3]);
     const fold = entries[1];
     expect(fold.kind === "fold" && fold.items.map((x) => x.index)).toEqual([1, 2]);
@@ -26,23 +32,23 @@ describe("run diff layout: folding", () => {
 
 describe("run diff layout: the row cap", () => {
   it("draws everything when it fits, with fold lines closed and free", () => {
-    const { shown, hidden } = limitEntries(foldEntries(items("changed", [ "same", 50 ], "changed")), new Set());
+    const { shown, hidden } = limitEntries(foldEntries(items("changed", ["same", 50], "changed")), new Set());
     expect(hidden).toBe(0);
     expect(shown).toHaveLength(3);
     expect(drawnRows(shown)).toBe(2);
   });
 
   it("stops at the cap and reports what is not drawn, exactly at the boundary", () => {
-    const exact = limitEntries(foldEntries(items([ "changed", ROW_LIMIT ])), new Set());
+    const exact = limitEntries(foldEntries(items(["changed", ROW_LIMIT])), new Set());
     expect(drawnRows(exact.shown)).toBe(ROW_LIMIT);
     expect(exact.hidden).toBe(0);
-    const over = limitEntries(foldEntries(items([ "changed", ROW_LIMIT + 1 ])), new Set());
+    const over = limitEntries(foldEntries(items(["changed", ROW_LIMIT + 1])), new Set());
     expect(drawnRows(over.shown)).toBe(ROW_LIMIT);
     expect(over.hidden).toBe(1);
   });
 
   it("applies the cap to the steps inside an opened group (5,000 matching steps)", () => {
-    const entries = foldEntries(items([ "same", 5000 ]));
+    const entries = foldEntries(items(["same", 5000]));
     const closed = limitEntries(entries, new Set());
     expect(drawnRows(closed.shown)).toBe(0);
     expect(closed.hidden).toBe(0);
@@ -54,7 +60,7 @@ describe("run diff layout: the row cap", () => {
   });
 
   it("shares one budget between rows and opened groups, and counts later rows and groups as hidden", () => {
-    const entries = foldEntries(items([ "changed", 100 ], [ "same", 400 ], "changed", [ "same", 10 ], "onlyA"));
+    const entries = foldEntries(items(["changed", 100], ["same", 400], "changed", ["same", 10], "onlyA"));
     const { shown, hidden } = limitEntries(entries, new Set([100, 501]), 300);
     expect(drawnRows(shown)).toBe(300);
     // 100 rows, then 200 of the 400 in the opened group; the rest of that group, one row, the second opened group and one row are hidden.
@@ -62,7 +68,7 @@ describe("run diff layout: the row cap", () => {
   });
 
   it("a closed fold line after the budget is spent is hidden and counted", () => {
-    const entries = foldEntries(items([ "changed", 3 ], [ "same", 4 ]));
+    const entries = foldEntries(items(["changed", 3], ["same", 4]));
     const { shown, hidden } = limitEntries(entries, new Set(), 3);
     expect(drawnRows(shown)).toBe(3);
     expect(shown).toHaveLength(3);
@@ -72,7 +78,7 @@ describe("run diff layout: the row cap", () => {
 
 describe("run diff layout: what the card really draws", () => {
   it("draws no steps of a closed group and no more than the budget of an open one", () => {
-    const entries = foldEntries(items([ "same", 5000 ]));
+    const entries = foldEntries(items(["same", 5000]));
     const closed = limitEntries(entries, new Set()).shown[0];
     const opened = limitEntries(entries, new Set([0])).shown[0];
     if (closed.kind !== "fold" || opened.kind !== "fold") throw new Error("expected fold lines");
@@ -83,7 +89,7 @@ describe("run diff layout: what the card really draws", () => {
   });
 
   it("the total drawn rows never exceed the cap, however many groups are open", () => {
-    const entries = foldEntries(items([ "changed", 10 ], [ "same", 200 ], "onlyA", [ "same", 200 ], "onlyB", [ "same", 200 ]));
+    const entries = foldEntries(items(["changed", 10], ["same", 200], "onlyA", ["same", 200], "onlyB", ["same", 200]));
     const open = new Set(entries.flatMap((e) => (e.kind === "fold" ? [e.start] : [])));
     const { shown } = limitEntries(entries, open);
     const total = shown.reduce((n, e) => n + (e.kind === "row" ? 1 : drawnSteps(e, true).length), 0);

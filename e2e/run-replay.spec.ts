@@ -99,7 +99,11 @@ test("jumps to a step or a note from the lists", async ({ page }) => {
   const replay = await openRunReplay(page);
   await replay.getByRole("button", { name: /Go to the start of Agent: qa-reviewer/ }).click();
   await expect(replay.getByRole("heading", { name: "Agent started" })).toBeVisible();
-  await replay.getByRole("region", { name: "Importer notes" }).getByRole("button", { name: /Go to event \d+/ }).first().click();
+  await replay
+    .getByRole("region", { name: "Importer notes" })
+    .getByRole("button", { name: /Go to event \d+/ })
+    .first()
+    .click();
   await expect(replay.getByRole("heading", { name: /^Importer note:/ })).toBeVisible();
 });
 
@@ -107,7 +111,9 @@ test("opens a run file the import command saved, in the browser", async ({ page 
   await page.setViewportSize({ width: 1440, height: 900 });
   const replay = await openRunReplay(page);
   const full = serializeRunLog(importTraceBytes({ spans: demoTrace(), contentMode: "FULL" }));
-  await page.locator(".file-button input").setInputFiles({ name: "stored.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(full) });
+  await page
+    .locator(".file-button input")
+    .setInputFiles({ name: "stored.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(full) });
   await expect(page.locator(".run-source-card")).toContainText("Run file stored.runlog.jsonl.");
   await expect(replay).toContainText("Content is stored as written");
   await replay.getByLabel("Timeline position").fill("3");
@@ -126,7 +132,11 @@ test("refuses broken and tampered files with a sentence that never repeats their
   await expect(alert).not.toContainText("SECRET-JUNK-TEXT");
 
   const hashed = Buffer.from(serializeRunLog(importTraceBytes({ spans: demoTrace() })));
-  const lines = hashed.toString("utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  const lines = hashed
+    .toString("utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
   lines.find((l) => l.type === "StepStarted").payload.name = { v: { t: "s", v: "LEAKED-NAME" } };
   const { canonicalJson } = await import("../src/canonical.js");
   const tampered = `${lines.map((l) => canonicalJson(l)).join("\n")}\n`;
@@ -143,10 +153,19 @@ test("stays usable on a run with thousands of steps", async ({ page }) => {
   const replay = await openRunReplay(page);
   const T = "1".repeat(32);
   const spans = Array.from({ length: 3000 }, (_, i) => ({
-    traceId: T, spanId: (i + 1).toString(16).padStart(16, "0"), name: "n", startTimeUnixNano: String(1000 + i * 10), endTimeUnixNano: String(1015 + i * 10),
-    attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }, { key: "gen_ai.usage.input_tokens", value: { intValue: "5" } }],
+    traceId: T,
+    spanId: (i + 1).toString(16).padStart(16, "0"),
+    name: "n",
+    startTimeUnixNano: String(1000 + i * 10),
+    endTimeUnixNano: String(1015 + i * 10),
+    attributes: [
+      { key: "gen_ai.operation.name", value: { stringValue: "chat" } },
+      { key: "gen_ai.usage.input_tokens", value: { intValue: "5" } },
+    ],
   }));
-  const big = serializeRunLog(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })) }));
+  const big = serializeRunLog(
+    importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })) }),
+  );
   await page.locator(".file-button input").setInputFiles({ name: "big.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(big) });
   await expect(replay).toContainText("Event 12003 / 12003", { timeout: 30_000 });
   await expect(replay.locator(".rr-hidden-note").first()).toContainText("Showing");
@@ -266,11 +285,33 @@ test.describe("budget replay", () => {
     const replay = await openRunReplay(page);
     const T = "1".repeat(32);
     const spans = [
-      { traceId: T, spanId: "00000000000000a1", name: "a", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000", attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }, { key: "gen_ai.usage.input_tokens", value: { intValue: "900" } }, { key: "gen_ai.usage.output_tokens", value: { intValue: "100" } }] },
-      { traceId: T, spanId: "00000000000000a2", name: "b", startTimeUnixNano: "2000000000", endTimeUnixNano: "3000000000", attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }] },
+      {
+        traceId: T,
+        spanId: "00000000000000a1",
+        name: "a",
+        startTimeUnixNano: "1000000000",
+        endTimeUnixNano: "2000000000",
+        attributes: [
+          { key: "gen_ai.operation.name", value: { stringValue: "chat" } },
+          { key: "gen_ai.usage.input_tokens", value: { intValue: "900" } },
+          { key: "gen_ai.usage.output_tokens", value: { intValue: "100" } },
+        ],
+      },
+      {
+        traceId: T,
+        spanId: "00000000000000a2",
+        name: "b",
+        startTimeUnixNano: "2000000000",
+        endTimeUnixNano: "3000000000",
+        attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }],
+      },
     ];
-    const file = serializeRunLog(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })) }));
-    await page.locator(".file-button input").setInputFiles({ name: "missing-usage.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(file) });
+    const file = serializeRunLog(
+      importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })) }),
+    );
+    await page
+      .locator(".file-button input")
+      .setInputFiles({ name: "missing-usage.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(file) });
     const panel = replay.getByRole("region", { name: "Budget replay" });
     await panel.getByRole("textbox", { name: "Total tokens" }).fill("500");
     await expect(panel.locator(".bp-result")).toContainText("1,000 tokens, over your limit of 500 tokens");

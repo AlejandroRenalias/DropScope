@@ -12,5 +12,9 @@ const close = async () => {
   closing = true;
   await server.close();
 };
-process.once("SIGINT", () => { void close().finally(() => process.exit(0)); });
-process.once("SIGTERM", () => { void close().finally(() => process.exit(0)); });
+process.once("SIGINT", () => {
+  void close().finally(() => process.exit(0));
+});
+process.once("SIGTERM", () => {
+  void close().finally(() => process.exit(0));
+});

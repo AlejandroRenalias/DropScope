@@ -15,12 +15,21 @@ describe("synthetic fixture model", () => {
   it("rejects duplicate IDs, unknown dependencies, and cycles", () => {
     const base = loadFixture("evidence-drought");
     expect(() => fixtureSchema.parse({ ...base, tasks: [...base.tasks, { ...base.tasks[0] }] })).toThrow(/Duplicate task ID/);
-    expect(() => fixtureSchema.parse({ ...base, tasks: [{ ...base.tasks[0], dependencies: ["missing"] }, base.tasks[1]] })).toThrow(/Unknown task dependency/);
-    expect(() => fixtureSchema.parse({ ...base, tasks: [
-      { ...base.tasks[0], id: "first", dependencies: ["second"] },
-      { ...base.tasks[1], id: "second", dependencies: ["first"] },
-    ] })).toThrow(/acyclic/);
-    expect(() => fixtureSchema.parse({ ...base, candidateEvaluations: [base.candidateEvaluations[0], base.candidateEvaluations[0]] })).toThrow(/Duplicate fixture candidate ID/);
+    expect(() => fixtureSchema.parse({ ...base, tasks: [{ ...base.tasks[0], dependencies: ["missing"] }, base.tasks[1]] })).toThrow(
+      /Unknown task dependency/,
+    );
+    expect(() =>
+      fixtureSchema.parse({
+        ...base,
+        tasks: [
+          { ...base.tasks[0], id: "first", dependencies: ["second"] },
+          { ...base.tasks[1], id: "second", dependencies: ["first"] },
+        ],
+      }),
+    ).toThrow(/acyclic/);
+    expect(() =>
+      fixtureSchema.parse({ ...base, candidateEvaluations: [base.candidateEvaluations[0], base.candidateEvaluations[0]] }),
+    ).toThrow(/Duplicate fixture candidate ID/);
   });
 
   it("rejects unknown fixture IDs", () => {

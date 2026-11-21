@@ -30,8 +30,6 @@ describe("illegal transition handling", () => {
     expect(result.events.map((event) => event.type)).toEqual(["MissionCreated", "TransitionRejected"]);
     expect(result.state.budget).toEqual({ total: 120, reserved: 0, committed: 0, spent: 0, available: 120 });
     expect(result.state.tasks).toEqual({});
-    expect(result.state.rejections).toEqual([
-      { attemptedEventType: "TaskStarted", reason: "Only a scheduled attempt can start." },
-    ]);
+    expect(result.state.rejections).toEqual([{ attemptedEventType: "TaskStarted", reason: "Only a scheduled attempt can start." }]);
   });
 });

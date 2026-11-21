@@ -32,12 +32,18 @@ const figure = (value: string): string => (/^\d+$/.test(value) ? group(BigInt(va
 /** A short reading of one change, for a table cell. The full sentence (the one the command line prints) is in the cell's tooltip. */
 function shortChange(change: DiffChange): string {
   switch (change.code) {
-    case "STATUS": return change.b === "failed" ? "Failed in B, succeeded in A" : "Succeeded in B, failed in A";
-    case "STATUS_MESSAGE": return "Different status message";
-    case "PARENT": return "Under a different step";
-    case "INPUT_TOKENS": return `Input tokens ${figure(change.a)} → ${figure(change.b)}`;
-    case "OUTPUT_TOKENS": return `Output tokens ${figure(change.a)} → ${figure(change.b)}`;
-    case "CONTENT": return "Different recorded content";
+    case "STATUS":
+      return change.b === "failed" ? "Failed in B, succeeded in A" : "Succeeded in B, failed in A";
+    case "STATUS_MESSAGE":
+      return "Different status message";
+    case "PARENT":
+      return "Under a different step";
+    case "INPUT_TOKENS":
+      return `Input tokens ${figure(change.a)} → ${figure(change.b)}`;
+    case "OUTPUT_TOKENS":
+      return `Output tokens ${figure(change.a)} → ${figure(change.b)}`;
+    case "CONTENT":
+      return "Different recorded content";
   }
 }
 
@@ -49,21 +55,45 @@ function whatDiffers(item: DiffItem): { short: string; full: string } {
 }
 
 function StepCell({ step }: { step: Step }) {
-  return <span className="rd-step" style={{ paddingLeft: `${Math.min(step.depth, 8) * 14}px` }}>
-    <span className="rd-title">{step.title}</span>
-    {step.failed && <span className="rd-tag">failed</span>}
-  </span>;
+  return (
+    <span className="rd-step" style={{ paddingLeft: `${Math.min(step.depth, 8) * 14}px` }}>
+      <span className="rd-title">{step.title}</span>
+      {step.failed && <span className="rd-tag">failed</span>}
+    </span>
+  );
 }
 
-function Row({ item, index, firstIndex, setPosition }: { item: DiffItem; index: number; firstIndex: number; setPosition: (value: number) => void }) {
-  return <div role="row" className={`rd-row rd-${item.status}${index === firstIndex ? " rd-first" : ""}`}>
-    <span role="cell" className="rd-cell">
-      {item.a ? <StepCell step={item.a} /> : <span className="rd-none">Not in run A</span>}
-      {item.a && item.status !== "same" && <button type="button" className="quiet-button rd-go" onClick={() => setPosition((item.a as Step).startSequence)}>Go to event {item.a.startSequence}</button>}
-    </span>
-    <span role="cell" className="rd-cell">{item.b ? <StepCell step={item.b} /> : <span className="rd-none">Not in run B</span>}</span>
-    <span role="cell" className="rd-why" title={whatDiffers(item).full}><span className="rd-chip">{STATUS_CHIP[item.status]}</span>{index === firstIndex && <strong className="rd-firstmark">First difference</strong>}{whatDiffers(item).short && <span className="rd-short">{whatDiffers(item).short}</span>}</span>
-  </div>;
+function Row({
+  item,
+  index,
+  firstIndex,
+  setPosition,
+}: {
+  item: DiffItem;
+  index: number;
+  firstIndex: number;
+  setPosition: (value: number) => void;
+}) {
+  return (
+    <div role="row" className={`rd-row rd-${item.status}${index === firstIndex ? " rd-first" : ""}`}>
+      <span role="cell" className="rd-cell">
+        {item.a ? <StepCell step={item.a} /> : <span className="rd-none">Not in run A</span>}
+        {item.a && item.status !== "same" && (
+          <button type="button" className="quiet-button rd-go" onClick={() => setPosition((item.a as Step).startSequence)}>
+            Go to event {item.a.startSequence}
+          </button>
+        )}
+      </span>
+      <span role="cell" className="rd-cell">
+        {item.b ? <StepCell step={item.b} /> : <span className="rd-none">Not in run B</span>}
+      </span>
+      <span role="cell" className="rd-why" title={whatDiffers(item).full}>
+        <span className="rd-chip">{STATUS_CHIP[item.status]}</span>
+        {index === firstIndex && <strong className="rd-firstmark">First difference</strong>}
+        {whatDiffers(item).short && <span className="rd-short">{whatDiffers(item).short}</span>}
+      </span>
+    </div>
+  );
 }
 
 /**
@@ -71,7 +101,15 @@ function Row({ item, index, firstIndex, setPosition }: { item: DiffItem; index: 
  * Everything happens in the browser; both files are read here and sent nowhere. The wording comes from
  * run-diff-report.ts, the same module the command line uses.
  */
-export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunModel; sourceLabel: string; setPosition: (value: number) => void }) {
+export function RunDiffPanel({
+  model,
+  sourceLabel,
+  setPosition,
+}: {
+  model: RunModel;
+  sourceLabel: string;
+  setPosition: (value: number) => void;
+}) {
   const uid = useId();
   const [other, setOther] = useState<Other | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +117,13 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
   const result = useMemo(() => (other ? diffRuns(model, other.model) : null), [model, other]);
   const folded = useMemo(() => (result && !result.tooLarge ? foldEntries(result.items) : []), [result]);
   const entries = useMemo(() => limitEntries(folded, open), [folded, open]);
-  const toggle = (start: number) => setOpen((current) => { const next = new Set(current); if (next.has(start)) next.delete(start); else next.add(start); return next; });
+  const toggle = (start: number) =>
+    setOpen((current) => {
+      const next = new Set(current);
+      if (next.has(start)) next.delete(start);
+      else next.add(start);
+      return next;
+    });
   const runA = sourceLabel.replace(/\.$/, "");
 
   // Each choice of run B gets a number; a file that finishes reading after a newer choice is dropped.
@@ -94,61 +138,161 @@ export function RunDiffPanel({ model, sourceLabel, setPosition }: { model: RunMo
     try {
       const model = loadRunFromBytes(new Uint8Array(await file.arrayBuffer()));
       if (mine !== choice.current) return;
-      setOther({ model, label: `Run file ${file.name}` }); setOpen(new Set());
+      setOther({ model, label: `Run file ${file.name}` });
+      setOpen(new Set());
     } catch (caught) {
       if (mine === choice.current) setError(explainLoadError(caught));
     }
   };
-  const useDemo = (text: string, label: string) => { choice.current += 1; setError(null); setOpen(new Set()); setOther({ model: loadRunFromBytes(encode(text)), label }); };
+  const showDemo = (text: string, label: string) => {
+    choice.current += 1;
+    setError(null);
+    setOpen(new Set());
+    setOther({ model: loadRunFromBytes(encode(text)), label });
+  };
 
-  return <section className="panel-card cc rd" id="rr-compare" aria-labelledby={`${uid}-title`}>
-    <header className="surface-heading"><div><span className="eyebrow">Where do two runs first differ?</span><h2 id={`${uid}-title`}>Compare with another run</h2></div><span className="badge cc-badge">Compares two recordings</span></header>
-    <p className="bp-note">Run A is the run open above ({runA}). Pick a second run to see where the two recordings first differ. A difference means the recordings differ, not that either run is right. Both files are read in this browser and sent nowhere.</p>
-
-    <div className="bp-actions rd-actions">
-      <button type="button" className="quiet-button" onClick={() => useDemo(demoRunVariantText, "Demo variant (second refund fails)")}>Compare with the demo variant</button>
-      <button type="button" className="quiet-button" onClick={() => useDemo(demoRunFullText, "Demo run with content stored")}>Compare with the demo run kept with content</button>
-      <label className="cc-file-button">Open a run file as run B<input type="file" accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain" onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) void openFile(file); }} /></label>
-      <button type="button" className="quiet-button" onClick={() => { choice.current += 1; setOther(null); setError(null); }} disabled={!other}>Clear run B</button>
-    </div>
-
-    {error && <p className="inline-error" role="alert">{error}</p>}
-    {!other && !error && <p className="bp-hint">Choose a second run to compare. Try the demo variant: it is the demo run, except the second refund attempt also fails.</p>}
-
-    {result && other && <>
-      <p className="cc-summary" role="status"><strong>{diffVerdictLine(result)}</strong></p>
-      <p className="rd-who">Run A: {runA}. Run B: {other.label}.</p>
-      {!result.tooLarge && !result.identical && <p className="rd-counts">{diffCountsLine(result)}</p>}
-      {!result.tooLarge && <>
-        <h3 className="rd-heading">Steps side by side</h3>
-        <div className="rd-steps" role="table" aria-label="Steps side by side">
-          <div className="rd-row rd-head" role="row"><span role="columnheader">Run A</span><span role="columnheader">Run B</span><span role="columnheader">What differs</span></div>
-          {entries.shown.map((entry) => {
-            if (entry.kind === "fold") {
-              const isOpen = open.has(entry.start);
-              return <div key={`fold-${entry.start}`} className="rd-foldgroup">
-                <button type="button" className="rd-fold" aria-expanded={isOpen} onClick={() => toggle(entry.start)}>{isOpen ? "Hide" : "Show"} {group(entry.total)} steps that match in both runs</button>
-                {drawnSteps(entry, isOpen).map(({ item, index }) => <Row key={index} item={item} index={index} firstIndex={result.firstIndex} setPosition={setPosition} />)}
-              </div>;
-            }
-            return <Row key={entry.index} item={entry.item} index={entry.index} firstIndex={result.firstIndex} setPosition={setPosition} />;
-          })}
+  return (
+    <section className="panel-card cc rd" id="rr-compare" aria-labelledby={`${uid}-title`}>
+      <header className="surface-heading">
+        <div>
+          <span className="eyebrow">Where do two runs first differ?</span>
+          <h2 id={`${uid}-title`}>Compare with another run</h2>
         </div>
-        {entries.hidden > 0 && <p className="rd-who">{truncationNotice(entries.hidden)}</p>}
-        {result.tools.length > 0 && <>
-          <h3 className="rd-heading">Tool use that differs</h3>
-          <ul className="rd-list">{result.tools.slice(0, TOOL_LINE_LIMIT).map((t) => <li key={t.tool}>{t.tool}: {group(t.a)} call(s) in run A, {group(t.b)} in run B</li>)}</ul>
-          {result.tools.length > TOOL_LINE_LIMIT && <p className="rd-who">… and {group(result.tools.length - TOOL_LINE_LIMIT)} more tools.</p>}
-        </>}
-        <h3 className="rd-heading">Totals</h3>
-        <table className="rd-totals">
-          <thead><tr><th scope="col">Measure</th><th scope="col">Run A</th><th scope="col">Run B</th></tr></thead>
-          <tbody>{totalRows(result.totals.a, result.totals.b).map((row) => <tr key={row.label} className={row.a === row.b ? "" : "rd-differs"}><th scope="row">{row.label}</th><td>{row.a}</td><td>{row.b}</td></tr>)}</tbody>
-        </table>
-      </>}
-      <details className="bp-caveats"><summary>What this does and does not tell you</summary>
-        <ul>{diffCaveats(result).map((note) => <li key={note}>{note}</li>)}</ul>
-      </details>
-    </>}
-  </section>;
+        <span className="badge cc-badge">Compares two recordings</span>
+      </header>
+      <p className="bp-note">
+        Run A is the run open above ({runA}). Pick a second run to see where the two recordings first differ. A difference means the
+        recordings differ, not that either run is right. Both files are read in this browser and sent nowhere.
+      </p>
+
+      <div className="bp-actions rd-actions">
+        <button type="button" className="quiet-button" onClick={() => showDemo(demoRunVariantText, "Demo variant (second refund fails)")}>
+          Compare with the demo variant
+        </button>
+        <button type="button" className="quiet-button" onClick={() => showDemo(demoRunFullText, "Demo run with content stored")}>
+          Compare with the demo run kept with content
+        </button>
+        <label className="cc-file-button">
+          Open a run file as run B
+          <input
+            type="file"
+            accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain"
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0];
+              e.currentTarget.value = "";
+              if (file) void openFile(file);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className="quiet-button"
+          onClick={() => {
+            choice.current += 1;
+            setOther(null);
+            setError(null);
+          }}
+          disabled={!other}
+        >
+          Clear run B
+        </button>
+      </div>
+
+      {error && (
+        <p className="inline-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!other && !error && (
+        <p className="bp-hint">
+          Choose a second run to compare. Try the demo variant: it is the demo run, except the second refund attempt also fails.
+        </p>
+      )}
+
+      {result && other && (
+        <>
+          <p className="cc-summary" role="status">
+            <strong>{diffVerdictLine(result)}</strong>
+          </p>
+          <p className="rd-who">
+            Run A: {runA}. Run B: {other.label}.
+          </p>
+          {!result.tooLarge && !result.identical && <p className="rd-counts">{diffCountsLine(result)}</p>}
+          {!result.tooLarge && (
+            <>
+              <h3 className="rd-heading">Steps side by side</h3>
+              <div className="rd-steps" role="table" aria-label="Steps side by side">
+                <div className="rd-row rd-head" role="row">
+                  <span role="columnheader">Run A</span>
+                  <span role="columnheader">Run B</span>
+                  <span role="columnheader">What differs</span>
+                </div>
+                {entries.shown.map((entry) => {
+                  if (entry.kind === "fold") {
+                    const isOpen = open.has(entry.start);
+                    return (
+                      <div key={`fold-${entry.start}`} className="rd-foldgroup">
+                        <button type="button" className="rd-fold" aria-expanded={isOpen} onClick={() => toggle(entry.start)}>
+                          {isOpen ? "Hide" : "Show"} {group(entry.total)} steps that match in both runs
+                        </button>
+                        {drawnSteps(entry, isOpen).map(({ item, index }) => (
+                          <Row key={index} item={item} index={index} firstIndex={result.firstIndex} setPosition={setPosition} />
+                        ))}
+                      </div>
+                    );
+                  }
+                  return (
+                    <Row key={entry.index} item={entry.item} index={entry.index} firstIndex={result.firstIndex} setPosition={setPosition} />
+                  );
+                })}
+              </div>
+              {entries.hidden > 0 && <p className="rd-who">{truncationNotice(entries.hidden)}</p>}
+              {result.tools.length > 0 && (
+                <>
+                  <h3 className="rd-heading">Tool use that differs</h3>
+                  <ul className="rd-list">
+                    {result.tools.slice(0, TOOL_LINE_LIMIT).map((t) => (
+                      <li key={t.tool}>
+                        {t.tool}: {group(t.a)} call(s) in run A, {group(t.b)} in run B
+                      </li>
+                    ))}
+                  </ul>
+                  {result.tools.length > TOOL_LINE_LIMIT && (
+                    <p className="rd-who">… and {group(result.tools.length - TOOL_LINE_LIMIT)} more tools.</p>
+                  )}
+                </>
+              )}
+              <h3 className="rd-heading">Totals</h3>
+              <table className="rd-totals">
+                <thead>
+                  <tr>
+                    <th scope="col">Measure</th>
+                    <th scope="col">Run A</th>
+                    <th scope="col">Run B</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {totalRows(result.totals.a, result.totals.b).map((row) => (
+                    <tr key={row.label} className={row.a === row.b ? "" : "rd-differs"}>
+                      <th scope="row">{row.label}</th>
+                      <td>{row.a}</td>
+                      <td>{row.b}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+          <details className="bp-caveats">
+            <summary>What this does and does not tell you</summary>
+            <ul>
+              {diffCaveats(result).map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </details>
+        </>
+      )}
+    </section>
+  );
 }

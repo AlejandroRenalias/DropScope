@@ -16,15 +16,31 @@ beforeAll(() => {
   // Copy the real traces out of the repository so the test does not depend on where the repository lives.
   for (const name of ["trace-a.json", "trace-d.json", "trace-d.logs.json"]) fs.copyFileSync(new URL(name, otlpDir), path.join(root, name));
 });
-afterAll(() => { fs.rmSync(root, { recursive: true, force: true }); });
+afterAll(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
 
 function run(args: string[], runsDirectory = runs) {
   let out = "";
   let err = "";
-  const code = runCli(args, { out: (t) => { out += t; }, err: (t) => { err += t; } }, { runsDirectory, checks: fake });
+  const code = runCli(
+    args,
+    {
+      out: (t) => {
+        out += t;
+      },
+      err: (t) => {
+        err += t;
+      },
+    },
+    { runsDirectory, checks: fake },
+  );
   return { code, out, err };
 }
-const newRuns = () => { runs = path.join(root, `runs-${(counter += 1)}`); return runs; };
+const newRuns = () => {
+  runs = path.join(root, `runs-${(counter += 1)}`);
+  return runs;
+};
 
 describe("import", () => {
   it("imports a trace with its logs, then reports it as already imported on the second run", () => {
@@ -45,11 +61,19 @@ describe("import", () => {
 
   it("keeps content out of the saved file by default and in it with --full", () => {
     newRuns();
-    const original = JSON.parse(fs.readFileSync(path.join(root, "trace-a.json"), "utf8")) as { resourceSpans: Array<{ scopeSpans: Array<{ spans: Array<{ attributes?: Array<{ key: string; value: { stringValue?: string } }> }> }> }> };
+    const original = JSON.parse(fs.readFileSync(path.join(root, "trace-a.json"), "utf8")) as {
+      resourceSpans: Array<{
+        scopeSpans: Array<{ spans: Array<{ attributes?: Array<{ key: string; value: { stringValue?: string } }> }> }>;
+      }>;
+    };
     const prompts: string[] = [];
-    for (const r of original.resourceSpans) for (const s of r.scopeSpans) for (const sp of s.spans) for (const a of sp.attributes ?? []) {
-      if (a.key === "gen_ai.input.messages" && a.value.stringValue) prompts.push(JSON.stringify(a.value.stringValue.slice(0, 40)).slice(1, -1));
-    }
+    for (const r of original.resourceSpans)
+      for (const s of r.scopeSpans)
+        for (const sp of s.spans)
+          for (const a of sp.attributes ?? []) {
+            if (a.key === "gen_ai.input.messages" && a.value.stringValue)
+              prompts.push(JSON.stringify(a.value.stringValue.slice(0, 40)).slice(1, -1));
+          }
     expect(prompts.length).toBeGreaterThan(0);
     expect(run(["import", path.join(root, "trace-a.json")]).code).toBe(0);
     expect(run(["import", path.join(root, "trace-a.json"), "--full"]).code).toBe(0);
@@ -76,7 +100,13 @@ describe("import", () => {
 
   it("fails closed on a multi-trace file unless a trace is chosen", () => {
     newRuns();
-    const spans = (traceId: string, n: number) => ({ traceId, spanId: n.toString(16).padStart(16, "0"), name: "n", startTimeUnixNano: "1", endTimeUnixNano: "2" });
+    const spans = (traceId: string, n: number) => ({
+      traceId,
+      spanId: n.toString(16).padStart(16, "0"),
+      name: "n",
+      startTimeUnixNano: "1",
+      endTimeUnixNano: "2",
+    });
     const file = path.join(root, "two.json");
     const T1 = "1".repeat(32);
     const T2 = "2".repeat(32);
@@ -88,7 +118,16 @@ describe("import", () => {
 
   it("prints usage and exits 2 for wrong arguments", () => {
     newRuns();
-    for (const args of [[], ["nope"], ["import"], ["import", "a", "b"], ["import", "a", "--bogus"], ["import", "a", "--logs"], ["state"], ["state", "f", "--at", "x"]]) {
+    for (const args of [
+      [],
+      ["nope"],
+      ["import"],
+      ["import", "a", "b"],
+      ["import", "a", "--bogus"],
+      ["import", "a", "--logs"],
+      ["state"],
+      ["state", "f", "--at", "x"],
+    ]) {
       const result = run(args);
       expect(result.code, args.join(" ")).toBe(2);
       expect(result.err).toContain("Usage:");

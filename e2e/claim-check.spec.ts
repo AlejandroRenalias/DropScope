@@ -85,7 +85,11 @@ test.describe("claim check", () => {
     await box.fill('{"claims":[{"id":"a","text":"t","tool":"lookup_order","mustContains":["59"]}]}');
     await expect(panel.locator(".bp-errors")).toContainText('Claim 1 (a): a field name is not allowed (did you mean "mustContain"?)');
     await expect(panel.locator(".cc-result")).toHaveCount(0);
-    await box.fill(JSON.stringify({ claims: [{ id: "html", text: "<img src=x onerror=alert(1)> <b>bold</b>", tool: "nothing_here", mustContain: ["x"] }] }));
+    await box.fill(
+      JSON.stringify({
+        claims: [{ id: "html", text: "<img src=x onerror=alert(1)> <b>bold</b>", tool: "nothing_here", mustContain: ["x"] }],
+      }),
+    );
     await expect(panel.locator(".cc-result.not-supported")).toContainText("<img src=x onerror=alert(1)> <b>bold</b>");
     await expect(panel.locator(".cc-result img, .cc-result b")).toHaveCount(0);
     await expect(panel.locator(".cc-result")).toContainText('Tools in this run: "lookup_order"');
@@ -100,7 +104,15 @@ test.describe("claim check", () => {
     await useStoredDemo(page);
     const panel = replay.getByRole("region", { name: "Claim check" });
     const input = panel.locator(".cc-file-button input");
-    await input.setInputFiles({ name: "claims.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({ claims: [{ id: "policy", text: "Undelivered orders are refundable", tool: "search_policy", mustContain: ["refundable in full"] }] })) });
+    await input.setInputFiles({
+      name: "claims.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(
+        JSON.stringify({
+          claims: [{ id: "policy", text: "Undelivered orders are refundable", tool: "search_policy", mustContain: ["refundable in full"] }],
+        }),
+      ),
+    });
     await expect(panel.getByRole("textbox", { name: "Claims (JSON)" })).toHaveValue(/search_policy/);
     await expect(panel.locator(".cc-result.supported")).toContainText("policy");
     await input.setInputFiles({ name: "binary.json", mimeType: "application/json", buffer: Buffer.from([0x7b, 0xff, 0xfe, 0x7d]) });
@@ -115,7 +127,9 @@ test.describe("claim check", () => {
     await useStoredDemo(page);
     const panel = replay.getByRole("region", { name: "Claim check" });
     const input = panel.locator(".cc-file-button input");
-    const body = Buffer.from(JSON.stringify({ claims: [{ id: "order-total", text: "The order total was 59.00", tool: "lookup_order", mustContain: ["59.0"] }] }));
+    const body = Buffer.from(
+      JSON.stringify({ claims: [{ id: "order-total", text: "The order total was 59.00", tool: "lookup_order", mustContain: ["59.0"] }] }),
+    );
     const mark = Buffer.from([0xef, 0xbb, 0xbf]);
     await input.setInputFiles({ name: "one-mark.json", mimeType: "application/json", buffer: Buffer.concat([mark, body]) });
     await expect(panel.locator(".cc-result.supported")).toContainText("order-total");
@@ -128,21 +142,39 @@ test.describe("claim check", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const replay = await openRunReplay(page);
     const T = "1".repeat(32);
-    const spans = [{
-      traceId: T, spanId: "00000000000000a1", name: "a", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000",
-      attributes: [
-        { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } }, { key: "gen_ai.tool.name", value: { stringValue: "weather" } },
-        { key: "gen_ai.tool.call.result", value: { stringValue: "sunny, 21 degrees" } },
-      ],
-    }];
-    const stored = serializeRunLog(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })), contentMode: "FULL" }));
-    await page.locator(".file-button input").setInputFiles({ name: "weather.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(stored) });
+    const spans = [
+      {
+        traceId: T,
+        spanId: "00000000000000a1",
+        name: "a",
+        startTimeUnixNano: "1000000000",
+        endTimeUnixNano: "2000000000",
+        attributes: [
+          { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
+          { key: "gen_ai.tool.name", value: { stringValue: "weather" } },
+          { key: "gen_ai.tool.call.result", value: { stringValue: "sunny, 21 degrees" } },
+        ],
+      },
+    ];
+    const stored = serializeRunLog(
+      importTraceBytes({
+        spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })),
+        contentMode: "FULL",
+      }),
+    );
+    await page
+      .locator(".file-button input")
+      .setInputFiles({ name: "weather.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(stored) });
     const panel = replay.getByRole("region", { name: "Claim check" });
     await expect(panel).not.toContainText("This run keeps no content");
-    await panel.getByRole("textbox", { name: "Claims (JSON)" }).fill(JSON.stringify({ claims: [
-      { id: "sunny", text: "It was sunny", tool: "weather", mustContain: ["sunny"] },
-      { id: "rain", text: "It rained", tool: "weather", mustContain: ["rain"] },
-    ] }));
+    await panel.getByRole("textbox", { name: "Claims (JSON)" }).fill(
+      JSON.stringify({
+        claims: [
+          { id: "sunny", text: "It was sunny", tool: "weather", mustContain: ["sunny"] },
+          { id: "rain", text: "It rained", tool: "weather", mustContain: ["rain"] },
+        ],
+      }),
+    );
     await expect(panel.locator(".cc-summary")).toContainText("1 supported, 1 not supported, 0 cannot be checked (of 2)");
   });
 

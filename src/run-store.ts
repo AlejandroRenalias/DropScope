@@ -7,7 +7,14 @@ import path from "node:path";
 import { canonicalJson } from "./canonical.js";
 import { MAX_RUN_LOG_BYTES } from "./run-limits.js";
 import { parseRunLog } from "./run-log-format.js";
-import { defaultChecks, defaultRunsDirectory, ensureRunsDirectory, readInputFile, syncedRootWarning, type PlatformChecks } from "./run-files.js";
+import {
+  defaultChecks,
+  defaultRunsDirectory,
+  ensureRunsDirectory,
+  readInputFile,
+  syncedRootWarning,
+  type PlatformChecks,
+} from "./run-files.js";
 import { ImportError } from "./run-import-error.js";
 import type { RunEvent } from "./run-events.js";
 import { validateRunHistory } from "./run-reducer.js";
@@ -84,7 +91,10 @@ export function publishRun(history: readonly RunEvent[], options: PublishOptions
   const final = path.join(dir, name);
   const warning = syncedRootWarning(dir);
   const result = (status: PublishResult["status"]): PublishResult => ({
-    path: final, status, eventCount: events.length, warnings: warning === null ? [] : [warning],
+    path: final,
+    status,
+    eventCount: events.length,
+    warnings: warning === null ? [] : [warning],
   });
 
   const exists = (): boolean => {
@@ -130,13 +140,21 @@ export function publishRun(history: readonly RunEvent[], options: PublishOptions
     // Best effort: flush the directory entry where the platform allows it.
     try {
       const dirFd = fs.openSync(dir, "r");
-      try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
+      try {
+        fs.fsyncSync(dirFd);
+      } finally {
+        fs.closeSync(dirFd);
+      }
     } catch {
       // Not possible on every platform; after a crash, re-import.
     }
     return result("CREATED");
   } finally {
     if (fd !== null) fs.closeSync(fd);
-    try { fs.unlinkSync(temp); } catch { /* already gone */ }
+    try {
+      fs.unlinkSync(temp);
+    } catch {
+      /* already gone */
+    }
   }
 }

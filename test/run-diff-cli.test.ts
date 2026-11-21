@@ -11,22 +11,32 @@ import { serializeRunLog } from "../src/run-store.js";
 const fake: PlatformChecks = { name: "fake", fileAttributes: () => 0, prepareRunsDirectory: () => {} };
 let root: string;
 
-beforeAll(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-diff-")); });
-afterAll(() => { fs.rmSync(root, { recursive: true, force: true }); });
+beforeAll(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-diff-"));
+});
+afterAll(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
 
 const BASE = 1_700_000_000_000_000_000n;
 const id = (n: number) => (n + 1).toString(16).padStart(16, "0");
 
 function writeRun(name: string, tools: string[], trace = "1"): string {
   const spans = tools.map((tool, i) => ({
-    traceId: trace.repeat(32), spanId: id(i), name: `s${i}`,
-    startTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n).toString(), endTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n + 500_000_000n).toString(),
+    traceId: trace.repeat(32),
+    spanId: id(i),
+    name: `s${i}`,
+    startTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n).toString(),
+    endTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n + 500_000_000n).toString(),
     attributes: [
       { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
       { key: "gen_ai.tool.name", value: { stringValue: tool } },
     ],
   }));
-  const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })), contentMode: "FULL" });
+  const events = importTraceBytes({
+    spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })),
+    contentMode: "FULL",
+  });
   const file = path.join(root, `${name}.runlog.jsonl`);
   fs.writeFileSync(file, serializeRunLog(events));
   return file;
@@ -35,7 +45,18 @@ function writeRun(name: string, tools: string[], trace = "1"): string {
 function run(args: string[]) {
   let out = "";
   let err = "";
-  const code = runCli(args, { out: (t) => { out += t; }, err: (t) => { err += t; } }, { checks: fake });
+  const code = runCli(
+    args,
+    {
+      out: (t) => {
+        out += t;
+      },
+      err: (t) => {
+        err += t;
+      },
+    },
+    { checks: fake },
+  );
   return { code, out, err };
 }
 
@@ -104,8 +125,15 @@ describe("diff command", () => {
 
 describe("diff command: structured output limits", () => {
   it("says how many differences it left out of the JSON list", () => {
-    const a = writeRun("a7", Array.from({ length: 1005 }, (_v, i) => `a${i}`));
-    const b = writeRun("b7", Array.from({ length: 1005 }, (_v, i) => `b${i}`), "2");
+    const a = writeRun(
+      "a7",
+      Array.from({ length: 1005 }, (_v, i) => `a${i}`),
+    );
+    const b = writeRun(
+      "b7",
+      Array.from({ length: 1005 }, (_v, i) => `b${i}`),
+      "2",
+    );
     const parsed = JSON.parse(run(["diff", a, b, "--json"]).out);
     expect(parsed.counts.onlyA).toBe(1005);
     expect(parsed.differences.length).toBe(1000);
@@ -120,16 +148,29 @@ describe("diff command: nesting that could not be checked", () => {
   it("includes the exact count in the structured output and in the text report", () => {
     const n = 2100;
     const spanOf = (i: number, name: string, parent?: number) => ({
-      traceId: "1".repeat(32), spanId: id(i), ...(parent === undefined ? {} : { parentSpanId: id(parent) }), name: `s${i}`,
-      startTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n).toString(), endTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n + 500_000_000n).toString(),
-      attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } }, { key: "gen_ai.tool.name", value: { stringValue: name } }],
+      traceId: "1".repeat(32),
+      spanId: id(i),
+      ...(parent === undefined ? {} : { parentSpanId: id(parent) }),
+      name: `s${i}`,
+      startTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n).toString(),
+      endTimeUnixNano: (BASE + BigInt(i) * 1_000_000_000n + 500_000_000n).toString(),
+      attributes: [
+        { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
+        { key: "gen_ai.tool.name", value: { stringValue: name } },
+      ],
     });
     const write = (name: string, prefix: string, first: string, parentName: string) => {
       const spans = [
-        spanOf(0, first), ...Array.from({ length: n }, (_v, i) => spanOf(1 + i, `${prefix}${i}`)), spanOf(1 + n, parentName),
-        spanOf(2 + n, "t1", 1 + n), spanOf(3 + n, "t2", 1 + n),
+        spanOf(0, first),
+        ...Array.from({ length: n }, (_v, i) => spanOf(1 + i, `${prefix}${i}`)),
+        spanOf(1 + n, parentName),
+        spanOf(2 + n, "t1", 1 + n),
+        spanOf(3 + n, "t2", 1 + n),
       ];
-      const events = importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })), contentMode: "FULL" });
+      const events = importTraceBytes({
+        spans: new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] })),
+        contentMode: "FULL",
+      });
       const file = path.join(root, `${name}.runlog.jsonl`);
       fs.writeFileSync(file, serializeRunLog(events));
       return file;

@@ -1,14 +1,28 @@
 import { createInterface } from "node:readline";
 
 import { buildSubscriptionLiveWorkerPlan, firstLiveSubscriptionWorkerGuard } from "./subscription-live-worker-contract.js";
-import { mapAccountReadResponse, type AppServerProcess, type AppServerSpawner, spawnCodexAppServer } from "./subscription-runtime-preflight.js";
+import {
+  mapAccountReadResponse,
+  type AppServerProcess,
+  type AppServerSpawner,
+  spawnCodexAppServer,
+} from "./subscription-runtime-preflight.js";
 import type { WorkerRequest } from "./worker-adapter.js";
 
-export type SubscriptionLiveWorkerTerminalOutcome = "TIMEOUT" | "UNAVAILABLE" | "APPROVAL_DECLINED" | "INTERRUPTED" | "INVALID_RESULT" | "TURN_FAILED";
+export type SubscriptionLiveWorkerTerminalOutcome =
+  | "TIMEOUT"
+  | "UNAVAILABLE"
+  | "APPROVAL_DECLINED"
+  | "INTERRUPTED"
+  | "INVALID_RESULT"
+  | "TURN_FAILED";
 
 /** A closed, non-diagnostic failure that the runtime may safely persist. */
 export class SubscriptionLiveWorkerError extends Error {
-  constructor(readonly outcome: SubscriptionLiveWorkerTerminalOutcome, readonly elapsedMs: number) {
+  constructor(
+    readonly outcome: SubscriptionLiveWorkerTerminalOutcome,
+    readonly elapsedMs: number,
+  ) {
     super(`Subscription worker ended with ${outcome}.`);
     this.name = "SubscriptionLiveWorkerError";
   }
@@ -107,7 +121,10 @@ class LiveWorkerRpc {
   private aborted = false;
   private abortError: Error | undefined;
 
-  constructor(private readonly process: AppServerProcess, private readonly onServerRequest: (method: string) => void) {
+  constructor(
+    private readonly process: AppServerProcess,
+    private readonly onServerRequest: (method: string) => void,
+  ) {
     const lines = createInterface({ input: process.stdout });
     lines.on("line", (line) => this.receive(line));
     process.once("error", () => this.abort(new SubscriptionLiveWorkerError("UNAVAILABLE", 0)));
@@ -149,7 +166,11 @@ class LiveWorkerRpc {
 
   private receive(line: string): void {
     let message: RpcResponse;
-    try { message = JSON.parse(line) as RpcResponse; } catch { return; }
+    try {
+      message = JSON.parse(line) as RpcResponse;
+    } catch {
+      return;
+    }
     if ((typeof message.id === "number" || typeof message.id === "string") && typeof message.method === "string") {
       this.onServerRequest(message.method);
       return;
@@ -194,7 +215,10 @@ class LiveWorkerRpc {
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: Error) => void;
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => { resolve = resolvePromise; reject = rejectPromise; });
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
   // A server can decline an approval synchronously with turn/start, before the
   // caller reaches waitForTurn. Keep that expected fail-closed rejection
   // observed until the caller awaits the same promise.
@@ -204,10 +228,19 @@ function deferred<T>() {
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout: () => void): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timeout = setTimeout(() => { onTimeout(); reject(new SubscriptionLiveWorkerError("TIMEOUT", timeoutMs)); }, timeoutMs);
+    const timeout = setTimeout(() => {
+      onTimeout();
+      reject(new SubscriptionLiveWorkerError("TIMEOUT", timeoutMs));
+    }, timeoutMs);
     void promise.then(
-      (value) => { clearTimeout(timeout); resolve(value); },
-      (error: unknown) => { clearTimeout(timeout); reject(error); },
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
     );
   });
 }
@@ -218,16 +251,22 @@ function threadResultId(value: unknown): string | undefined {
 }
 
 function isApprovalRequest(method: string): boolean {
-  return method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval" || method === "item/permissions/requestApproval";
+  return (
+    method === "item/commandExecution/requestApproval" ||
+    method === "item/fileChange/requestApproval" ||
+    method === "item/permissions/requestApproval"
+  );
 }
 
 function isPassiveTranscriptItem(value: unknown): boolean {
   if (!isRecord(value) || typeof value.type !== "string") return false;
-  return value.type === "userMessage"
-    || value.type === "agentMessage"
-    || value.type === "reasoning"
-    || value.type === "plan"
-    || value.type === "contextCompaction";
+  return (
+    value.type === "userMessage" ||
+    value.type === "agentMessage" ||
+    value.type === "reasoning" ||
+    value.type === "plan" ||
+    value.type === "contextCompaction"
+  );
 }
 
 function hasOnlyPassiveTranscriptItems(value: unknown): boolean {

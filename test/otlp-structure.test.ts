@@ -11,7 +11,13 @@ const load = (name: string) => parseStrictJson(readFileSync(new URL(name, otlpDi
 const json = (value: unknown) => parseStrictJson(new TextEncoder().encode(JSON.stringify(value)), "parse");
 
 const span = (overrides: Record<string, unknown> = {}) => ({
-  traceId: TRACE, spanId: SPAN, name: "n", kind: 1, startTimeUnixNano: "100", endTimeUnixNano: "200", ...overrides,
+  traceId: TRACE,
+  spanId: SPAN,
+  name: "n",
+  kind: 1,
+  startTimeUnixNano: "100",
+  endTimeUnixNano: "200",
+  ...overrides,
 });
 const traceRequest = (spans: unknown[]) => json({ resourceSpans: [{ scopeSpans: [{ spans }] }] });
 const logRequest = (logRecords: unknown[]) => json({ resourceLogs: [{ scopeLogs: [{ logRecords }] }] });
@@ -26,11 +32,15 @@ function codeOf(run: () => unknown): string | null {
   }
 }
 const spanCode = (overrides: Record<string, unknown>) => codeOf(() => parseTraceRequest(traceRequest([span(overrides)])));
-const attrCode = (value: unknown) =>
-  codeOf(() => parseTraceRequest(traceRequest([span({ attributes: [{ key: "k", value }] })])));
+const attrCode = (value: unknown) => codeOf(() => parseTraceRequest(traceRequest([span({ attributes: [{ key: "k", value }] })])));
 
 describe("spike traces", () => {
-  it.each([["trace-a.json", 56], ["trace-b.json", 56], ["trace-c.json", 16], ["trace-d.json", 56]])("%s parses with %i spans", (name, count) => {
+  it.each([
+    ["trace-a.json", 56],
+    ["trace-b.json", 56],
+    ["trace-c.json", 16],
+    ["trace-d.json", 56],
+  ])("%s parses with %i spans", (name, count) => {
     const parsed = parseTraceRequest(load(name));
     expect(parsed.spans.length).toBe(count);
     expect(parsed.spans.every((s) => /^[0-9a-f]{32}$/.test(s.traceId) && /^[0-9a-f]{16}$/.test(s.spanId))).toBe(true);
@@ -47,11 +57,13 @@ describe("spike traces", () => {
 
 describe("spans", () => {
   it("normalizes ids, integers, defaults and no-parent forms", () => {
-    const parsed = parseTraceRequest(traceRequest([
-      span({ traceId: TRACE.toUpperCase(), parentSpanId: "0000000000000000", flags: "256", droppedEventsCount: 3 }),
-      span({ spanId: "00000000000000a2", parentSpanId: "" }),
-      span({ spanId: "00000000000000a3", parentSpanId: SPAN, startTimeUnixNano: 1699999999999 }),
-    ]));
+    const parsed = parseTraceRequest(
+      traceRequest([
+        span({ traceId: TRACE.toUpperCase(), parentSpanId: "0000000000000000", flags: "256", droppedEventsCount: 3 }),
+        span({ spanId: "00000000000000a2", parentSpanId: "" }),
+        span({ spanId: "00000000000000a3", parentSpanId: SPAN, startTimeUnixNano: 1699999999999 }),
+      ]),
+    );
     const [a, b, c] = parsed.spans;
     expect(a.traceId).toBe(TRACE);
     expect(a.parentSpanId).toBeNull();
@@ -65,27 +77,42 @@ describe("spans", () => {
   });
 
   it("treats a missing end time as null, and a zero end as zero", () => {
-    const parsed = parseTraceRequest(traceRequest([
-      span({ endTimeUnixNano: undefined }),
-      span({ spanId: "00000000000000a2", endTimeUnixNano: "0" }),
-    ]));
+    const parsed = parseTraceRequest(
+      traceRequest([span({ endTimeUnixNano: undefined }), span({ spanId: "00000000000000a2", endTimeUnixNano: "0" })]),
+    );
     expect(parsed.spans.map((s) => s.endNs)).toEqual([null, "0"]);
   });
 
   it("rejects bad ids", () => {
-    for (const bad of [{ traceId: "0".repeat(32) }, { spanId: "0".repeat(16) }, { traceId: "abc" }, { spanId: TRACE },
-      { traceId: undefined }, { spanId: "zzzzzzzzzzzzzzzz" }, { traceId: 5 }, { parentSpanId: "123" }]) {
+    for (const bad of [
+      { traceId: "0".repeat(32) },
+      { spanId: "0".repeat(16) },
+      { traceId: "abc" },
+      { spanId: TRACE },
+      { traceId: undefined },
+      { spanId: "zzzzzzzzzzzzzzzz" },
+      { traceId: 5 },
+      { parentSpanId: "123" },
+    ]) {
       expect(spanCode(bad), JSON.stringify(bad)).toBe("E_ID");
     }
   });
 
   it("rejects bad integers", () => {
     const bad: Array<Record<string, unknown>> = [
-      { startTimeUnixNano: "0" }, { startTimeUnixNano: 0 }, { startTimeUnixNano: undefined },
-      { startTimeUnixNano: "-5" }, { startTimeUnixNano: "18446744073709551616" },
-      { startTimeUnixNano: 9007199254740993 }, { startTimeUnixNano: 1.5 }, { startTimeUnixNano: "1e3" },
-      { startTimeUnixNano: "123456789012345678901" }, { startTimeUnixNano: true },
-      { endTimeUnixNano: "-1" }, { flags: "4294967296" }, { droppedAttributesCount: -1 },
+      { startTimeUnixNano: "0" },
+      { startTimeUnixNano: 0 },
+      { startTimeUnixNano: undefined },
+      { startTimeUnixNano: "-5" },
+      { startTimeUnixNano: "18446744073709551616" },
+      { startTimeUnixNano: 9007199254740993 },
+      { startTimeUnixNano: 1.5 },
+      { startTimeUnixNano: "1e3" },
+      { startTimeUnixNano: "123456789012345678901" },
+      { startTimeUnixNano: true },
+      { endTimeUnixNano: "-1" },
+      { flags: "4294967296" },
+      { droppedAttributesCount: -1 },
     ];
     for (const overrides of bad) expect(spanCode(overrides), JSON.stringify(overrides)).toBe("E_NUMBER");
   });
@@ -96,27 +123,51 @@ describe("spans", () => {
   });
 
   it("accepts enum names and integers, counts the names, and rejects unknown values", () => {
-    const parsed = parseTraceRequest(traceRequest([
-      span({ kind: "SPAN_KIND_CLIENT", status: { code: "STATUS_CODE_ERROR", message: "boom" } }),
-      span({ spanId: "00000000000000a2", kind: 5, status: { code: 1 } }),
-    ]));
-    expect(parsed.spans.map((s) => [s.kind, s.statusCode])).toEqual([[3, 2], [5, 1]]);
+    const parsed = parseTraceRequest(
+      traceRequest([
+        span({ kind: "SPAN_KIND_CLIENT", status: { code: "STATUS_CODE_ERROR", message: "boom" } }),
+        span({ spanId: "00000000000000a2", kind: 5, status: { code: 1 } }),
+      ]),
+    );
+    expect(parsed.spans.map((s) => [s.kind, s.statusCode])).toEqual([
+      [3, 2],
+      [5, 1],
+    ]);
     expect(parsed.stats.enumNamesAccepted).toBe(2);
     expect(parsed.spans[0].statusMessage).toBe("boom");
-    for (const bad of [{ kind: 6 }, { kind: "CLIENT" }, { kind: "__proto__" }, { kind: -1 }, { kind: 1.5 }, { kind: true },
-      { status: { code: 3 } }, { status: { code: "2" } }, { status: { code: "OK" } }]) {
+    for (const bad of [
+      { kind: 6 },
+      { kind: "CLIENT" },
+      { kind: "__proto__" },
+      { kind: -1 },
+      { kind: 1.5 },
+      { kind: true },
+      { status: { code: 3 } },
+      { status: { code: "2" } },
+      { status: { code: "OK" } },
+    ]) {
       expect(spanCode(bad), JSON.stringify(bad)).toBe("E_ENUM");
     }
   });
 
   it("keeps events, links, attribute order and duplicate attribute keys", () => {
-    const parsed = parseTraceRequest(traceRequest([span({
-      attributes: [{ key: "k", value: { stringValue: "1" } }, { key: "k", value: { stringValue: "2" } }],
-      events: [{ timeUnixNano: "150", name: "e", attributes: [{ key: "x", value: { boolValue: true } }] }],
-      links: [{ traceId: TRACE, spanId: SPAN, attributes: [] }],
-    })]));
+    const parsed = parseTraceRequest(
+      traceRequest([
+        span({
+          attributes: [
+            { key: "k", value: { stringValue: "1" } },
+            { key: "k", value: { stringValue: "2" } },
+          ],
+          events: [{ timeUnixNano: "150", name: "e", attributes: [{ key: "x", value: { boolValue: true } }] }],
+          links: [{ traceId: TRACE, spanId: SPAN, attributes: [] }],
+        }),
+      ]),
+    );
     const s = parsed.spans[0];
-    expect(s.attributes.map((a) => [a.ordinal, a.key])).toEqual([[0, "k"], [1, "k"]]);
+    expect(s.attributes.map((a) => [a.ordinal, a.key])).toEqual([
+      [0, "k"],
+      [1, "k"],
+    ]);
     expect(s.events[0]).toMatchObject({ ordinal: 0, timeNs: "150", name: "e" });
     expect(s.links.length).toBe(1);
   });
@@ -127,7 +178,26 @@ describe("spans", () => {
     expect(parsed.spans[0].unknownFields).toEqual({
       t: "k",
       v: [
-        ["weird", { t: "k", v: [["a", { t: "a", v: [{ t: "i", v: "1" }, { t: "d", v: 2.5 }, { t: "s", v: "x" }, { t: "o", v: true }] }]] }],
+        [
+          "weird",
+          {
+            t: "k",
+            v: [
+              [
+                "a",
+                {
+                  t: "a",
+                  v: [
+                    { t: "i", v: "1" },
+                    { t: "d", v: 2.5 },
+                    { t: "s", v: "x" },
+                    { t: "o", v: true },
+                  ],
+                },
+              ],
+            ],
+          },
+        ],
         ["other", { t: "s", v: "y" }],
       ],
     });
@@ -136,14 +206,21 @@ describe("spans", () => {
   it("fails closed on null or huge numbers inside an unknown property", () => {
     expect(spanCode({ weird: null })).toBe("E_ANYVALUE");
     expect(spanCode({ weird: [null] })).toBe("E_ANYVALUE");
-    const huge = parseStrictJson(new TextEncoder().encode(
-      `{"resourceSpans":[{"scopeSpans":[{"spans":[{"traceId":"${TRACE}","spanId":"${SPAN}","startTimeUnixNano":"1","weird":1e400}]}]}]}`), "parse");
+    const huge = parseStrictJson(
+      new TextEncoder().encode(
+        `{"resourceSpans":[{"scopeSpans":[{"spans":[{"traceId":"${TRACE}","spanId":"${SPAN}","startTimeUnixNano":"1","weird":1e400}]}]}]}`,
+      ),
+      "parse",
+    );
     expect(codeOf(() => parseTraceRequest(huge))).toBe("E_NUMBER");
     expect(spanCode({ weird: "x", __proto__x: 1 })).toBeNull();
   });
 
   it("counts unknown outer-wrapper properties and keeps resource and scope ones", () => {
-    const request = json({ resourceSpans: [{ extra: 1, resource: { x: 1 }, scopeSpans: [{ scope: { y: 1 }, spans: [span()] }] }], more: 2 });
+    const request = json({
+      resourceSpans: [{ extra: 1, resource: { x: 1 }, scopeSpans: [{ scope: { y: 1 }, spans: [span()] }] }],
+      more: 2,
+    });
     const parsed = parseTraceRequest(request);
     expect(parsed.stats.envelopeUnknownCount).toBe(2);
     expect(parsed.contexts[0].unknownCount).toBe(2);
@@ -163,40 +240,89 @@ describe("spans", () => {
 
 describe("AnyValue", () => {
   it("converts every arm", () => {
-    const parsed = parseTraceRequest(traceRequest([span({
-      attributes: [
-        { key: "s", value: { stringValue: "x" } },
-        { key: "b", value: { boolValue: false } },
-        { key: "i", value: { intValue: "-9223372036854775808" } },
-        { key: "i2", value: { intValue: 42 } },
-        { key: "d", value: { doubleValue: 1.5 } },
-        { key: "n", value: { doubleValue: "NaN" } },
-        { key: "y", value: { bytesValue: "aGk=" } },
-        { key: "a", value: { arrayValue: { values: [{ intValue: "1" }, { arrayValue: {} }] } } },
-        { key: "m", value: { kvlistValue: { values: [{ key: "dup", value: { stringValue: "1" } }, { key: "dup", value: { stringValue: "2" } }] } } },
-      ],
-    })]));
+    const parsed = parseTraceRequest(
+      traceRequest([
+        span({
+          attributes: [
+            { key: "s", value: { stringValue: "x" } },
+            { key: "b", value: { boolValue: false } },
+            { key: "i", value: { intValue: "-9223372036854775808" } },
+            { key: "i2", value: { intValue: 42 } },
+            { key: "d", value: { doubleValue: 1.5 } },
+            { key: "n", value: { doubleValue: "NaN" } },
+            { key: "y", value: { bytesValue: "aGk=" } },
+            { key: "a", value: { arrayValue: { values: [{ intValue: "1" }, { arrayValue: {} }] } } },
+            {
+              key: "m",
+              value: {
+                kvlistValue: {
+                  values: [
+                    { key: "dup", value: { stringValue: "1" } },
+                    { key: "dup", value: { stringValue: "2" } },
+                  ],
+                },
+              },
+            },
+          ],
+        }),
+      ]),
+    );
     expect(parsed.spans[0].attributes.map((a) => a.value)).toEqual([
-      { t: "s", v: "x" }, { t: "o", v: false }, { t: "i", v: "-9223372036854775808" }, { t: "i", v: "42" },
-      { t: "d", v: 1.5 }, { t: "d", v: "NaN" }, { t: "b", v: "aGk=" },
-      { t: "a", v: [{ t: "i", v: "1" }, { t: "a", v: [] }] },
-      { t: "k", v: [["dup", { t: "s", v: "1" }], ["dup", { t: "s", v: "2" }]] },
+      { t: "s", v: "x" },
+      { t: "o", v: false },
+      { t: "i", v: "-9223372036854775808" },
+      { t: "i", v: "42" },
+      { t: "d", v: 1.5 },
+      { t: "d", v: "NaN" },
+      { t: "b", v: "aGk=" },
+      {
+        t: "a",
+        v: [
+          { t: "i", v: "1" },
+          { t: "a", v: [] },
+        ],
+      },
+      {
+        t: "k",
+        v: [
+          ["dup", { t: "s", v: "1" }],
+          ["dup", { t: "s", v: "2" }],
+        ],
+      },
     ]);
   });
 
   it("rejects no arm, several arms, unknown arms and wrong arm types", () => {
-    for (const bad of [{}, { stringValue: "a", intValue: "1" }, { floatValue: 1 }, { stringValue: 5 }, { boolValue: "true" },
-      { bytesValue: "abc" }, { arrayValue: [] }, { arrayValue: { values: {} } }, { arrayValue: { values: [], x: 1 } },
-      { kvlistValue: { values: [{ key: "k" }] } }, { kvlistValue: { values: [{ value: { stringValue: "a" } }] } },
-      { kvlistValue: { values: [{ key: "k", value: { stringValue: "a" }, extra: 1 }] } }, "str", null, 5]) {
+    for (const bad of [
+      {},
+      { stringValue: "a", intValue: "1" },
+      { floatValue: 1 },
+      { stringValue: 5 },
+      { boolValue: "true" },
+      { bytesValue: "abc" },
+      { arrayValue: [] },
+      { arrayValue: { values: {} } },
+      { arrayValue: { values: [], x: 1 } },
+      { kvlistValue: { values: [{ key: "k" }] } },
+      { kvlistValue: { values: [{ value: { stringValue: "a" } }] } },
+      { kvlistValue: { values: [{ key: "k", value: { stringValue: "a" }, extra: 1 }] } },
+      "str",
+      null,
+      5,
+    ]) {
       expect(attrCode(bad), JSON.stringify(bad)).toBe("E_ANYVALUE");
     }
     expect(codeOf(() => parseTraceRequest(traceRequest([span({ attributes: [{ key: "k" }] })])))).toBe("E_ANYVALUE");
   });
 
   it("rejects bad numbers in values", () => {
-    for (const bad of [{ intValue: "9223372036854775808" }, { intValue: 1.5 }, { intValue: "x" }, { doubleValue: "inf" },
-      { doubleValue: true }]) {
+    for (const bad of [
+      { intValue: "9223372036854775808" },
+      { intValue: 1.5 },
+      { intValue: "x" },
+      { doubleValue: "inf" },
+      { doubleValue: true },
+    ]) {
       expect(attrCode(bad), JSON.stringify(bad)).toBe("E_NUMBER");
     }
   });
@@ -213,9 +339,13 @@ describe("AnyValue", () => {
   });
 
   it("stores __proto__ keys as plain data", () => {
-    const parsed = parseTraceRequest(traceRequest([span({
-      attributes: [{ key: "__proto__", value: { kvlistValue: { values: [{ key: "__proto__", value: { stringValue: "x" } }] } } }],
-    })]));
+    const parsed = parseTraceRequest(
+      traceRequest([
+        span({
+          attributes: [{ key: "__proto__", value: { kvlistValue: { values: [{ key: "__proto__", value: { stringValue: "x" } }] } } }],
+        }),
+      ]),
+    );
     expect(parsed.spans[0].attributes[0].key).toBe("__proto__");
     expect(({} as Record<string, unknown>).x).toBeUndefined();
   });
@@ -223,10 +353,20 @@ describe("AnyValue", () => {
 
 describe("log records", () => {
   it("reads fields, body and optional ids", () => {
-    const parsed = parseLogsRequest(logRequest([
-      { timeUnixNano: "5", severityNumber: 9, severityText: "INFO", body: { stringValue: "hi" }, traceId: TRACE.toUpperCase(), spanId: SPAN, eventName: "gen_ai.choice" },
-      { body: { kvlistValue: { values: [] } } },
-    ]));
+    const parsed = parseLogsRequest(
+      logRequest([
+        {
+          timeUnixNano: "5",
+          severityNumber: 9,
+          severityText: "INFO",
+          body: { stringValue: "hi" },
+          traceId: TRACE.toUpperCase(),
+          spanId: SPAN,
+          eventName: "gen_ai.choice",
+        },
+        { body: { kvlistValue: { values: [] } } },
+      ]),
+    );
     expect(parsed.logs[0]).toMatchObject({ traceId: TRACE, spanId: SPAN, timeNs: "5", severityNumber: 9, eventName: "gen_ai.choice" });
     expect(parsed.logs[1]).toMatchObject({ traceId: null, spanId: null, timeNs: "0", observedTimeNs: "0" });
   });

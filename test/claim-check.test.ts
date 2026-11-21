@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  CLAIM_LIMITS, checkClaims, parseClaimFile, parseClaimText, searchableLeaves, decodeClaimBytes, type Claim,
+  CLAIM_LIMITS,
+  checkClaims,
+  parseClaimFile,
+  parseClaimText,
+  searchableLeaves,
+  decodeClaimBytes,
+  type Claim,
 } from "../src/claim-check.js";
 import type { RunEvent } from "../src/run-events.js";
 import { importTraceBytes } from "../src/run-import.js";
@@ -15,10 +21,25 @@ const enc = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
 type Attr = { key: string; value: Record<string, unknown> };
 const s = (key: string, value: string): Attr => ({ key, value: { stringValue: value } });
 
-type Step = { start: number; end: number; tool?: string; args?: string; result?: string; output?: string; input?: string; error?: boolean; extra?: Attr[]; resultValue?: Record<string, unknown> };
+type Step = {
+  start: number;
+  end: number;
+  tool?: string;
+  args?: string;
+  result?: string;
+  output?: string;
+  input?: string;
+  error?: boolean;
+  extra?: Attr[];
+  resultValue?: Record<string, unknown>;
+};
 function spansOf(steps: Step[]) {
   return steps.map((st, i) => ({
-    traceId: T, spanId: id(i), name: `s${i}`, startTimeUnixNano: ns(st.start), endTimeUnixNano: ns(st.end),
+    traceId: T,
+    spanId: id(i),
+    name: `s${i}`,
+    startTimeUnixNano: ns(st.start),
+    endTimeUnixNano: ns(st.end),
     ...(st.error ? { status: { code: 2, message: "boom" } } : {}),
     attributes: [
       s("gen_ai.operation.name", st.tool ? "execute_tool" : "chat"),
@@ -40,10 +61,17 @@ function runOf(steps: Step[], mode: "FULL" | "HASH_ONLY" = "FULL", logs?: unknow
   });
 }
 const claim = (over: Partial<Claim> = {}): Claim => ({
-  id: "c1", text: "a claim", tool: "lookup", stepId: null, field: "result", mustContain: ["59"], caseSensitive: true, atEvent: null, ...over,
+  id: "c1",
+  text: "a claim",
+  tool: "lookup",
+  stepId: null,
+  field: "result",
+  mustContain: ["59"],
+  caseSensitive: true,
+  atEvent: null,
+  ...over,
 });
 const seqOf = (events: RunEvent[], type: string, nth = 0) => events.filter((e) => e.type === type)[nth].sequenceNumber;
-
 
 // The cost model (see CLAIM_LIMITS): a value costs its length plus a fixed amount for each text still being looked
 // for, every recorded item costs a fixed amount, and case-insensitive search also pays for the value twice more
@@ -53,28 +81,32 @@ const G = CLAIM_LIMITS.lowerCaseGrowthBound;
 const oneValueCost = (length: number, needles: number, mode: "exact" | "ascii-insensitive" | "unicode-insensitive") => {
   if (mode === "exact") return (length + F) * needles + F;
   const searched = (mode === "ascii-insensitive" ? length : length * G) + F;
-  return (length + F) + searched + searched * needles + F;
+  return length + F + searched + searched * needles + F;
 };
 
 // Two tool calls and a model call, hand-checkable.
-const base = (mode: "FULL" | "HASH_ONLY" = "FULL") => runOf([
-  { start: 0, end: 1, tool: "lookup", args: "{\"order\":1042}", result: "{\"total\":59.0,\"delivered\":false}" },
-  { start: 1, end: 2, tool: "policy", result: "Undelivered orders are refundable in full." },
-  { start: 2, end: 3, output: "Your refund of 59.00 is on its way." },
-], mode);
+const base = (mode: "FULL" | "HASH_ONLY" = "FULL") =>
+  runOf(
+    [
+      { start: 0, end: 1, tool: "lookup", args: '{"order":1042}', result: '{"total":59.0,"delivered":false}' },
+      { start: 1, end: 2, tool: "policy", result: "Undelivered orders are refundable in full." },
+      { start: 2, end: 3, output: "Your refund of 59.00 is on its way." },
+    ],
+    mode,
+  );
 
 describe("claim check: verdicts", () => {
   const events = base();
 
   it("supports a claim when every listed text is in the recorded result, and names the event", () => {
-    const r = checkClaims(events, [claim({ mustContain: ["\"delivered\":false", "\"total\""] })]).results[0];
+    const r = checkClaims(events, [claim({ mustContain: ['"delivered":false', '"total"'] })]).results[0];
     expect(r).toMatchObject({ verdict: "SUPPORTED", reason: "FOUND", stepsChecked: 1, stepFailed: false });
     const content = events.find((e) => e.type === "ContentRecorded" && e.payload.field === "gen_ai.tool.call.result");
     expect(r.evidenceEvent).toBe(content?.sequenceNumber);
   });
 
   it("is not supported when one of several texts is missing, and says which", () => {
-    const r = checkClaims(events, [claim({ mustContain: ["\"total\"", "refunded", "shipped"] })]).results[0];
+    const r = checkClaims(events, [claim({ mustContain: ['"total"', "refunded", "shipped"] })]).results[0];
     expect(r).toMatchObject({ verdict: "NOT_SUPPORTED", reason: "NOT_FOUND", missing: ["refunded", "shipped"] });
   });
 
@@ -90,17 +122,38 @@ describe("claim check: verdicts", () => {
     const r = checkClaims(events, [claim({ tool: null, stepId, field: "output", mustContain: ["59.00"] })]).results[0];
     expect(r.verdict).toBe("SUPPORTED");
     // The model step recorded no input: the trace lacks it, which is "cannot check", not "not supported".
-    expect(checkClaims(events, [claim({ tool: null, stepId, field: "input", mustContain: ["x"] })]).results[0]).toMatchObject({ verdict: "CANNOT_CHECK", reason: "NO_CONTENT" });
+    expect(checkClaims(events, [claim({ tool: null, stepId, field: "input", mustContain: ["x"] })]).results[0]).toMatchObject({
+      verdict: "CANNOT_CHECK",
+      reason: "NO_CONTENT",
+    });
   });
 
   it("is case sensitive by default and can be told not to be", () => {
     expect(checkClaims(events, [claim({ tool: "policy", mustContain: ["undelivered"] })]).results[0].verdict).toBe("NOT_SUPPORTED");
-    expect(checkClaims(events, [claim({ tool: "policy", mustContain: ["undelivered"], caseSensitive: false })]).results[0].verdict).toBe("SUPPORTED");
-    expect(checkClaims(events, [claim({ tool: "policy", mustContain: ["UNDELIVERED ORDERS"], caseSensitive: false })]).results[0].verdict).toBe("SUPPORTED");
+    expect(checkClaims(events, [claim({ tool: "policy", mustContain: ["undelivered"], caseSensitive: false })]).results[0].verdict).toBe(
+      "SUPPORTED",
+    );
+    expect(
+      checkClaims(events, [claim({ tool: "policy", mustContain: ["UNDELIVERED ORDERS"], caseSensitive: false })]).results[0].verdict,
+    ).toBe("SUPPORTED");
   });
 
   it("does not search field names, only values", () => {
-    const structured = runOf([{ start: 0, end: 1, tool: "lookup", resultValue: { kvlistValue: { values: [{ key: "secretName", value: { stringValue: "visible" } }, { key: "n", value: { intValue: "7" } }] } } }]);
+    const structured = runOf([
+      {
+        start: 0,
+        end: 1,
+        tool: "lookup",
+        resultValue: {
+          kvlistValue: {
+            values: [
+              { key: "secretName", value: { stringValue: "visible" } },
+              { key: "n", value: { intValue: "7" } },
+            ],
+          },
+        },
+      },
+    ]);
     expect(checkClaims(structured, [claim({ mustContain: ["visible"] })]).results[0].verdict).toBe("SUPPORTED");
     expect(checkClaims(structured, [claim({ mustContain: ["7"] })]).results[0].verdict).toBe("SUPPORTED");
     expect(checkClaims(structured, [claim({ mustContain: ["secretName"] })]).results[0].verdict).toBe("NOT_SUPPORTED");
@@ -108,7 +161,10 @@ describe("claim check: verdicts", () => {
 
   it("reports a tool or step id that does not exist, and lists the tools that do", () => {
     const check = checkClaims(events, [claim({ tool: "lookupp" }), claim({ id: "c2", tool: null, stepId: "f".repeat(16) })]);
-    expect(check.results.map((r) => [r.verdict, r.reason])).toEqual([["NOT_SUPPORTED", "NO_MATCHING_STEP"], ["NOT_SUPPORTED", "NO_MATCHING_STEP"]]);
+    expect(check.results.map((r) => [r.verdict, r.reason])).toEqual([
+      ["NOT_SUPPORTED", "NO_MATCHING_STEP"],
+      ["NOT_SUPPORTED", "NO_MATCHING_STEP"],
+    ]);
     expect(check.knownTools).toEqual(["lookup", "policy"]);
   });
 
@@ -125,12 +181,21 @@ describe("claim check: verdicts", () => {
 
   it("flags support that comes from a failed step", () => {
     const run = runOf([{ start: 0, end: 1, tool: "pay", result: "timeout while sending 59", error: true }]);
-    expect(checkClaims(run, [claim({ tool: "pay", mustContain: ["59"] })]).results[0]).toMatchObject({ verdict: "SUPPORTED", stepFailed: true });
+    expect(checkClaims(run, [claim({ tool: "pay", mustContain: ["59"] })]).results[0]).toMatchObject({
+      verdict: "SUPPORTED",
+      stepFailed: true,
+    });
   });
 
   it("lets different listed texts be found in different recorded items of the same step", () => {
     const events2 = runOf([{ start: 0, end: 1, tool: "t", result: "first part" }], "FULL", [
-      { traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", "second part")] },
+      {
+        traceId: T,
+        spanId: id(0),
+        timeUnixNano: ns(0.5),
+        observedTimeUnixNano: ns(0.5),
+        attributes: [s("gen_ai.tool.call.result", "second part")],
+      },
     ]);
     expect(checkClaims(events2, [claim({ tool: "t", mustContain: ["first part", "second part"] })]).results[0].verdict).toBe("SUPPORTED");
   });
@@ -139,7 +204,9 @@ describe("claim check: verdicts", () => {
 describe("claim check: never matches characters the recording does not contain", () => {
   const list = (...values: string[]) => ({ arrayValue: { values: values.map((stringValue) => ({ stringValue })) } });
   const twoValues = runOf([{ start: 0, end: 1, tool: "t", resultValue: list("first part", "second part") }]);
-  const logFor = (text: string) => [{ traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", text)] }];
+  const logFor = (text: string) => [
+    { traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", text)] },
+  ];
   const verdictOf = (events: RunEvent[], must: string[]) => checkClaims(events, [claim({ tool: "t", mustContain: must })]).results[0];
 
   it("does not let a separator between two values satisfy a text", () => {
@@ -165,10 +232,17 @@ describe("claim check: never matches characters the recording does not contain",
 
 describe("claim check: the evidence event is where the last needed text first appeared", () => {
   const events = runOf([{ start: 0, end: 1, tool: "t", result: "first part" }], "FULL", [
-    { traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", "second part")] },
+    {
+      traceId: T,
+      spanId: id(0),
+      timeUnixNano: ns(0.5),
+      observedTimeUnixNano: ns(0.5),
+      attributes: [s("gen_ai.tool.call.result", "second part")],
+    },
   ]);
   const contentEvents = events.filter((e) => e.type === "ContentRecorded").map((e) => e.sequenceNumber);
-  const at = (must: string[], extra: Partial<Claim> = {}) => checkClaims(events, [claim({ tool: "t", mustContain: must, ...extra })]).results[0];
+  const at = (must: string[], extra: Partial<Claim> = {}) =>
+    checkClaims(events, [claim({ tool: "t", mustContain: must, ...extra })]).results[0];
 
   it("names the event that holds the text, not an earlier event of the same step", () => {
     expect(contentEvents).toHaveLength(2);
@@ -180,7 +254,13 @@ describe("claim check: the evidence event is where the last needed text first ap
 
   it("credits a text found in two items to the first one", () => {
     const twice = runOf([{ start: 0, end: 1, tool: "t", result: "same" }], "FULL", [
-      { traceId: T, spanId: id(0), timeUnixNano: ns(0.5), observedTimeUnixNano: ns(0.5), attributes: [s("gen_ai.tool.call.result", "same again")] },
+      {
+        traceId: T,
+        spanId: id(0),
+        timeUnixNano: ns(0.5),
+        observedTimeUnixNano: ns(0.5),
+        attributes: [s("gen_ai.tool.call.result", "same again")],
+      },
     ]);
     const first = twice.find((e) => e.type === "ContentRecorded")?.sequenceNumber;
     expect(checkClaims(twice, [claim({ tool: "t", mustContain: ["same"] })]).results[0].evidenceEvent).toBe(first);
@@ -201,29 +281,44 @@ describe("claim check: mixed late, absent and readable candidates", () => {
   const contentOf = (events: RunEvent[], nth: number) => events.filter((e) => e.type === "ContentRecorded")[nth].sequenceNumber;
 
   it("a readable early step that lacks the text, plus a step whose content is only late: not found", () => {
-    const run = runOf([{ start: 0, end: 1, tool: "pay", result: "declined" }, { start: 1, end: 2, tool: "pay", result: "accepted" }]);
+    const run = runOf([
+      { start: 0, end: 1, tool: "pay", result: "declined" },
+      { start: 1, end: 2, tool: "pay", result: "accepted" },
+    ]);
     expect(verdict(run, { mustContain: ["accepted"], atEvent: contentOf(run, 0) })).toEqual(["NOT_SUPPORTED", "NOT_FOUND", id(0)]);
     // The same claim made after both steps is supported by the second.
     expect(verdict(run, { mustContain: ["accepted"], atEvent: contentOf(run, 1) })).toEqual(["SUPPORTED", "FOUND", id(1)]);
   });
 
   it("every matching step late: too late", () => {
-    const run = runOf([{ start: 0, end: 1, tool: "pay", result: "a" }, { start: 1, end: 2, tool: "pay", result: "b" }]);
+    const run = runOf([
+      { start: 0, end: 1, tool: "pay", result: "a" },
+      { start: 1, end: 2, tool: "pay", result: "b" },
+    ]);
     expect(verdict(run, { mustContain: ["a"], atEvent: 1 })).toEqual(["NOT_SUPPORTED", "TOO_LATE", id(0)]);
   });
 
   it("a step with no recorded content next to a late step cannot be checked", () => {
-    const run = runOf([{ start: 0, end: 1, tool: "pay" }, { start: 1, end: 2, tool: "pay", result: "accepted" }]);
+    const run = runOf([
+      { start: 0, end: 1, tool: "pay" },
+      { start: 1, end: 2, tool: "pay", result: "accepted" },
+    ]);
     expect(verdict(run, { mustContain: ["accepted"], atEvent: 1 })).toEqual(["CANNOT_CHECK", "NO_CONTENT", id(0)]);
   });
 
   it("a late step does not stop an early readable step from supporting the claim", () => {
-    const run = runOf([{ start: 0, end: 1, tool: "pay", result: "accepted" }, { start: 1, end: 2, tool: "pay", result: "declined" }]);
+    const run = runOf([
+      { start: 0, end: 1, tool: "pay", result: "accepted" },
+      { start: 1, end: 2, tool: "pay", result: "declined" },
+    ]);
     expect(verdict(run, { mustContain: ["accepted"], atEvent: contentOf(run, 0) })).toEqual(["SUPPORTED", "FOUND", id(0)]);
   });
 
   it("an exhausted work limit makes every later claim cannot-check, even for small steps", () => {
-    const run = runOf([{ start: 0, end: 1, tool: "big", result: "x".repeat(2_000_000) }, { start: 1, end: 2, tool: "small", result: "ok" }]);
+    const run = runOf([
+      { start: 0, end: 1, tool: "big", result: "x".repeat(2_000_000) },
+      { start: 1, end: 2, tool: "small", result: "ok" },
+    ]);
     const many = Array.from({ length: 101 }, (_, i) => claim({ id: `c${i}`, tool: "big", mustContain: ["aa", "bb", "cc", "dd", "ee"] }));
     const results = checkClaims(run, [...many, claim({ id: "after", tool: "small", mustContain: ["ok"] })]).results;
     expect(results[100]).toMatchObject({ verdict: "CANNOT_CHECK", reason: "TOO_MUCH_WORK" });
@@ -232,7 +327,9 @@ describe("claim check: mixed late, absent and readable candidates", () => {
 
   it("charges case-insensitive claims before lower-casing a large value", () => {
     const run = runOf([{ start: 0, end: 1, tool: "big", result: "X".repeat(2_000_000) }]);
-    const many = Array.from({ length: 200 }, (_, i) => claim({ id: `c${i}`, tool: "big", mustContain: ["a", "b", "c", "d", "e"], caseSensitive: false }));
+    const many = Array.from({ length: 200 }, (_, i) =>
+      claim({ id: `c${i}`, tool: "big", mustContain: ["a", "b", "c", "d", "e"], caseSensitive: false }),
+    );
     const results = checkClaims(run, many).results;
     const fit = Math.floor(CLAIM_LIMITS.maxScannedCharacters / oneValueCost(2_000_000, 5, "ascii-insensitive"));
     expect(fit).toBe(71);
@@ -246,13 +343,19 @@ describe("claim check: evidence that cannot be read is never a guess", () => {
     const hashed = base("HASH_ONLY");
     const check = checkClaims(hashed, [claim(), claim({ id: "c2", mustContain: ["something that is certainly not there"] })]);
     expect(check.contentMode).toBe("HASH_ONLY");
-    expect(check.results.map((r) => [r.verdict, r.reason])).toEqual([["CANNOT_CHECK", "CONTENT_WITHHELD"], ["CANNOT_CHECK", "CONTENT_WITHHELD"]]);
+    expect(check.results.map((r) => [r.verdict, r.reason])).toEqual([
+      ["CANNOT_CHECK", "CONTENT_WITHHELD"],
+      ["CANNOT_CHECK", "CONTENT_WITHHELD"],
+    ]);
     expect(check.counts).toEqual({ supported: 0, notSupported: 0, cannotCheck: 2 });
   });
 
   it("still finds tools by name in a withheld run, and still reports a missing tool as not supported", () => {
     const hashed = base("HASH_ONLY");
-    expect(checkClaims(hashed, [claim({ tool: "nothing" })]).results[0]).toMatchObject({ verdict: "NOT_SUPPORTED", reason: "NO_MATCHING_STEP" });
+    expect(checkClaims(hashed, [claim({ tool: "nothing" })]).results[0]).toMatchObject({
+      verdict: "NOT_SUPPORTED",
+      reason: "NO_MATCHING_STEP",
+    });
     expect(checkClaims(hashed, [claim({ tool: "lookup" })]).results[0].stepsChecked).toBe(1);
   });
 
@@ -261,7 +364,10 @@ describe("claim check: evidence that cannot be read is never a guess", () => {
       { start: 0, end: 1, tool: "pay", result: "declined" },
       { start: 1, end: 2, tool: "pay" }, // no content recorded for this call
     ]);
-    expect(checkClaims(run, [claim({ tool: "pay", mustContain: ["accepted"] })]).results[0]).toMatchObject({ verdict: "CANNOT_CHECK", reason: "NO_CONTENT" });
+    expect(checkClaims(run, [claim({ tool: "pay", mustContain: ["accepted"] })]).results[0]).toMatchObject({
+      verdict: "CANNOT_CHECK",
+      reason: "NO_CONTENT",
+    });
     // ...but a readable step that does support it still wins.
     expect(checkClaims(run, [claim({ tool: "pay", mustContain: ["declined"] })]).results[0].verdict).toBe("SUPPORTED");
   });
@@ -269,7 +375,8 @@ describe("claim check: evidence that cannot be read is never a guess", () => {
 
 describe("claim check: evidence must come before the claim (atEvent)", () => {
   const events = base();
-  const lookupContent = events.find((e) => e.type === "ContentRecorded" && e.payload.field === "gen_ai.tool.call.result")?.sequenceNumber as number;
+  const lookupContent = events.find((e) => e.type === "ContentRecorded" && e.payload.field === "gen_ai.tool.call.result")
+    ?.sequenceNumber as number;
 
   it("counts content recorded at or before the event, and rejects content recorded after it", () => {
     expect(checkClaims(events, [claim({ atEvent: lookupContent })]).results[0].verdict).toBe("SUPPORTED");
@@ -287,7 +394,9 @@ describe("claim check: evidence must come before the claim (atEvent)", () => {
 describe("claim check: work limit", () => {
   it("turns remaining claims into CANNOT_CHECK instead of freezing", () => {
     const run = runOf([{ start: 0, end: 1, tool: "big", result: "x".repeat(2_000_000) }]);
-    const many = Array.from({ length: 100 }, (_, i) => claim({ id: `c${i}`, tool: "big", mustContain: ["a", "b", "c", "d", "e"].map((c) => `${c}${c}`) }));
+    const many = Array.from({ length: 100 }, (_, i) =>
+      claim({ id: `c${i}`, tool: "big", mustContain: ["a", "b", "c", "d", "e"].map((c) => `${c}${c}`) }),
+    );
     const results = checkClaims(run, many).results;
     const fit = Math.floor(CLAIM_LIMITS.maxScannedCharacters / oneValueCost(2_000_000, 5, "exact"));
     expect(fit).toBe(99);
@@ -299,7 +408,11 @@ describe("claim check: work limit", () => {
 
   it("is not free to process empty values: many empty values still use up the allowance", () => {
     const empties = { arrayValue: { values: Array.from({ length: 100_000 }, () => ({ stringValue: "" })) } };
-    const run = runOf([{ start: 0, end: 1, tool: "t", resultValue: empties }, { start: 1, end: 2, tool: "t", resultValue: empties }, { start: 2, end: 3, tool: "t", resultValue: empties }]);
+    const run = runOf([
+      { start: 0, end: 1, tool: "t", resultValue: empties },
+      { start: 1, end: 2, tool: "t", resultValue: empties },
+      { start: 2, end: 3, tool: "t", resultValue: empties },
+    ]);
     const many = Array.from({ length: 100 }, (_, i) => claim({ id: `c${i}`, tool: "t", mustContain: ["a", "b", "c", "d", "e"] }));
     const results = checkClaims(run, many).results;
     // Three steps, each one item with 100,000 empty values; every value costs the fixed amount per text still wanted.
@@ -312,7 +425,13 @@ describe("claim check: work limit", () => {
 
   it("is not free to walk a long list of recorded items either", () => {
     // 30,000 log records, each recording one empty result for the same step: 30,000 items of one value each.
-    const logs = Array.from({ length: 30_000 }, (_, i) => ({ traceId: T, spanId: id(0), timeUnixNano: ns(0.5) + "", observedTimeUnixNano: String(BASE + BigInt(i + 1)), attributes: [s("gen_ai.tool.call.result", "")] }));
+    const logs = Array.from({ length: 30_000 }, (_, i) => ({
+      traceId: T,
+      spanId: id(0),
+      timeUnixNano: ns(0.5) + "",
+      observedTimeUnixNano: String(BASE + BigInt(i + 1)),
+      attributes: [s("gen_ai.tool.call.result", "")],
+    }));
     const run = runOf([{ start: 0, end: 1, tool: "t" }], "FULL", logs);
     const items = run.filter((e) => e.type === "ContentRecorded").length;
     expect(items).toBe(30_000);
@@ -330,7 +449,9 @@ describe("claim check: work limit", () => {
     const n = 3_000_000;
     expect(dotted.toLowerCase().length).toBe(2);
     const run = runOf([{ start: 0, end: 1, tool: "t", result: dotted.repeat(n) }]);
-    const many = Array.from({ length: 100 }, (_, i) => claim({ id: `c${i}`, tool: "t", mustContain: ["a", "b", "c", "d", "e"], caseSensitive: false }));
+    const many = Array.from({ length: 100 }, (_, i) =>
+      claim({ id: `c${i}`, tool: "t", mustContain: ["a", "b", "c", "d", "e"], caseSensitive: false }),
+    );
     const results = checkClaims(run, many).results;
     const done = results.filter((r) => r.reason === "NOT_FOUND").length;
     expect(done).toBe(Math.floor(CLAIM_LIMITS.maxScannedCharacters / oneValueCost(n, 5, "unicode-insensitive")));
@@ -363,7 +484,26 @@ describe("claim check: work limit", () => {
 
 describe("searchableLeaves", () => {
   it("lists text, number and boolean leaves in order, each on its own, and skips field names and bytes", () => {
-    expect(searchableLeaves({ t: "k", v: [["name", { t: "s", v: "a" }], ["list", { t: "a", v: [{ t: "i", v: "5" }, { t: "o", v: true }, { t: "b", v: "AAAA" }, { t: "d", v: 1.5 }] }]] })).toEqual(["a", "5", "true", "1.5"]);
+    expect(
+      searchableLeaves({
+        t: "k",
+        v: [
+          ["name", { t: "s", v: "a" }],
+          [
+            "list",
+            {
+              t: "a",
+              v: [
+                { t: "i", v: "5" },
+                { t: "o", v: true },
+                { t: "b", v: "AAAA" },
+                { t: "d", v: 1.5 },
+              ],
+            },
+          ],
+        ],
+      }),
+    ).toEqual(["a", "5", "true", "1.5"]);
   });
   it("does not recurse over deep structure", () => {
     let value: { t: "a"; v: unknown[] } = { t: "a", v: [{ t: "s", v: "deep" }] };
@@ -377,9 +517,21 @@ describe("claims file", () => {
   const one = { id: "refund-amount", text: "Refunded 59", tool: "lookup", mustContain: ["59"] };
 
   it("reads a valid file and fills in the defaults", () => {
-    const parsed = file([one, { id: "c2", text: "t", stepId: "a".repeat(16), field: "output", mustContain: ["x", "y"], caseSensitive: false, atEvent: 12 }]);
+    const parsed = file([
+      one,
+      { id: "c2", text: "t", stepId: "a".repeat(16), field: "output", mustContain: ["x", "y"], caseSensitive: false, atEvent: 12 },
+    ]);
     expect(parsed.errors).toEqual([]);
-    expect(parsed.claims[0]).toEqual({ id: "refund-amount", text: "Refunded 59", tool: "lookup", stepId: null, field: "result", mustContain: ["59"], caseSensitive: true, atEvent: null });
+    expect(parsed.claims[0]).toEqual({
+      id: "refund-amount",
+      text: "Refunded 59",
+      tool: "lookup",
+      stepId: null,
+      field: "result",
+      mustContain: ["59"],
+      caseSensitive: true,
+      atEvent: null,
+    });
     expect(parsed.claims[1]).toMatchObject({ tool: null, stepId: "a".repeat(16), field: "output", caseSensitive: false, atEvent: 12 });
   });
 
@@ -421,7 +573,9 @@ describe("claims file", () => {
     expect(file([one, one]).errors.join(" ")).toContain('the id "refund-amount" is used twice');
     expect(parseClaimText(JSON.stringify({ claims: [one], extra: 1 })).errors.join(" ")).toContain("unknown top-level field");
     expect(file([]).errors).toEqual(["The claims file lists no claims."]);
-    expect(file(Array.from({ length: CLAIM_LIMITS.maxClaims + 1 }, (_, i) => ({ ...one, id: `c${i}` }))).errors.join(" ")).toContain("the limit is 100");
+    expect(file(Array.from({ length: CLAIM_LIMITS.maxClaims + 1 }, (_, i) => ({ ...one, id: `c${i}` }))).errors.join(" ")).toContain(
+      "the limit is 100",
+    );
     expect(parseClaimText("[]").errors.join(" ")).toContain("must be a JSON object");
     expect(parseClaimText("{}").errors.join(" ")).toContain('needs a "claims" list');
   });
@@ -490,7 +644,11 @@ describe("claims file", () => {
     for (const [name, input] of variants) {
       const cli = parseClaimFile(input);
       let screen: ReturnType<typeof parseClaimFile>;
-      try { screen = parseClaimText(decodeClaimBytes(input)); } catch { screen = { claims: [], errors: ["refused as not valid UTF-8"] }; }
+      try {
+        screen = parseClaimText(decodeClaimBytes(input));
+      } catch {
+        screen = { claims: [], errors: ["refused as not valid UTF-8"] };
+      }
       // Both accept (and then agree on the claims) or both refuse.
       expect(cli.errors.length > 0, name).toBe(screen.errors.length > 0);
       if (cli.errors.length === 0) expect(screen.claims, name).toEqual(cli.claims);

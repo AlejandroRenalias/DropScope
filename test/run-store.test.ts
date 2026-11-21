@@ -12,20 +12,39 @@ import { parseRunLog, publishRun, readRunLog, serializeRunLog } from "../src/run
 const T1 = "11111111111111111111111111111111";
 const id = (n: number) => n.toString(16).padStart(16, "0");
 const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
-const span = (n: number) => ({ traceId: T1, spanId: id(n), name: `s${n}`, startTimeUnixNano: String(100 + n), endTimeUnixNano: String(200 + n),
-  attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }, { key: "gen_ai.usage.input_tokens", value: { intValue: "3" } }] });
-const traceFile = (n = 2) => bytes({ resourceSpans: [{ scopeSpans: [{ scope: { name: "s" }, spans: Array.from({ length: n }, (_, i) => span(i + 1)) }] }] });
+const span = (n: number) => ({
+  traceId: T1,
+  spanId: id(n),
+  name: `s${n}`,
+  startTimeUnixNano: String(100 + n),
+  endTimeUnixNano: String(200 + n),
+  attributes: [
+    { key: "gen_ai.operation.name", value: { stringValue: "chat" } },
+    { key: "gen_ai.usage.input_tokens", value: { intValue: "3" } },
+  ],
+});
+const traceFile = (n = 2) =>
+  bytes({ resourceSpans: [{ scopeSpans: [{ scope: { name: "s" }, spans: Array.from({ length: n }, (_, i) => span(i + 1)) }] }] });
 const history = (mode: "HASH_ONLY" | "FULL" = "HASH_ONLY", n = 2) => importTraceBytes({ spans: traceFile(n), contentMode: mode });
 
 const fake: PlatformChecks = { name: "fake", fileAttributes: () => 0, prepareRunsDirectory: () => {} };
 let root: string;
 let counter = 0;
-beforeAll(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-store-")); });
-afterAll(() => { fs.rmSync(root, { recursive: true, force: true }); });
-afterEach(() => { vi.restoreAllMocks(); });
+beforeAll(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-store-"));
+});
+afterAll(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 const freshDir = () => path.join(root, `runs-${(counter += 1)}`);
 const codeOf = (fn: () => unknown): string | null => {
-  try { fn(); return null; } catch (error) {
+  try {
+    fn();
+    return null;
+  } catch (error) {
     if (error instanceof ImportError) return `${error.code}:${(error.reason ?? "").split(" ")[0]}`;
     throw error;
   }
@@ -58,7 +77,10 @@ describe("serialization and reading", () => {
       ["blank line", enc(`${lines[0]}\n\n${lines.slice(1).join("\n")}\n`)],
       ["invalid UTF-8", new Uint8Array([...enc(good.slice(0, -1)), 0xff, 0x0a])],
       ["pretty-printed line", enc(`${JSON.stringify(JSON.parse(lines[0]), null, 1).replace(/\n/g, " ")}\n${lines.slice(1).join("\n")}\n`)],
-      ["reordered keys", enc(`${JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(lines[0])).reverse()))}\n${lines.slice(1).join("\n")}\n`)],
+      [
+        "reordered keys",
+        enc(`${JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(lines[0])).reverse()))}\n${lines.slice(1).join("\n")}\n`),
+      ],
       ["duplicate key", enc(`${lines[0].slice(0, -1)},"runId":"${T1}"}\n${lines.slice(1).join("\n")}\n`)],
       ["junk line", enc(`${good}not json\n`)],
       ["truncated", enc(`${lines.slice(0, 3).join("\n")}\n`)],
@@ -116,7 +138,11 @@ describe("publishRun", () => {
     // Same identity but different bytes (a valid file for the same header with one extra note is not possible,
     // so tamper with a withheld hash and re-canonicalize).
     fs.writeFileSync(first.path, original);
-    const lines = original.toString().slice(0, -1).split("\n").map((l) => JSON.parse(l));
+    const lines = original
+      .toString()
+      .slice(0, -1)
+      .split("\n")
+      .map((l) => JSON.parse(l));
     const content = lines.find((l) => l.type === "StepStarted");
     content.payload.name = { w: { n: 1, h: "b".repeat(64) } };
     fs.writeFileSync(first.path, lines.map((l) => `${canonicalJson(l)}\n`).join(""));
@@ -133,14 +159,18 @@ describe("publishRun", () => {
 
   it("leaves no partial final file when the final step fails, and cleans its temporary file", () => {
     const dir = freshDir();
-    vi.spyOn(fs, "linkSync").mockImplementation(() => { throw Object.assign(new Error("no links"), { code: "EPERM" }); });
+    vi.spyOn(fs, "linkSync").mockImplementation(() => {
+      throw Object.assign(new Error("no links"), { code: "EPERM" });
+    });
     expect(codeOf(() => publishRun(history(), { runsDirectory: dir, checks: fake }))).toBe("E_PLATFORM:HARD_LINK_UNSUPPORTED");
     expect(files(dir)).toEqual([]);
   });
 
   it("leaves no partial final file when writing fails midway", () => {
     const dir = freshDir();
-    vi.spyOn(fs, "fsyncSync").mockImplementation(() => { throw new Error("disk error"); });
+    vi.spyOn(fs, "fsyncSync").mockImplementation(() => {
+      throw new Error("disk error");
+    });
     expect(() => publishRun(history(), { runsDirectory: dir, checks: fake })).toThrow();
     expect(files(dir)).toEqual([]);
   });
@@ -186,7 +216,11 @@ describe("publishRun", () => {
   it("rejects reading a published run that was tampered with afterwards", () => {
     const dir = freshDir();
     const { path: file } = publishRun(history(), { runsDirectory: dir, checks: fake });
-    const lines = fs.readFileSync(file, "utf8").slice(0, -1).split("\n").map((l) => JSON.parse(l));
+    const lines = fs
+      .readFileSync(file, "utf8")
+      .slice(0, -1)
+      .split("\n")
+      .map((l) => JSON.parse(l));
     const started = lines.find((l) => l.type === "StepStarted");
     started.payload.name = { v: { t: "s", v: "leaked prompt" } };
     fs.writeFileSync(file, lines.map((l) => `${canonicalJson(l)}\n`).join(""));

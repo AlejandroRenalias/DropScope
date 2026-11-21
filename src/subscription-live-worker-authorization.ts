@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
-const confirmationTargetSchema = z.object({
-  missionId: z.string().min(1),
-  attemptId: z.string().min(1),
-}).strict();
+const confirmationTargetSchema = z
+  .object({
+    missionId: z.string().min(1),
+    attemptId: z.string().min(1),
+  })
+  .strict();
 
 export type SubscriptionLiveWorkerConfirmationTarget = z.infer<typeof confirmationTargetSchema>;
 

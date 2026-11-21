@@ -1,0 +1,75 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.json",
+      "**/*.jsonc",
+      "!**/test/fixtures",
+      "!**/*-snapshots",
+      "!dist",
+      "!dist-cli",
+      "!test-results",
+      "!src/frontend/assets",
+      "!package-lock.json"
+    ]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 140, "lineEnding": "lf" },
+  "javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always", "trailingCommas": "all" } },
+  // The style sheets are dense by design (one rule per line); they are neither formatted nor linted.
+  "css": { "formatter": { "enabled": false }, "linter": { "enabled": false } },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "style": {
+        // Used after a check that the value exists; removing them would change code, not fix a defect.
+        "noNonNullAssertion": "off",
+        // Taste, not correctness. The existing code mixes both forms.
+        "useTemplate": "off"
+      },
+      "complexity": {
+        // `a && a.b` and `a?.b` differ for falsy values that are not null; do not rewrite without a test for each site.
+        "useOptionalChain": "off",
+        "useMathMinMax": "off"
+      },
+      "suspicious": {
+        // Escaping and testing control characters is the purpose of these patterns (terminal output, claim text).
+        "noControlCharactersInRegex": "off",
+        // The lists keyed by index are fixed and never reordered.
+        "noArrayIndexKey": "off",
+        // A callback that returns a value in forEach, or an expression such as `fail()` that never returns, is deliberate.
+        "useIterableCallbackReturn": "off"
+      },
+      "a11y": {
+        // These ask for different markup (semantic elements instead of ARIA roles, a type on every button). The markup
+        // is covered by the browser tests, so changing it is a separate, reviewed accessibility pass, not a lint fix.
+        "useSemanticElements": "off",
+        "useButtonType": "off",
+        "useFocusableInteractive": "off",
+        "useValidAnchor": "off",
+        "useAriaPropsSupportedByRole": "off",
+        "noStaticElementInteractions": "off"
+      },
+      "correctness": {
+        // `return fail(...)` where `fail` never returns is a pattern of the readers and the reducer.
+        "noVoidTypeReturn": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      // Tests build deliberately odd values: loose types, assignment inside an expression, unused parameters, huge numbers.
+      "includes": ["test/**", "e2e/**"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noExplicitAny": "off", "noAssignInExpressions": "off" },
+          "correctness": { "noUnusedFunctionParameters": "off", "noPrecisionLoss": "off" }
+        }
+      }
+    }
+  ]
+}

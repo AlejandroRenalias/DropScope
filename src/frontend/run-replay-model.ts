@@ -101,7 +101,10 @@ function verbatimAttribute(attributes: Array<{ key: Field; value: Field }>, key:
 
 /** A name from a trace, made safe to show on one line: no control characters, at most 80 characters. */
 function tidy(text: string): string {
-  const flat = text.replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim();
+  const flat = text
+    .replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   return flat.length > 80 ? `${flat.slice(0, 80)}…` : flat;
 }
 
@@ -123,21 +126,30 @@ const NOTE_TEXT: Record<string, (d: Record<string, unknown>, mode?: "HASH_ONLY" 
   PARENT_CYCLE_BROKEN: () => "Parent links formed a loop; one link was cut to keep a tree.",
   CHILD_OUTSIDE_PARENT_INTERVAL: () => "This step runs outside its parent's time window (clocks may differ between machines).",
   NEGATIVE_DURATION_CLAMPED: () => "This step's end time was before its start; its end was set to its start.",
-  UNFINISHED_SPAN_CLOSED: () => "This step has no end time. It is shown as ending when the run's last recorded activity ended; that is a guess, not an observation.",
+  UNFINISHED_SPAN_CLOSED: () =>
+    "This step has no end time. It is shown as ending when the run's last recorded activity ended; that is a guess, not an observation.",
   ORPHAN_LOG_RECORD: (d) => `Log record ${d.logOrdinal} could not be matched to any step.`,
   UNKNOWN_FIELD: (d) => `${d.count} field(s) the importer does not know were kept as they were.`,
   UNRECOGNIZED_OPERATION: () => "This step names an operation the importer does not recognise, so it is shown as a plain step.",
   CONTENT_ABSENT: () => "No prompt, answer or tool data was recorded for this step.",
-  USAGE_NOT_SUMMED: (d) => `${d.count} token count(s) on a ${d.scope === "log" ? "log record" : "non-model step"} were not added to the totals.`,
-  UNUSABLE_USAGE: (d) => `${d.count} token count(s) were unusable (negative, fractional, wrong type or contradicting) and were not counted.`,
+  USAGE_NOT_SUMMED: (d) =>
+    `${d.count} token count(s) on a ${d.scope === "log" ? "log record" : "non-model step"} were not added to the totals.`,
+  UNUSABLE_USAGE: (d) =>
+    `${d.count} token count(s) were unusable (negative, fractional, wrong type or contradicting) and were not counted.`,
   ENUM_NAME_ACCEPTED: (d) => `${d.count} value(s) in the ${d.role} file were written as names and accepted.`,
   SCHEMA_URL_ABSENT: () => "The trace does not say which convention version it follows.",
   SCHEMA_URL_MISMATCH: () => "The trace follows a different convention version than the importer expects.",
   WITHHELD_ATTRIBUTE: (d) => `${d.count} attribute(s) were withheld (${formatBytes(Number(d.bytes))} in all); only fingerprints were kept.`,
-  SECRET_PATTERN_COUNT: (d, mode) => `Secret-like text was found in content (${Object.entries(d).map(([k, v]) => `${k}: ${v}`).join(", ")}). ${
-    mode === "HASH_ONLY" ? "The text itself was not kept."
-      : mode === "FULL" ? "This run stores content, so the text itself was kept in the run file."
-        : "Whether the text itself was kept depends on the run's content mode."}`,
+  SECRET_PATTERN_COUNT: (d, mode) =>
+    `Secret-like text was found in content (${Object.entries(d)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(", ")}). ${
+      mode === "HASH_ONLY"
+        ? "The text itself was not kept."
+        : mode === "FULL"
+          ? "This run stores content, so the text itself was kept in the run file."
+          : "Whether the text itself was kept depends on the run's content mode."
+    }`,
 };
 
 /** The plain-language sentence for an importer note. */
@@ -153,11 +165,18 @@ function humanize(code: string): string {
 /** Events whose position in the timeline belongs to one step. */
 export function eventStepId(event: RunEvent): string | null {
   switch (event.type) {
-    case "StepStarted": case "StepEnded": case "UsageRecorded": return event.payload.stepId;
-    case "ContentRecorded": return event.payload.stepId;
-    case "LogRecorded": return event.payload.stepId;
-    case "ImportNote": return event.payload.stepId;
-    default: return null;
+    case "StepStarted":
+    case "StepEnded":
+    case "UsageRecorded":
+      return event.payload.stepId;
+    case "ContentRecorded":
+      return event.payload.stepId;
+    case "LogRecorded":
+      return event.payload.stepId;
+    case "ImportNote":
+      return event.payload.stepId;
+    default:
+      return null;
   }
 }
 
@@ -180,9 +199,19 @@ export function buildRunModel(history: unknown): RunModel {
       const p = event.payload;
       started.set(p.stepId, p);
       byId.set(p.stepId, {
-        stepId: p.stepId, parentStepId: p.parentStepId, depth: 0, kind: p.kind, title: stepTitle(p.kind, p.label, p.attributes),
-        startSequence: event.sequenceNumber, endSequence: events.length, failed: false, startNs: p.startNs, endEffectiveNs: p.startNs,
-        inputTokens: null, outputTokens: null, usageSequence: null,
+        stepId: p.stepId,
+        parentStepId: p.parentStepId,
+        depth: 0,
+        kind: p.kind,
+        title: stepTitle(p.kind, p.label, p.attributes),
+        startSequence: event.sequenceNumber,
+        endSequence: events.length,
+        failed: false,
+        startNs: p.startNs,
+        endEffectiveNs: p.startNs,
+        inputTokens: null,
+        outputTokens: null,
+        usageSequence: null,
       });
     } else if (event.type === "StepEnded") {
       const step = byId.get(event.payload.stepId) as StepView;
@@ -230,7 +259,13 @@ export function buildRunModel(history: unknown): RunModel {
     if (event.type !== "ImportNote") continue;
     const detail = event.payload.detail as Record<string, unknown>;
     const text = describeNote(event.payload.code, detail, header.payload.contentMode);
-    notes.push({ sequence: event.sequenceNumber, code: event.payload.code, title: humanize(event.payload.code), text, stepId: event.payload.stepId });
+    notes.push({
+      sequence: event.sequenceNumber,
+      code: event.payload.code,
+      title: humanize(event.payload.code),
+      text,
+      stepId: event.payload.stepId,
+    });
   }
 
   let first = 0n;
@@ -242,9 +277,14 @@ export function buildRunModel(history: unknown): RunModel {
   }
 
   return {
-    replay, events, runId: header.runId, contentMode: header.payload.contentMode,
+    replay,
+    events,
+    runId: header.runId,
+    contentMode: header.payload.contentMode,
     importer: `${header.payload.importer.id} ${header.payload.importer.version}`,
-    steps: ordered, stepsById: byId, notes,
+    steps: ordered,
+    stepsById: byId,
+    notes,
     durationLabel: all.length ? formatDuration(first.toString(), last.toString()) : "no steps",
   };
 }
@@ -290,11 +330,16 @@ export function visibleSteps(model: RunModel, position: number): { steps: StepVi
 export function describeStateChange(previous: RunState | null, next: RunState): string[] {
   if (previous === null) return [];
   const lines: string[] = [];
-  if (previous.openStepIds.length !== next.openStepIds.length) lines.push(`Steps running: ${previous.openStepIds.length} → ${next.openStepIds.length}`);
-  if (previous.closedStepIds.length !== next.closedStepIds.length) lines.push(`Steps finished: ${previous.closedStepIds.length} → ${next.closedStepIds.length}`);
-  if (previous.errorStepIds.length !== next.errorStepIds.length) lines.push(`Failed steps: ${previous.errorStepIds.length} → ${next.errorStepIds.length}`);
-  if (previous.inputTokens !== next.inputTokens) lines.push(`Input tokens: ${formatNumber(previous.inputTokens)} → ${formatNumber(next.inputTokens)}`);
-  if (previous.outputTokens !== next.outputTokens) lines.push(`Output tokens: ${formatNumber(previous.outputTokens)} → ${formatNumber(next.outputTokens)}`);
+  if (previous.openStepIds.length !== next.openStepIds.length)
+    lines.push(`Steps running: ${previous.openStepIds.length} → ${next.openStepIds.length}`);
+  if (previous.closedStepIds.length !== next.closedStepIds.length)
+    lines.push(`Steps finished: ${previous.closedStepIds.length} → ${next.closedStepIds.length}`);
+  if (previous.errorStepIds.length !== next.errorStepIds.length)
+    lines.push(`Failed steps: ${previous.errorStepIds.length} → ${next.errorStepIds.length}`);
+  if (previous.inputTokens !== next.inputTokens)
+    lines.push(`Input tokens: ${formatNumber(previous.inputTokens)} → ${formatNumber(next.inputTokens)}`);
+  if (previous.outputTokens !== next.outputTokens)
+    lines.push(`Output tokens: ${formatNumber(previous.outputTokens)} → ${formatNumber(next.outputTokens)}`);
   const content = (state: RunState): number => Object.values(state.content).reduce((a, b) => a + b, 0);
   if (content(previous) !== content(next)) lines.push(`Content items recorded: ${content(previous)} → ${content(next)}`);
   if (previous.logCount !== next.logCount) lines.push(`Log records: ${previous.logCount} → ${next.logCount}`);
@@ -308,17 +353,24 @@ export function loadRunFromBytes(bytes: Uint8Array): RunModel {
 }
 
 export function describeRunEvent(event: RunEvent, model: RunModel): EventDescription {
-  const stepName = (id: string | null): string => (id === null ? "no step" : model.stepsById.get(id)?.title ?? "an unknown step");
+  const stepName = (id: string | null): string => (id === null ? "no step" : (model.stepsById.get(id)?.title ?? "an unknown step"));
   switch (event.type) {
     case "RunStarted":
       return {
-        category: "run", stepId: null, title: "Run imported",
+        category: "run",
+        stepId: null,
+        title: "Run imported",
         summary: `Trace ${event.payload.traceId.slice(0, 8)}…, steps shown in a derived order. Content is ${event.payload.contentMode === "HASH_ONLY" ? "withheld (fingerprints only)" : "stored as written"}.`,
       };
     case "StepStarted": {
       const step = model.stepsById.get(event.payload.stepId);
       const parent = event.payload.parentStepId === null ? "a top-level step" : `inside ${stepName(event.payload.parentStepId)}`;
-      return { category: "step", stepId: event.payload.stepId, title: `${kindLabel(event.payload.kind)} started`, summary: `${step?.title ?? "Step"} began, ${parent}.` };
+      return {
+        category: "step",
+        stepId: event.payload.stepId,
+        title: `${kindLabel(event.payload.kind)} started`,
+        summary: `${step?.title ?? "Step"} began, ${parent}.`,
+      };
     }
     case "StepEnded": {
       const step = model.stepsById.get(event.payload.stepId);
@@ -326,7 +378,9 @@ export function describeRunEvent(event: RunEvent, model: RunModel): EventDescrip
       const took = step ? ` after ${formatDuration(step.startNs, step.endEffectiveNs)}` : "";
       const unfinished = event.payload.endNs === null || event.payload.endNs === "0";
       return {
-        category: "step", stepId: event.payload.stepId, title: failed ? "Step failed" : "Step finished",
+        category: "step",
+        stepId: event.payload.stepId,
+        title: failed ? "Step failed" : "Step finished",
         summary: `${stepName(event.payload.stepId)} ${failed ? "ended with an error" : "finished"}${took}${unfinished ? " (no end time was recorded; this end is estimated)" : ""}. Status message: ${describeField(event.payload.statusMessage, 200).text || "none"}.`,
       };
     }
@@ -334,7 +388,9 @@ export function describeRunEvent(event: RunEvent, model: RunModel): EventDescrip
       const i = event.payload.inputTokens;
       const o = event.payload.outputTokens;
       return {
-        category: "tokens", stepId: event.payload.stepId, title: "Tokens recorded",
+        category: "tokens",
+        stepId: event.payload.stepId,
+        title: "Tokens recorded",
         summary: `${stepName(event.payload.stepId)} used ${i === null ? "an unreported number of" : formatNumber(i)} input and ${o === null ? "an unreported number of" : formatNumber(o)} output tokens.`,
       };
     }
@@ -342,18 +398,30 @@ export function describeRunEvent(event: RunEvent, model: RunModel): EventDescrip
       const value = describeField(event.payload.value, 600);
       const label = CONTENT_LABEL[event.payload.field] ?? "Content";
       const where = event.payload.stepId !== null ? stepName(event.payload.stepId) : `log record ${event.payload.logOrdinal}`;
-      return { category: "content", stepId: event.payload.stepId, title: `${label} recorded`, summary: `${label} for ${where}: ${value.text}.` };
+      return {
+        category: "content",
+        stepId: event.payload.stepId,
+        title: `${label} recorded`,
+        summary: `${label} for ${where}: ${value.text}.`,
+      };
     }
     case "LogRecorded": {
       const p = event.payload;
       return {
-        category: "log", stepId: p.stepId, title: "Log record",
+        category: "log",
+        stepId: p.stepId,
+        title: "Log record",
         summary: `Log record ${p.logOrdinal}, severity ${p.severityNumber === 0 ? "not set" : p.severityNumber}, ${p.stepId === null ? "not attached to any step" : `attached to ${stepName(p.stepId)}`}.`,
       };
     }
     case "ImportNote": {
       const note = model.notes.find((n) => n.sequence === event.sequenceNumber);
-      return { category: "note", stepId: event.payload.stepId, title: `Importer note: ${note?.title ?? humanize(event.payload.code)}`, summary: note?.text ?? "" };
+      return {
+        category: "note",
+        stepId: event.payload.stepId,
+        title: `Importer note: ${note?.title ?? humanize(event.payload.code)}`,
+        summary: note?.text ?? "",
+      };
     }
     case "RunEnded":
       return { category: "run", stepId: null, title: "Run ends", summary: `${event.payload.eventCount} events recorded in all.` };
@@ -363,12 +431,19 @@ export function describeRunEvent(event: RunEvent, model: RunModel): EventDescrip
 /** Cheap category of an event (the timeline colours and the filters use it for every event of a run). */
 export function categoryOf(event: RunEvent): RunEventCategory | "run" {
   switch (event.type) {
-    case "StepStarted": case "StepEnded": return "step";
-    case "UsageRecorded": return "tokens";
-    case "ContentRecorded": return "content";
-    case "LogRecorded": return "log";
-    case "ImportNote": return "note";
-    default: return "run";
+    case "StepStarted":
+    case "StepEnded":
+      return "step";
+    case "UsageRecorded":
+      return "tokens";
+    case "ContentRecorded":
+      return "content";
+    case "LogRecorded":
+      return "log";
+    case "ImportNote":
+      return "note";
+    default:
+      return "run";
   }
 }
 

@@ -34,14 +34,29 @@ export type BudgetPolicy = {
 };
 
 export const emptyPolicy = (): BudgetPolicy => ({
-  maxTotalTokens: null, maxInputTokens: null, maxOutputTokens: null, maxModelCalls: null, maxToolCalls: null,
-  maxSteps: null, maxDurationNs: null, cost: null,
+  maxTotalTokens: null,
+  maxInputTokens: null,
+  maxOutputTokens: null,
+  maxModelCalls: null,
+  maxToolCalls: null,
+  maxSteps: null,
+  maxDurationNs: null,
+  cost: null,
 });
 
 // ---- parsing what a person typed ----
 export type BudgetPolicyInput = {
-  maxTotalTokens?: string; maxInputTokens?: string; maxOutputTokens?: string; maxModelCalls?: string; maxToolCalls?: string;
-  maxSteps?: string; maxSeconds?: string; maxCost?: string; inputPrice?: string; outputPrice?: string; currency?: string;
+  maxTotalTokens?: string;
+  maxInputTokens?: string;
+  maxOutputTokens?: string;
+  maxModelCalls?: string;
+  maxToolCalls?: string;
+  maxSteps?: string;
+  maxSeconds?: string;
+  maxCost?: string;
+  inputPrice?: string;
+  outputPrice?: string;
+  currency?: string;
 };
 
 const blank = (text: string | undefined): boolean => text === undefined || text.trim() === "";
@@ -86,7 +101,8 @@ export function parseBudgetPolicy(input: BudgetPolicyInput): { policy: BudgetPol
   const currency = blank(input.currency) ? "USD" : (input.currency as string).trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) errors.push("Currency must be a three-letter code such as USD.");
   if (maxCost !== null) {
-    if (inputPrice === null || outputPrice === null) errors.push("A cost limit needs both an input price and an output price (per million tokens).");
+    if (inputPrice === null || outputPrice === null)
+      errors.push("A cost limit needs both an input price and an output price (per million tokens).");
     else policy.cost = { maxMicro: maxCost, inputPriceMicro: inputPrice, outputPriceMicro: outputPrice, currency };
   } else if (inputPrice !== null || outputPrice !== null) {
     errors.push("Prices only matter together with a cost limit.");
@@ -109,9 +125,15 @@ export type Totals = {
 };
 
 type Series = {
-  usageSeq: number[]; usageIn: bigint[]; usageOut: bigint[];
-  startSeq: number[]; startSteps: number[]; startModel: number[]; startTool: number[];
-  timeSeq: number[]; timeNs: bigint[];
+  usageSeq: number[];
+  usageIn: bigint[];
+  usageOut: bigint[];
+  startSeq: number[];
+  startSteps: number[];
+  startModel: number[];
+  startTool: number[];
+  timeSeq: number[];
+  timeNs: bigint[];
 };
 
 /** Index of the last entry whose sequence is at most `position`, or -1. */
@@ -121,7 +143,10 @@ function lastAtOrBefore(sequences: number[], position: number): number {
   let found = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
-    if (sequences[mid] <= position) { found = mid; lo = mid + 1; } else hi = mid - 1;
+    if (sequences[mid] <= position) {
+      found = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
   }
   return found;
 }
@@ -184,7 +209,17 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
     return t < 0n ? 0n : t;
   };
 
-  const series: Series = { usageSeq: [], usageIn: [], usageOut: [], startSeq: [], startSteps: [], startModel: [], startTool: [], timeSeq: [], timeNs: [] };
+  const series: Series = {
+    usageSeq: [],
+    usageIn: [],
+    usageOut: [],
+    startSeq: [],
+    startSteps: [],
+    startModel: [],
+    startTool: [],
+    timeSeq: [],
+    timeNs: [],
+  };
   const steps = new Map<string, StepRecord>();
   const usageByStep = new Map<string, { input: bigint; output: bigint; sequence: number }>();
   let input = 0n;
@@ -210,13 +245,18 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
       if (p.kind === "LLM_CALL") modelCount += 1;
       if (p.kind === "TOOL_CALL") toolCount += 1;
       steps.set(p.stepId, { stepId: p.stepId, kind: p.kind, startSequence: sequence, endSequence: Number.MAX_SAFE_INTEGER });
-      series.startSeq.push(sequence); series.startSteps.push(stepCount); series.startModel.push(modelCount); series.startTool.push(toolCount);
-      series.timeSeq.push(sequence); series.timeNs.push(reached(elapsed(p.startNs)));
+      series.startSeq.push(sequence);
+      series.startSteps.push(stepCount);
+      series.startModel.push(modelCount);
+      series.startTool.push(toolCount);
+      series.timeSeq.push(sequence);
+      series.timeNs.push(reached(elapsed(p.startNs)));
     } else if (event.type === "StepEnded") {
       const step = steps.get(event.payload.stepId);
       if (step) step.endSequence = sequence;
       if (event.payload.endNs === null || BigInt(event.payload.endNs) !== BigInt(event.payload.endEffectiveNs)) estimatedEnds += 1;
-      series.timeSeq.push(sequence); series.timeNs.push(reached(elapsed(event.payload.endEffectiveNs)));
+      series.timeSeq.push(sequence);
+      series.timeNs.push(reached(elapsed(event.payload.endEffectiveNs)));
     } else if (event.type === "UsageRecorded") {
       const i = event.payload.inputTokens === null ? 0n : BigInt(event.payload.inputTokens);
       const o = event.payload.outputTokens === null ? 0n : BigInt(event.payload.outputTokens);
@@ -224,7 +264,9 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
       input += i;
       output += o;
       usageByStep.set(event.payload.stepId, { input: i, output: o, sequence });
-      series.usageSeq.push(sequence); series.usageIn.push(input); series.usageOut.push(output);
+      series.usageSeq.push(sequence);
+      series.usageIn.push(input);
+      series.usageOut.push(output);
     }
   }
 
@@ -238,8 +280,12 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
     const inTok = u < 0 ? 0n : series.usageIn[u];
     const outTok = u < 0 ? 0n : series.usageOut[u];
     return {
-      inputTokens: inTok, outputTokens: outTok, totalTokens: inTok + outTok,
-      modelCalls: s < 0 ? 0 : series.startModel[s], toolCalls: s < 0 ? 0 : series.startTool[s], steps: s < 0 ? 0 : series.startSteps[s],
+      inputTokens: inTok,
+      outputTokens: outTok,
+      totalTokens: inTok + outTok,
+      modelCalls: s < 0 ? 0 : series.startModel[s],
+      toolCalls: s < 0 ? 0 : series.startTool[s],
+      steps: s < 0 ? 0 : series.startSteps[s],
       elapsedNs: t < 0 ? 0n : series.timeNs[t],
     };
   };
@@ -252,7 +298,14 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
     for (let k = 0; k < series.usageSeq.length; k += 1) {
       const used = value(series.usageIn[k], series.usageOut[k]);
       if (used > max) {
-        breaches.push({ limit, breachEvent: series.usageSeq[k], stopBefore: series.usageSeq[k] + 1, basis: "AFTER_THE_FACT", usedAtBreach: used, limitValue: max });
+        breaches.push({
+          limit,
+          breachEvent: series.usageSeq[k],
+          stopBefore: series.usageSeq[k] + 1,
+          basis: "AFTER_THE_FACT",
+          usedAtBreach: used,
+          limitValue: max,
+        });
         return;
       }
     }
@@ -266,7 +319,14 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
     for (let k = 0; k < series.usageSeq.length; k += 1) {
       const used = series.usageIn[k] * inputPriceMicro + series.usageOut[k] * outputPriceMicro;
       if (used > maxPico) {
-        breaches.push({ limit: "cost", breachEvent: series.usageSeq[k], stopBefore: series.usageSeq[k] + 1, basis: "AFTER_THE_FACT", usedAtBreach: used, limitValue: maxPico });
+        breaches.push({
+          limit: "cost",
+          breachEvent: series.usageSeq[k],
+          stopBefore: series.usageSeq[k] + 1,
+          basis: "AFTER_THE_FACT",
+          usedAtBreach: used,
+          limitValue: maxPico,
+        });
         break;
       }
     }
@@ -275,7 +335,14 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
     if (max === null) return;
     for (let k = 0; k < series.startSeq.length; k += 1) {
       if (BigInt(counts[k]) > max) {
-        breaches.push({ limit, breachEvent: series.startSeq[k], stopBefore: series.startSeq[k], basis: "BEFORE_START", usedAtBreach: BigInt(counts[k]), limitValue: max });
+        breaches.push({
+          limit,
+          breachEvent: series.startSeq[k],
+          stopBefore: series.startSeq[k],
+          basis: "BEFORE_START",
+          usedAtBreach: BigInt(counts[k]),
+          limitValue: max,
+        });
         return;
       }
     }
@@ -286,7 +353,14 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
   if (policy.maxDurationNs !== null) {
     for (let k = 0; k < series.timeSeq.length; k += 1) {
       if (series.timeNs[k] > policy.maxDurationNs) {
-        breaches.push({ limit: "duration", breachEvent: series.timeSeq[k], stopBefore: series.timeSeq[k], basis: "TIME", usedAtBreach: series.timeNs[k], limitValue: policy.maxDurationNs });
+        breaches.push({
+          limit: "duration",
+          breachEvent: series.timeSeq[k],
+          stopBefore: series.timeSeq[k],
+          basis: "TIME",
+          usedAtBreach: series.timeNs[k],
+          limitValue: policy.maxDurationNs,
+        });
         break;
       }
     }
@@ -306,19 +380,32 @@ export function replayBudget(events: readonly RunEvent[], policy: BudgetPolicy):
       let o = 0n;
       for (const s of list) {
         const u = usageByStep.get(s.stepId);
-        if (u) { i += u.input; o += u.output; }
+        if (u) {
+          i += u.input;
+          o += u.output;
+        }
       }
       return { input: i, output: o };
     };
     remainder = {
-      notStarted, inFlight, tokensNotStarted: sum(notStarted), tokensInFlight: sum(inFlight),
+      notStarted,
+      inFlight,
+      tokensNotStarted: sum(notStarted),
+      tokensInFlight: sum(inFlight),
       modelCallsNotStarted: notStarted.filter((s) => s.kind === "LLM_CALL").length,
       toolCallsNotStarted: notStarted.filter((s) => s.kind === "TOOL_CALL").length,
     };
   }
 
   return {
-    policy, breaches, first, alsoAtSameStop, remainder, steps: stepList, recorded, totalsAt,
+    policy,
+    breaches,
+    first,
+    alsoAtSameStop,
+    remainder,
+    steps: stepList,
+    recorded,
+    totalsAt,
     costPicoAt: (position) => costPico(policy, totalsAt(position)),
     usageGaps: { modelCallsWithoutUsage, partialUsage },
     estimatedEnds,

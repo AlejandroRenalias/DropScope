@@ -1,7 +1,8 @@
 import { structuredWorkerResultSchema, workerRequestSchema, type WorkerRequest } from "./worker-adapter.js";
 
 /** The complete, fixed evidence supplied to the one-worker live pilot. */
-export const liveWorkerPilotEvidence = "The supplied local pilot concerns a workspace research task. It has no public sources, external data, or additional files. Record one concise finding that this fixed pilot evidence is sufficient only for the local test mission.";
+export const liveWorkerPilotEvidence =
+  "The supplied local pilot concerns a workspace research task. It has no public sources, external data, or additional files. Record one concise finding that this fixed pilot evidence is sufficient only for the local test mission.";
 
 /**
  * The reviewable fixed request plan for a first subscription-backed worker.

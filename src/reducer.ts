@@ -1,4 +1,19 @@
-import type { AuthorizationReason, GoogleTrendsCaptureFailure, GoogleTrendsComparisonEvidence, GoogleTrendsEvidence, MissionEvent, MissionMode, ProviderUsageStatus, SubscriptionRuntimeDeclaration, SubscriptionRuntimePreflight, SubscriptionWorkerExecutionOutcome, TerminalMissionStatus, TerminalGapStatus, WorkClass, WorkerExecutionMode } from "./contracts.js";
+import type {
+  AuthorizationReason,
+  GoogleTrendsCaptureFailure,
+  GoogleTrendsComparisonEvidence,
+  GoogleTrendsEvidence,
+  MissionEvent,
+  MissionMode,
+  ProviderUsageStatus,
+  SubscriptionRuntimeDeclaration,
+  SubscriptionRuntimePreflight,
+  SubscriptionWorkerExecutionOutcome,
+  TerminalMissionStatus,
+  TerminalGapStatus,
+  WorkClass,
+  WorkerExecutionMode,
+} from "./contracts.js";
 import type { TribunalResult } from "./tribunal-policy.js";
 import type { EvidenceAuditFinding } from "./evidence-audit.js";
 import type { BlindReviewResult, DivergenceRecord } from "./research-domain.js";
@@ -39,7 +54,12 @@ interface AuthorizationRecord {
   dependencies: string[];
 }
 type GapStatus = "OPEN" | "RESOLVED" | "REOPENED" | TerminalGapStatus;
-interface GapRecord { researchKey: string; affectedDecisionType: string; status: GapStatus; reason: string; }
+interface GapRecord {
+  researchKey: string;
+  affectedDecisionType: string;
+  status: GapStatus;
+  reason: string;
+}
 
 export interface MissionState {
   missionId: string | null;
@@ -66,7 +86,14 @@ export interface MissionState {
   rejections: { attemptedEventType: string; reason: string }[];
   staleCompletionAttemptIds: string[];
   recoveryRestartCount: number;
-  revision: { revisionId: string; reviewId: string; affectedClaimIds: string[]; blockingDefectCodes: string[]; reaudit?: unknown; rereview?: BlindReviewResult } | null;
+  revision: {
+    revisionId: string;
+    reviewId: string;
+    affectedClaimIds: string[];
+    blockingDefectCodes: string[];
+    reaudit?: unknown;
+    rereview?: BlindReviewResult;
+  } | null;
 }
 
 export const initialMissionState = (): MissionState => ({
@@ -86,7 +113,9 @@ export const initialMissionState = (): MissionState => ({
   gaps: {},
   policyVersions: null,
   tribunalResults: {},
-  auditResults: {}, blindReviewResults: {}, divergenceRecords: {},
+  auditResults: {},
+  blindReviewResults: {},
+  divergenceRecords: {},
   rejections: [],
   staleCompletionAttemptIds: [],
   recoveryRestartCount: 0,
@@ -124,11 +153,14 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         budget: { total: event.payload.totalBudget, reserved: 0, committed: 0, spent: 0, available: event.payload.totalBudget },
       };
     case "MissionModeDeclared":
-      if (state.status !== "RUNNING" || state.missionMode !== null || state.lastSequenceNumber !== 1) throw new Error("Mission mode must be declared exactly once immediately after mission creation.");
+      if (state.status !== "RUNNING" || state.missionMode !== null || state.lastSequenceNumber !== 1)
+        throw new Error("Mission mode must be declared exactly once immediately after mission creation.");
       return { ...state, missionMode: event.payload.mode };
     case "TribunalCompleted":
-      if (state.status !== "RUNNING" || state.policyVersions === null) throw new Error("A running mission is required to record tribunal output.");
-      if (event.payload.decidedByPolicyVersion !== state.policyVersions.tribunal) throw new Error("Tribunal result policy version does not match the mission.");
+      if (state.status !== "RUNNING" || state.policyVersions === null)
+        throw new Error("A running mission is required to record tribunal output.");
+      if (event.payload.decidedByPolicyVersion !== state.policyVersions.tribunal)
+        throw new Error("Tribunal result policy version does not match the mission.");
       if (Object.hasOwn(state.tribunalResults, event.payload.tribunalId)) throw new Error("Tribunal result is already recorded.");
       return { ...state, tribunalResults: { ...state.tribunalResults, [event.payload.tribunalId]: event.payload } };
     case "SubscriptionRuntimeDeclared":
@@ -151,50 +183,125 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (Object.hasOwn(state.subscriptionWorkerExecutionOutcomes, event.payload.attemptId)) {
         throw new Error("Subscription worker outcome was already recorded for this attempt.");
       }
-      return { ...state, subscriptionWorkerExecutionOutcomes: { ...state.subscriptionWorkerExecutionOutcomes, [event.payload.attemptId]: event.payload } };
+      return {
+        ...state,
+        subscriptionWorkerExecutionOutcomes: { ...state.subscriptionWorkerExecutionOutcomes, [event.payload.attemptId]: event.payload },
+      };
     }
     case "GoogleTrendsEvidenceCaptured": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-now" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
-      if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
+      if (
+        state.status !== "RUNNING" ||
+        !attempt ||
+        !task ||
+        attempt.status !== "RUNNING" ||
+        task.status !== "RUNNING" ||
+        attempt.taskId !== "google-trends-us-now" ||
+        attempt.workerRole !== "SOURCE_RESEARCHER" ||
+        task.researchKey !== "google-trends-us-trending-now"
+      )
+        throw new Error("Only the running Google Trends pilot can record source evidence.");
+      if (
+        Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) ||
+        Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)
+      )
+        throw new Error("Google Trends capture outcome was already recorded for this attempt.");
       return { ...state, googleTrendsEvidence: { ...state.googleTrendsEvidence, [event.payload.attemptId]: event.payload } };
     }
     case "GoogleTrendsComparisonImported": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-comparison" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-desk-organization-comparison") throw new Error("Only the running Google Trends comparison pilot can record imported evidence.");
-      if (Object.hasOwn(state.googleTrendsComparisonEvidence, event.payload.attemptId)) throw new Error("Google Trends comparison import was already recorded for this attempt.");
-      return { ...state, googleTrendsComparisonEvidence: { ...state.googleTrendsComparisonEvidence, [event.payload.attemptId]: event.payload } };
+      if (
+        state.status !== "RUNNING" ||
+        !attempt ||
+        !task ||
+        attempt.status !== "RUNNING" ||
+        task.status !== "RUNNING" ||
+        attempt.taskId !== "google-trends-us-comparison" ||
+        attempt.workerRole !== "SOURCE_RESEARCHER" ||
+        task.researchKey !== "google-trends-us-desk-organization-comparison"
+      )
+        throw new Error("Only the running Google Trends comparison pilot can record imported evidence.");
+      if (Object.hasOwn(state.googleTrendsComparisonEvidence, event.payload.attemptId))
+        throw new Error("Google Trends comparison import was already recorded for this attempt.");
+      return {
+        ...state,
+        googleTrendsComparisonEvidence: { ...state.googleTrendsComparisonEvidence, [event.payload.attemptId]: event.payload },
+      };
     }
     case "GoogleTrendsCaptureFailed": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING" || attempt.taskId !== "google-trends-us-now" || attempt.workerRole !== "SOURCE_RESEARCHER" || task.researchKey !== "google-trends-us-trending-now") throw new Error("Only the running Google Trends pilot can record source evidence.");
-      if (Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) || Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)) throw new Error("Google Trends capture outcome was already recorded for this attempt.");
+      if (
+        state.status !== "RUNNING" ||
+        !attempt ||
+        !task ||
+        attempt.status !== "RUNNING" ||
+        task.status !== "RUNNING" ||
+        attempt.taskId !== "google-trends-us-now" ||
+        attempt.workerRole !== "SOURCE_RESEARCHER" ||
+        task.researchKey !== "google-trends-us-trending-now"
+      )
+        throw new Error("Only the running Google Trends pilot can record source evidence.");
+      if (
+        Object.hasOwn(state.googleTrendsEvidence, event.payload.attemptId) ||
+        Object.hasOwn(state.googleTrendsCaptureFailures, event.payload.attemptId)
+      )
+        throw new Error("Google Trends capture outcome was already recorded for this attempt.");
       return { ...state, googleTrendsCaptureFailures: { ...state.googleTrendsCaptureFailures, [event.payload.attemptId]: event.payload } };
     }
     case "AuditCompleted":
-      if (state.status !== "RUNNING" || Object.hasOwn(state.auditResults, event.payload.auditId)) throw new Error("Audit result cannot be recorded.");
+      if (state.status !== "RUNNING" || Object.hasOwn(state.auditResults, event.payload.auditId))
+        throw new Error("Audit result cannot be recorded.");
       return { ...state, auditResults: { ...state.auditResults, [event.payload.auditId]: event.payload } };
     case "BlindReviewCompleted":
-      if (state.status !== "RUNNING" || Object.hasOwn(state.blindReviewResults, event.payload.reviewId) || state.revision?.rereview?.reviewId === event.payload.reviewId) throw new Error("Blind review result cannot be recorded.");
+      if (
+        state.status !== "RUNNING" ||
+        Object.hasOwn(state.blindReviewResults, event.payload.reviewId) ||
+        state.revision?.rereview?.reviewId === event.payload.reviewId
+      )
+        throw new Error("Blind review result cannot be recorded.");
       return { ...state, blindReviewResults: { ...state.blindReviewResults, [event.payload.reviewId]: event.payload } };
     case "RankingDivergenceDetected":
     case "MissingEvidenceDivergenceDetected": {
       const ids = event.payload.records.map((record) => record.divergenceId);
-      if (state.status !== "RUNNING" || new Set(ids).size !== ids.length || ids.some((id) => Object.hasOwn(state.divergenceRecords, id))) throw new Error("Divergence result cannot be recorded.");
-      return { ...state, divergenceRecords: { ...state.divergenceRecords, ...Object.fromEntries(event.payload.records.map((record) => [record.divergenceId, record])) } };
+      if (state.status !== "RUNNING" || new Set(ids).size !== ids.length || ids.some((id) => Object.hasOwn(state.divergenceRecords, id)))
+        throw new Error("Divergence result cannot be recorded.");
+      return {
+        ...state,
+        divergenceRecords: {
+          ...state.divergenceRecords,
+          ...Object.fromEntries(event.payload.records.map((record) => [record.divergenceId, record])),
+        },
+      };
     }
     case "RevisionRequested":
-      if (state.status !== "RUNNING" || !Object.hasOwn(state.blindReviewResults, event.payload.reviewId)) throw new Error("Revision requires one recorded review.");
+      if (state.status !== "RUNNING" || !Object.hasOwn(state.blindReviewResults, event.payload.reviewId))
+        throw new Error("Revision requires one recorded review.");
       if (state.revision !== null) throw new Error("Only one revision cycle may be recorded.");
       return { ...state, revision: { ...event.payload } };
     case "FocusedReauditCompleted":
-      if (state.status !== "RUNNING" || !state.revision || state.revision.revisionId !== event.payload.revisionId || state.revision.reaudit || new Set(event.payload.changedClaimIds).size !== event.payload.changedClaimIds.length || event.payload.changedClaimIds.some((id) => !state.revision!.affectedClaimIds.includes(id))) throw new Error("Focused re-audit requires the active revision.");
+      if (
+        state.status !== "RUNNING" ||
+        !state.revision ||
+        state.revision.revisionId !== event.payload.revisionId ||
+        state.revision.reaudit ||
+        new Set(event.payload.changedClaimIds).size !== event.payload.changedClaimIds.length ||
+        event.payload.changedClaimIds.some((id) => !state.revision!.affectedClaimIds.includes(id))
+      )
+        throw new Error("Focused re-audit requires the active revision.");
       return { ...state, revision: { ...state.revision, reaudit: event.payload } };
     case "FocusedRereviewCompleted":
-      if (state.status !== "RUNNING" || !state.revision || state.revision.revisionId !== event.payload.revisionId || !state.revision.reaudit || state.revision.rereview || Object.hasOwn(state.blindReviewResults, event.payload.result.reviewId)) throw new Error("Focused re-review requires the completed focused re-audit.");
+      if (
+        state.status !== "RUNNING" ||
+        !state.revision ||
+        state.revision.revisionId !== event.payload.revisionId ||
+        !state.revision.reaudit ||
+        state.revision.rereview ||
+        Object.hasOwn(state.blindReviewResults, event.payload.result.reviewId)
+      )
+        throw new Error("Focused re-review requires the completed focused re-audit.");
       return { ...state, revision: { ...state.revision, rereview: event.payload.result } };
     case "TaskAuthorized": {
       const proposal = event.payload;
@@ -216,14 +323,17 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         throw new Error("All task dependencies must be completed before authorization.");
       }
       if (
-        Object.values(state.authorizations).some((authorization) => authorization.researchKey === proposal.researchKey)
-        || Object.values(state.tasks).some((task) => task.researchKey === proposal.researchKey && ["SCHEDULED", "RUNNING", "COMPLETED"].includes(task.status))
+        Object.values(state.authorizations).some((authorization) => authorization.researchKey === proposal.researchKey) ||
+        Object.values(state.tasks).some(
+          (task) => task.researchKey === proposal.researchKey && ["SCHEDULED", "RUNNING", "COMPLETED"].includes(task.status),
+        )
       ) {
         throw new Error("An active or completed task already covers this research key.");
       }
       if (
-        proposal.workClass === "OPTIONAL"
-        && state.budget.spent + state.budget.committed + state.budget.reserved + proposal.cost + remainingMandatoryUnreservedCost(state) > state.budget.total
+        proposal.workClass === "OPTIONAL" &&
+        state.budget.spent + state.budget.committed + state.budget.reserved + proposal.cost + remainingMandatoryUnreservedCost(state) >
+          state.budget.total
       ) {
         throw new Error("Optional work would consume mandatory budget protection.");
       }
@@ -232,7 +342,18 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "GapOpened":
       if (state.status !== "RUNNING") throw new Error("Cannot open a gap for a non-running mission.");
       if (state.gaps[event.payload.gapId]) throw new Error("Gap already exists.");
-      return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { researchKey: event.payload.researchKey, affectedDecisionType: event.payload.affectedDecisionType, status: "OPEN", reason: event.payload.reason } } };
+      return {
+        ...state,
+        gaps: {
+          ...state.gaps,
+          [event.payload.gapId]: {
+            researchKey: event.payload.researchKey,
+            affectedDecisionType: event.payload.affectedDecisionType,
+            status: "OPEN",
+            reason: event.payload.reason,
+          },
+        },
+      };
     case "GapResolved": {
       if (state.status !== "RUNNING") throw new Error("Cannot resolve a gap for a non-running mission.");
       const gap = state.gaps[event.payload.gapId];
@@ -249,29 +370,41 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       if (state.status !== "RUNNING") throw new Error("Cannot change a gap for a non-running mission.");
       const gap = state.gaps[event.payload.gapId];
       if (!gap || !["OPEN", "REOPENED"].includes(gap.status)) throw new Error("Only an actionable gap can change status.");
-      return { ...state, gaps: { ...state.gaps, [event.payload.gapId]: { ...gap, status: event.payload.status, reason: event.payload.reason } } };
+      return {
+        ...state,
+        gaps: { ...state.gaps, [event.payload.gapId]: { ...gap, status: event.payload.status, reason: event.payload.reason } },
+      };
     }
     case "TaskScheduled": {
       if (state.status !== "RUNNING") throw new Error("Cannot schedule work for a non-running mission.");
       const authorization = state.authorizations[event.payload.taskId];
       if (!authorization) throw new Error("Task requires Commander authorization before scheduling.");
       if (
-        authorization.objective !== event.payload.objective
-        || authorization.cost !== event.payload.cost
-        || authorization.workClass !== event.payload.workClass
-        || authorization.researchKey !== event.payload.researchKey
-        || authorization.dependencies.join("\u0000") !== event.payload.dependencies.join("\u0000")
-      ) throw new Error("Scheduled task does not match its Commander authorization.");
+        authorization.objective !== event.payload.objective ||
+        authorization.cost !== event.payload.cost ||
+        authorization.workClass !== event.payload.workClass ||
+        authorization.researchKey !== event.payload.researchKey ||
+        authorization.dependencies.join("\u0000") !== event.payload.dependencies.join("\u0000")
+      )
+        throw new Error("Scheduled task does not match its Commander authorization.");
       if (event.payload.dependencies.some((dependency) => state.tasks[dependency]?.status !== "COMPLETED")) {
         throw new Error("All task dependencies must be completed before scheduling.");
       }
       const existingTask = state.tasks[event.payload.taskId];
-      if (existingTask && !["INTERRUPTED", "FAILED_TRANSIENT", "FAILED_PERMANENT"].includes(existingTask.status)) throw new Error("Task cannot receive another attempt.");
-      if (existingTask?.status === "FAILED_TRANSIENT" && existingTask.attemptIds.filter((attemptId) => state.attempts[attemptId]?.status === "FAILED_TRANSIENT").length >= 2) throw new Error("Transient retry allowance is exhausted.");
+      if (existingTask && !["INTERRUPTED", "FAILED_TRANSIENT", "FAILED_PERMANENT"].includes(existingTask.status))
+        throw new Error("Task cannot receive another attempt.");
+      if (
+        existingTask?.status === "FAILED_TRANSIENT" &&
+        existingTask.attemptIds.filter((attemptId) => state.attempts[attemptId]?.status === "FAILED_TRANSIENT").length >= 2
+      )
+        throw new Error("Transient retry allowance is exhausted.");
       if (existingTask && existingTask.workClass !== event.payload.workClass) throw new Error("A retry cannot change a task's work class.");
       if (Object.hasOwn(state.attempts, event.payload.attemptId)) throw new Error("Attempt is already scheduled.");
       const workerRole = event.payload.workerRole ?? "legacy-unknown";
-      if (existingTask?.status === "FAILED_PERMANENT" && existingTask.attemptIds.some((attemptId) => state.attempts[attemptId]?.workerRole === workerRole)) {
+      if (
+        existingTask?.status === "FAILED_PERMANENT" &&
+        existingTask.attemptIds.some((attemptId) => state.attempts[attemptId]?.workerRole === workerRole)
+      ) {
         throw new Error("A permanent failure cannot be retried with the same worker.");
       }
       const task: TaskRecord = existingTask
@@ -287,7 +420,10 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
       return {
         ...state,
         tasks: { ...state.tasks, [event.payload.taskId]: task },
-        attempts: { ...state.attempts, [event.payload.attemptId]: { taskId: event.payload.taskId, workerRole, status: "SCHEDULED", reserved: false } },
+        attempts: {
+          ...state.attempts,
+          [event.payload.attemptId]: { taskId: event.payload.taskId, workerRole, status: "SCHEDULED", reserved: false },
+        },
       };
     }
     case "TaskStarted": {
@@ -328,13 +464,21 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "BudgetReserved": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "SCHEDULED" || attempt.reserved || event.payload.cost !== task.cost) {
+      if (
+        state.status !== "RUNNING" ||
+        !attempt ||
+        !task ||
+        attempt.status !== "SCHEDULED" ||
+        attempt.reserved ||
+        event.payload.cost !== task.cost
+      ) {
         throw new Error("Only a scheduled attempt can reserve its exact cost.");
       }
       if (task.cost > state.budget.available) throw new Error("Insufficient available budget.");
       if (
-        task.workClass === "OPTIONAL"
-        && state.budget.spent + state.budget.committed + state.budget.reserved + task.cost + remainingMandatoryUnreservedCost(state) > state.budget.total
+        task.workClass === "OPTIONAL" &&
+        state.budget.spent + state.budget.committed + state.budget.reserved + task.cost + remainingMandatoryUnreservedCost(state) >
+          state.budget.total
       ) {
         throw new Error("Optional work would consume mandatory budget protection.");
       }
@@ -344,14 +488,20 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
         attempts: { ...state.attempts, [event.payload.attemptId]: { ...attempt, reserved: true } },
       };
     }
-    case "RecoveryStarted":
+    case "RecoveryStarted": {
       if (state.status !== "RUNNING") throw new Error("Only a running mission can be recovered.");
       if (state.recoveryRestartCount >= 1) throw new Error("Mission recovery restart cap reached.");
-      const runningAttemptIds = Object.entries(state.attempts).filter(([, attempt]) => attempt.status === "RUNNING").map(([attemptId]) => attemptId);
-      if (new Set(event.payload.interruptedAttemptIds).size !== event.payload.interruptedAttemptIds.length
-        || event.payload.interruptedAttemptIds.length !== runningAttemptIds.length
-        || event.payload.interruptedAttemptIds.some((attemptId) => !runningAttemptIds.includes(attemptId))) throw new Error("Recovery must name each current running attempt exactly once.");
+      const runningAttemptIds = Object.entries(state.attempts)
+        .filter(([, attempt]) => attempt.status === "RUNNING")
+        .map(([attemptId]) => attemptId);
+      if (
+        new Set(event.payload.interruptedAttemptIds).size !== event.payload.interruptedAttemptIds.length ||
+        event.payload.interruptedAttemptIds.length !== runningAttemptIds.length ||
+        event.payload.interruptedAttemptIds.some((attemptId) => !runningAttemptIds.includes(attemptId))
+      )
+        throw new Error("Recovery must name each current running attempt exactly once.");
       return { ...state, recoveryRestartCount: state.recoveryRestartCount + 1 };
+    }
     case "TaskInterrupted": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
@@ -368,7 +518,8 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskFailedTransient": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING")
+        throw new Error("Only a running attempt can fail.");
       return {
         ...state,
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
@@ -379,7 +530,8 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     case "TaskFailedPermanent": {
       const attempt = state.attempts[event.payload.attemptId];
       const task = attempt ? state.tasks[attempt.taskId] : undefined;
-      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING") throw new Error("Only a running attempt can fail.");
+      if (state.status !== "RUNNING" || !attempt || !task || attempt.status !== "RUNNING" || task.status !== "RUNNING")
+        throw new Error("Only a running attempt can fail.");
       return {
         ...state,
         budget: { ...state.budget, committed: state.budget.committed - task.cost, spent: state.budget.spent + task.cost },
@@ -406,19 +558,31 @@ function applyEvent(state: MissionState, event: MissionEvent): MissionState {
     }
     case "MissionCompleted":
       if (state.status !== "RUNNING") throw new Error("Only a running mission can finish.");
-      if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT")) throw new Error("Cannot complete a mission with an unfinished or unaccepted revision.");
-      if (Object.values(state.tasks).some((task) => task.status === "SCHEDULED" || task.status === "RUNNING" || task.status === "FAILED_PERMANENT")) {
+      if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT"))
+        throw new Error("Cannot complete a mission with an unfinished or unaccepted revision.");
+      if (
+        Object.values(state.tasks).some(
+          (task) => task.status === "SCHEDULED" || task.status === "RUNNING" || task.status === "FAILED_PERMANENT",
+        )
+      ) {
         throw new Error("Cannot complete a mission with unfinished tasks.");
       }
       return { ...state, status: "COMPLETED" };
     case "MissionTerminated":
       if (state.status !== "RUNNING") throw new Error("Only a running mission can terminate.");
       if (event.payload.status === "COMPLETED_INSUFFICIENT_EVIDENCE") {
-        const mandatoryAuthorizations = Object.entries(state.authorizations).filter(([, authorization]) => authorization.workClass === "MANDATORY");
-        if (mandatoryAuthorizations.length === 0 || mandatoryAuthorizations.some(([taskId]) => state.tasks[taskId]?.status !== "COMPLETED") || Object.values(state.tasks).some((task) => task.status !== "COMPLETED")) {
+        const mandatoryAuthorizations = Object.entries(state.authorizations).filter(
+          ([, authorization]) => authorization.workClass === "MANDATORY",
+        );
+        if (
+          mandatoryAuthorizations.length === 0 ||
+          mandatoryAuthorizations.some(([taskId]) => state.tasks[taskId]?.status !== "COMPLETED") ||
+          Object.values(state.tasks).some((task) => task.status !== "COMPLETED")
+        ) {
           throw new Error("Insufficient-evidence termination requires completed baseline research.");
         }
-        if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT")) throw new Error("Cannot terminate a mission with an unfinished or unaccepted revision.");
+        if (state.revision && (!state.revision.reaudit || !state.revision.rereview || state.revision.rereview.verdict !== "ACCEPT"))
+          throw new Error("Cannot terminate a mission with an unfinished or unaccepted revision.");
         if (Object.values(state.gaps).some((gap) => gap.status === "OPEN" || gap.status === "REOPENED")) {
           throw new Error("Insufficient-evidence termination requires all actionable gaps to be resolved.");
         }

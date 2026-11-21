@@ -6,10 +6,19 @@ import type { MissionEvent } from "./contracts.js";
 
 export const evaluationFixtureIds = ["crosscurrent-workspace-market", "failure-autopsy-pilot", "product-investigation-pilot"] as const;
 export const evaluationConcurrencies = [1, 2, 3] as const;
-export interface EvaluationSummary { fixtureId: typeof evaluationFixtureIds[number]; maxConcurrency: number; terminalStatus: string; spent: number; eventCount: number; simulatedLatencyMs: number; ranking: string[]; reviewerVerdict: string | null; }
+export interface EvaluationSummary {
+  fixtureId: (typeof evaluationFixtureIds)[number];
+  maxConcurrency: number;
+  terminalStatus: string;
+  spent: number;
+  eventCount: number;
+  simulatedLatencyMs: number;
+  ranking: string[];
+  reviewerVerdict: string | null;
+}
 
 export interface CapacityExperimentSummary {
-  fixtureId: typeof evaluationFixtureIds[number];
+  fixtureId: (typeof evaluationFixtureIds)[number];
   capacityOneLatencyMs: number;
   capacityTwoLatencyMs: number;
   capacityThreeLatencyMs: number;
@@ -42,7 +51,11 @@ function replaySimulatedLatency(events: MissionEvent[], maxConcurrency: number):
     // A retry cannot overlap its own failed attempt, even when another global
     // scheduler slot is available. taskFinishes holds that earlier attempt's
     // logical finish until a later retry replaces it.
-    let start = Math.max(0, taskFinishes.get(taskId) ?? 0, ...(dependencies.get(event.payload.attemptId) ?? []).map((dependency) => taskFinishes.get(dependency) ?? 0));
+    let start = Math.max(
+      0,
+      taskFinishes.get(taskId) ?? 0,
+      ...(dependencies.get(event.payload.attemptId) ?? []).map((dependency) => taskFinishes.get(dependency) ?? 0),
+    );
     while (activeFinishes.length >= maxConcurrency) {
       start = Math.max(start, Math.min(...activeFinishes));
       activeFinishes = activeFinishes.filter((finish) => finish > start);
@@ -58,25 +71,44 @@ function replaySimulatedLatency(events: MissionEvent[], maxConcurrency: number):
 export async function runEvaluationBaseline(): Promise<EvaluationSummary[]> {
   const root = await mkdtemp(join(tmpdir(), "dropscope-evaluation-"));
   const summaries: EvaluationSummary[] = [];
-  for (const fixtureId of evaluationFixtureIds) for (const maxConcurrency of evaluationConcurrencies) {
-    const result = await runFixtureMission({ fixtureId, missionId: `${fixtureId}-${maxConcurrency}`, historyPath: join(root, `${fixtureId}-${maxConcurrency}.jsonl`), maxConcurrency });
-    const simulatedLatencyMs = replaySimulatedLatency(result.events, maxConcurrency);
-    const review = result.events.find((event) => event.type === "BlindReviewCompleted");
-    summaries.push({ fixtureId, maxConcurrency, terminalStatus: result.state.status, spent: result.state.budget.spent, eventCount: result.events.length, simulatedLatencyMs, ranking: result.report.ranking.map(({ candidateId }) => candidateId), reviewerVerdict: review?.type === "BlindReviewCompleted" ? review.payload.verdict : null });
-  }
+  for (const fixtureId of evaluationFixtureIds)
+    for (const maxConcurrency of evaluationConcurrencies) {
+      const result = await runFixtureMission({
+        fixtureId,
+        missionId: `${fixtureId}-${maxConcurrency}`,
+        historyPath: join(root, `${fixtureId}-${maxConcurrency}.jsonl`),
+        maxConcurrency,
+      });
+      const simulatedLatencyMs = replaySimulatedLatency(result.events, maxConcurrency);
+      const review = result.events.find((event) => event.type === "BlindReviewCompleted");
+      summaries.push({
+        fixtureId,
+        maxConcurrency,
+        terminalStatus: result.state.status,
+        spent: result.state.budget.spent,
+        eventCount: result.events.length,
+        simulatedLatencyMs,
+        ranking: result.report.ranking.map(({ candidateId }) => candidateId),
+        reviewerVerdict: review?.type === "BlindReviewCompleted" ? review.payload.verdict : null,
+      });
+    }
   return summaries;
 }
 
 export function summarizeCapacityExperiment(summaries: EvaluationSummary[]): CapacityExperimentSummary[] {
   return evaluationFixtureIds.map((fixtureId) => {
     const fixtureSummaries = summaries.filter((summary) => summary.fixtureId === fixtureId);
-    if (fixtureSummaries.length !== evaluationConcurrencies.length) throw new Error(`Capacity experiment requires every configured capacity for ${fixtureId}.`);
+    if (fixtureSummaries.length !== evaluationConcurrencies.length)
+      throw new Error(`Capacity experiment requires every configured capacity for ${fixtureId}.`);
     const byCapacity = new Map(fixtureSummaries.map((summary) => [summary.maxConcurrency, summary]));
-    if (evaluationConcurrencies.some((capacity) => !byCapacity.has(capacity))) throw new Error(`Capacity experiment is missing a configured capacity for ${fixtureId}.`);
+    if (evaluationConcurrencies.some((capacity) => !byCapacity.has(capacity)))
+      throw new Error(`Capacity experiment is missing a configured capacity for ${fixtureId}.`);
     const one = byCapacity.get(1)!;
     const two = byCapacity.get(2)!;
     const three = byCapacity.get(3)!;
-    const qualityOutcomes = fixtureSummaries.map((summary) => JSON.stringify({ ranking: summary.ranking, reviewerVerdict: summary.reviewerVerdict }));
+    const qualityOutcomes = fixtureSummaries.map((summary) =>
+      JSON.stringify({ ranking: summary.ranking, reviewerVerdict: summary.reviewerVerdict }),
+    );
     const minimumLatency = Math.min(...fixtureSummaries.map((summary) => summary.simulatedLatencyMs));
     return {
       fixtureId,
@@ -97,13 +129,16 @@ export function summarizeCapacityExperiment(summaries: EvaluationSummary[]): Cap
 
 export function recommendDefaultTaskCapacity(comparison: CapacityExperimentSummary[]): DefaultCapacityRecommendation {
   if (comparison.length === 0) throw new Error("A default-capacity recommendation requires at least one fixture comparison.");
-  const qualityAndUsageStable = comparison.every((summary) => summary.terminalOutcomeStable && summary.qualityOutcomeStable && summary.spentStable && summary.eventCountStable);
+  const qualityAndUsageStable = comparison.every(
+    (summary) => summary.terminalOutcomeStable && summary.qualityOutcomeStable && summary.spentStable && summary.eventCountStable,
+  );
   if (!qualityAndUsageStable) {
     return {
       recommendationStatus: "INCONCLUSIVE",
       suggestedTaskCapacity: null,
       qualityAndUsageStable,
-      rationale: "At least one capacity changed a terminal, quality, ledger, or event-count signal; retain the current configuration pending investigation.",
+      rationale:
+        "At least one capacity changed a terminal, quality, ledger, or event-count signal; retain the current configuration pending investigation.",
     };
   }
   const suggestedTaskCapacity = Math.max(...comparison.map((summary) => summary.smallestCapacityAtMinimumLatency));

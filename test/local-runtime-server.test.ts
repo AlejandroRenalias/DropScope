@@ -19,13 +19,20 @@ async function urlFor(server: (typeof servers)[number], path: string): Promise<s
 
 describe("local runtime HTTP bridge", () => {
   it("launches and reloads through validated DTO endpoints", async () => {
-    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "server-mission" });
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
+      createMissionId: () => "server-mission",
+    });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);
 
-    const launchResponse = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
+    const launchResponse = await fetch(await urlFor(server, "/api/missions"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "evidence-drought" }),
+    });
     expect(launchResponse.status).toBe(201);
-    const launched = await launchResponse.json() as { missionId: string; fixtureId: string; events: unknown[]; historyPath?: string };
+    const launched = (await launchResponse.json()) as { missionId: string; fixtureId: string; events: unknown[]; historyPath?: string };
     expect(launched).toMatchObject({ missionId: "server-mission", fixtureId: "evidence-drought" });
     expect(launched.events.length).toBeGreaterThan(0);
     expect(launched).not.toHaveProperty("historyPath");
@@ -36,18 +43,31 @@ describe("local runtime HTTP bridge", () => {
   });
 
   it("accepts only a user POST for a sanitized subscription preflight", async () => {
-    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "preflight-server-mission", subscriptionRuntimePreflight: { check: async () => ({ accessStatus: "AUTHENTICATION_REQUIRED", diagnosticCode: "NOT_APPLICABLE" }) } });
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
+      createMissionId: () => "preflight-server-mission",
+      subscriptionRuntimePreflight: { check: async () => ({ accessStatus: "AUTHENTICATION_REQUIRED", diagnosticCode: "NOT_APPLICABLE" }) },
+    });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);
-    const launch = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
-    const mission = await launch.json() as { missionId: string };
+    const launch = await fetch(await urlFor(server, "/api/missions"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "evidence-drought" }),
+    });
+    const mission = (await launch.json()) as { missionId: string };
 
     const preflight = await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" });
 
     expect(preflight.status).toBe(200);
-    expect((await preflight.json() as { events: Array<{ type: string; payload: unknown }> }).events.at(-1)).toMatchObject({ type: "SubscriptionRuntimePreflightCompleted", payload: { accessStatus: "AUTHENTICATION_REQUIRED", usageStatus: "NOT_ITEMIZED" } });
+    expect(((await preflight.json()) as { events: Array<{ type: string; payload: unknown }> }).events.at(-1)).toMatchObject({
+      type: "SubscriptionRuntimePreflightCompleted",
+      payload: { accessStatus: "AUTHENTICATION_REQUIRED", usageStatus: "NOT_ITEMIZED" },
+    });
     expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`))).status).toBe(400);
-    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" })).status).toBe(409);
+    expect(
+      (await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" })).status,
+    ).toBe(409);
   });
 
   it("returns a sanitized in-memory confirmation for the authenticated pilot", async () => {
@@ -58,22 +78,38 @@ describe("local runtime HTTP bridge", () => {
     });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);
-    const launch = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "live-worker-pilot" }) });
-    const mission = await launch.json() as { missionId: string };
-    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST" })).status).toBe(409);
-    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" })).status).toBe(200);
+    const launch = await fetch(await urlFor(server, "/api/missions"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "live-worker-pilot" }),
+    });
+    const mission = (await launch.json()) as { missionId: string };
+    expect(
+      (await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST" })).status,
+    ).toBe(409);
+    expect(
+      (await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-preflight`), { method: "POST" })).status,
+    ).toBe(200);
 
     const response = await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST" });
     expect(response.status).toBe(200);
-    const body = await response.json() as Record<string, unknown>;
+    const body = (await response.json()) as Record<string, unknown>;
     expect(body).toMatchObject({ missionId: mission.missionId, attemptId: "pilot-evidence:a1", status: "CONFIRMED" });
     expect(body).toHaveProperty("expiresAtMs");
     expect(body).not.toHaveProperty("capability");
-    expect((await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST", body: "{}" })).status).toBe(400);
+    expect(
+      (await fetch(await urlFor(server, `/api/missions/${mission.missionId}/subscription-confirmation`), { method: "POST", body: "{}" }))
+        .status,
+    ).toBe(400);
   });
 
   it("runs only a confirmed pilot through the fixed subscription endpoint and returns replayable events", async () => {
-    const runner = vi.fn(async (request: { taskId: string; attemptId: string }) => ({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED" as const, finding: "Fixed pilot finding." }));
+    const runner = vi.fn(async (request: { taskId: string; attemptId: string }) => ({
+      taskId: request.taskId,
+      attemptId: request.attemptId,
+      status: "COMPLETED" as const,
+      finding: "Fixed pilot finding.",
+    }));
     const runtime = new LocalMissionRuntime({
       dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
       createMissionId: () => "run-server-mission",
@@ -82,8 +118,12 @@ describe("local runtime HTTP bridge", () => {
     });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);
-    const launch = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "live-worker-pilot" }) });
-    const mission = await launch.json() as { missionId: string };
+    const launch = await fetch(await urlFor(server, "/api/missions"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "live-worker-pilot" }),
+    });
+    const mission = (await launch.json()) as { missionId: string };
     const runUrl = await urlFor(server, `/api/missions/${mission.missionId}/subscription-run`);
 
     expect((await fetch(runUrl, { method: "POST" })).status).toBe(409);
@@ -92,31 +132,68 @@ describe("local runtime HTTP bridge", () => {
     const response = await fetch(runUrl, { method: "POST" });
 
     expect(response.status).toBe(200);
-    expect((await response.json() as { events: Array<{ type: string }> }).events.slice(-3).map((event) => event.type)).toEqual(["SubscriptionWorkerExecutionOutcomeRecorded", "FindingSubmitted", "MissionCompleted"]);
+    expect(((await response.json()) as { events: Array<{ type: string }> }).events.slice(-3).map((event) => event.type)).toEqual([
+      "SubscriptionWorkerExecutionOutcomeRecorded",
+      "FindingSubmitted",
+      "MissionCompleted",
+    ]);
     expect(runner).toHaveBeenCalledOnce();
     expect((await fetch(runUrl, { method: "POST" })).status).toBe(409);
     expect((await fetch(runUrl, { method: "POST", body: "{}" })).status).toBe(400);
   });
 
   it("accepts one bounded manual comparison CSV only for its fixed local pilot", async () => {
-    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "comparison-server-mission" });
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
+      createMissionId: () => "comparison-server-mission",
+    });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);
-    const launch = await fetch(await urlFor(server, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "google-trends-comparison-pilot" }) });
-    const mission = await launch.json() as { missionId: string };
+    const launch = await fetch(await urlFor(server, "/api/missions"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "google-trends-comparison-pilot" }),
+    });
+    const mission = (await launch.json()) as { missionId: string };
     const importUrl = await urlFor(server, `/api/missions/${mission.missionId}/google-trends-comparison-import`);
-    const csv = "Week,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,12,24,36";
+    const csv =
+      "Week,desk cable organizer: (United States),under-desk cable tray: (United States),cable management box: (United States)\n2026-01-04,12,24,36";
 
-    const imported = await fetch(importUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ csv }) });
+    const imported = await fetch(importUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ csv }),
+    });
 
     expect(imported.status).toBe(200);
-    expect((await imported.json() as { events: Array<{ type: string }> }).events.slice(-3).map((event) => event.type)).toEqual(["GoogleTrendsComparisonImported", "FindingSubmitted", "MissionCompleted"]);
-    expect((await fetch(importUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ csv }) })).status).toBe(409);
-    const invalidRuntime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "invalid-comparison-mission" });
+    expect(((await imported.json()) as { events: Array<{ type: string }> }).events.slice(-3).map((event) => event.type)).toEqual([
+      "GoogleTrendsComparisonImported",
+      "FindingSubmitted",
+      "MissionCompleted",
+    ]);
+    expect(
+      (await fetch(importUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ csv }) })).status,
+    ).toBe(409);
+    const invalidRuntime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
+      createMissionId: () => "invalid-comparison-mission",
+    });
     const invalidServer = await listenLocalRuntimeServer(invalidRuntime);
     servers.push(invalidServer);
-    await fetch(await urlFor(invalidServer, "/api/missions"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "google-trends-comparison-pilot" }) });
-    expect((await fetch(await urlFor(invalidServer, "/api/missions/invalid-comparison-mission/google-trends-comparison-import"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ csv: "not a comparison export" }) })).status).toBe(400);
+    await fetch(await urlFor(invalidServer, "/api/missions"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "google-trends-comparison-pilot" }),
+    });
+    expect(
+      (
+        await fetch(await urlFor(invalidServer, "/api/missions/invalid-comparison-mission/google-trends-comparison-import"), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ csv: "not a comparison export" }),
+        })
+      ).status,
+    ).toBe(400);
   });
 
   it("returns clean client errors and does not accept event-authoring requests", async () => {
@@ -127,7 +204,11 @@ describe("local runtime HTTP bridge", () => {
 
     const malformed = await fetch(`${base}/api/missions`, { method: "POST", body: "not-json" });
     expect(malformed.status).toBe(400);
-    const authoring = await fetch(`${base}/api/missions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought", events: [] }) });
+    const authoring = await fetch(`${base}/api/missions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "evidence-drought", events: [] }),
+    });
     expect(authoring.status).toBe(400);
     const unknown = await fetch(`${base}/api/unknown`);
     expect(unknown.status).toBe(404);
@@ -138,24 +219,45 @@ describe("local runtime HTTP bridge", () => {
   });
 
   it("supports loopback CORS, including default-port origins, and exposes no rebind API", async () => {
-    const runtime = new LocalMissionRuntime({ dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")), createMissionId: () => "cors-mission" });
+    const runtime = new LocalMissionRuntime({
+      dataRoot: await mkdtemp(join(tmpdir(), "dropscope-server-")),
+      createMissionId: () => "cors-mission",
+    });
     const server = await listenLocalRuntimeServer(runtime);
     servers.push(server);
     const base = await urlFor(server, "");
     const origin = "http://localhost:5173";
 
-    const preflight = await fetch(`${base}/api/missions`, { method: "OPTIONS", headers: { Origin: origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type" } });
+    const preflight = await fetch(`${base}/api/missions`, {
+      method: "OPTIONS",
+      headers: { Origin: origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type" },
+    });
     expect(preflight.status).toBe(204);
     expect(preflight.headers.get("access-control-allow-origin")).toBe(origin);
-    const launch = await fetch(`${base}/api/missions`, { method: "POST", headers: { Origin: origin, "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
+    const launch = await fetch(`${base}/api/missions`, {
+      method: "POST",
+      headers: { Origin: origin, "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "evidence-drought" }),
+    });
     expect(launch.status).toBe(201);
     expect(launch.headers.get("access-control-allow-origin")).toBe(origin);
-    const defaultPort = await fetch(`${base}/api/missions`, { method: "OPTIONS", headers: { Origin: "http://localhost", "Access-Control-Request-Method": "POST" } });
+    const defaultPort = await fetch(`${base}/api/missions`, {
+      method: "OPTIONS",
+      headers: { Origin: "http://localhost", "Access-Control-Request-Method": "POST" },
+    });
     expect(defaultPort.status).toBe(403);
     expect(defaultPort.headers.get("access-control-allow-origin")).toBeNull();
-    const foreign = await fetch(`${base}/api/missions`, { method: "POST", headers: { Origin: "https://example.com", "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
+    const foreign = await fetch(`${base}/api/missions`, {
+      method: "POST",
+      headers: { Origin: "https://example.com", "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "evidence-drought" }),
+    });
     expect(foreign.status).toBe(403);
-    const otherLocalhost = await fetch(`${base}/api/missions`, { method: "POST", headers: { Origin: "http://localhost:3000", "content-type": "application/json" }, body: JSON.stringify({ fixtureId: "evidence-drought" }) });
+    const otherLocalhost = await fetch(`${base}/api/missions`, {
+      method: "POST",
+      headers: { Origin: "http://localhost:3000", "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId: "evidence-drought" }),
+    });
     expect(otherLocalhost.status).toBe(403);
     expect(server).not.toHaveProperty("listen");
   });
@@ -167,7 +269,11 @@ describe("local runtime HTTP bridge", () => {
     servers.push(server);
     const fs = await import("node:fs/promises");
     await fs.mkdir(join(dataRoot, "missions"));
-    await fs.writeFile(join(dataRoot, "missions", "partial-mission.reserve"), JSON.stringify({ fixtureId: "mixed-opportunity-market" }), "utf8");
+    await fs.writeFile(
+      join(dataRoot, "missions", "partial-mission.reserve"),
+      JSON.stringify({ fixtureId: "mixed-opportunity-market" }),
+      "utf8",
+    );
     await fs.writeFile(join(dataRoot, "missions", "partial-mission.jsonl"), '{"schemaVersion":', "utf8");
 
     const response = await fetch(await urlFor(server, "/api/missions/partial-mission"));

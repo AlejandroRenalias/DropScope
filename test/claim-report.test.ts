@@ -19,19 +19,28 @@ const s = (key: string, value: string) => ({ key, value: { stringValue: value } 
 const BASE = 1_700_000_000_000_000_000n;
 const ns = (n: number) => (BASE + BigInt(n * 1_000_000_000)).toString();
 const span = (i: number, name: string, tool: string, result: string, error = false) => ({
-  traceId: T, spanId: (i + 1).toString(16).padStart(16, "0"), name, startTimeUnixNano: ns(i), endTimeUnixNano: ns(i + 1),
+  traceId: T,
+  spanId: (i + 1).toString(16).padStart(16, "0"),
+  name,
+  startTimeUnixNano: ns(i),
+  endTimeUnixNano: ns(i + 1),
   ...(error ? { status: { code: 2 } } : {}),
   attributes: [s("gen_ai.operation.name", "execute_tool"), s("gen_ai.tool.name", tool), s("gen_ai.tool.call.result", result)],
 });
 const traceBytes = (spans: unknown[]) => enc({ resourceSpans: [{ scopeSpans: [{ spans }] }] });
-const tracefile = () => traceBytes([
-  span(0, "a", "lookup", "total is 59.0"),
-  span(1, "b", "pay", "declined", true),
-  span(2, "c", "pay", "accepted 59.0"),
-]);
+const tracefile = () =>
+  traceBytes([span(0, "a", "lookup", "total is 59.0"), span(1, "b", "pay", "declined", true), span(2, "c", "pay", "accepted 59.0")]);
 
 const claim = (over: Partial<Claim> = {}): Claim => ({
-  id: "c1", text: "the total was 59.0", tool: "lookup", stepId: null, field: "result", mustContain: ["59.0"], caseSensitive: true, atEvent: null, ...over,
+  id: "c1",
+  text: "the total was 59.0",
+  tool: "lookup",
+  stepId: null,
+  field: "result",
+  mustContain: ["59.0"],
+  caseSensitive: true,
+  atEvent: null,
+  ...over,
 });
 
 describe("claim report sentences", () => {
@@ -45,20 +54,30 @@ describe("claim report sentences", () => {
 
   it("says where the text was found, in the words of the run", () => {
     expect(say(claim())).toBe("The text you listed appears in the recorded result of Tool call: lookup, recorded at event 4.");
-    expect(say(claim({ mustContain: ["total", "59.0"] }))).toContain("All 2 texts you listed appear in the recorded result of Tool call: lookup");
+    expect(say(claim({ mustContain: ["total", "59.0"] }))).toContain(
+      "All 2 texts you listed appear in the recorded result of Tool call: lookup",
+    );
   });
 
   it("mentions several matching steps and a failed step", () => {
     expect(say(claim({ tool: "pay", mustContain: ["59"] }))).toContain("(2 steps matched; this is the first that supports it)");
-    expect(say(claim({ tool: "pay", mustContain: ["declined"] }))).toContain("That step ended with an error, so treat this evidence with care.");
+    expect(say(claim({ tool: "pay", mustContain: ["declined"] }))).toContain(
+      "That step ended with an error, so treat this evidence with care.",
+    );
   });
 
   it("says what is missing, what is absent, what is late and what is unreadable", () => {
-    expect(say(claim({ mustContain: ["59.0", "refunded"] }))).toBe('The recorded result of Tool call: lookup was read, but this text does not appear in it: "refunded".');
+    expect(say(claim({ mustContain: ["59.0", "refunded"] }))).toBe(
+      'The recorded result of Tool call: lookup was read, but this text does not appear in it: "refunded".',
+    );
     expect(say(claim({ mustContain: ["q", "z"] }))).toContain('these texts do not appear in it: "q", "z"');
-    expect(say(claim({ tool: "nope" }))).toBe('No step in this run matches a tool named "nope", so nothing recorded could support this claim. Tools in this run: "lookup", "pay".');
+    expect(say(claim({ tool: "nope" }))).toBe(
+      'No step in this run matches a tool named "nope", so nothing recorded could support this claim. Tools in this run: "lookup", "pay".',
+    );
     expect(say(claim({ tool: null, stepId: "f".repeat(16) }))).toContain(`the id ${"f".repeat(16)}`);
-    expect(say(claim({ atEvent: 2 }))).toBe("The result of Tool call: lookup was only recorded at event 4, after event 2 where the claim was made, so it cannot have supported it.");
+    expect(say(claim({ atEvent: 2 }))).toBe(
+      "The result of Tool call: lookup was only recorded at event 4, after event 2 where the claim was made, so it cannot have supported it.",
+    );
     expect(say(claim(), hashedModel)).toContain("Cannot check: this run was imported without content");
     expect(say(claim(), hashedModel)).toContain("--full");
     expect(say(claim({ field: "arguments" }))).toBe("Cannot check: the trace did not record the arguments of Tool call: lookup.");
@@ -67,7 +86,9 @@ describe("claim report sentences", () => {
   it("shortens long quoted texts and says 'and N more' for many tools", () => {
     const long = "x".repeat(200);
     expect(say(claim({ mustContain: [long] }))).toContain(`"${"x".repeat(80)}…"`);
-    const many = buildRunModel(importTraceBytes({ spans: traceBytes(Array.from({ length: 14 }, (_, i) => span(i, `n${i}`, `tool${i}`, "r"))), contentMode: "FULL" }));
+    const many = buildRunModel(
+      importTraceBytes({ spans: traceBytes(Array.from({ length: 14 }, (_, i) => span(i, `n${i}`, `tool${i}`, "r"))), contentMode: "FULL" }),
+    );
     expect(say(claim({ tool: "nope" }), many)).toContain("and 4 more.");
   });
 
@@ -83,7 +104,11 @@ describe("claim report sentences", () => {
   });
 
   it("writes a full report that starts with the plain note and a count", () => {
-    const check = checkClaims(model.events, [claim(), claim({ id: "c2", text: "refunded", mustContain: ["refunded"] }), claim({ id: "c3", field: "arguments" })]);
+    const check = checkClaims(model.events, [
+      claim(),
+      claim({ id: "c2", text: "refunded", mustContain: ["refunded"] }),
+      claim({ id: "c3", field: "arguments" }),
+    ]);
     expect(claimSummary(check)).toBe("1 supported, 1 not supported, 1 cannot be checked (of 3).");
     const text = claimReportLines(check, titleOf).join("\n");
     expect(text.startsWith(CLAIM_NOTE)).toBe(true);
@@ -107,21 +132,41 @@ describe("claims command", () => {
     fs.writeFileSync(files.full, serializeRunLog(importTraceBytes({ spans: tracefile(), contentMode: "FULL" })));
     fs.writeFileSync(files.hashed, serializeRunLog(importTraceBytes({ spans: tracefile() })));
     files.claims = path.join(root, "claims.json");
-    fs.writeFileSync(files.claims, claimsJson([
-      { id: "total", text: "The total was 59.0", tool: "lookup", mustContain: ["59.0"] },
-      { id: "refund", text: "The refund was accepted", tool: "pay", mustContain: ["accepted"] },
-      { id: "shipped", text: "The order shipped", tool: "lookup", mustContain: ["shipped"] },
-    ]));
+    fs.writeFileSync(
+      files.claims,
+      claimsJson([
+        { id: "total", text: "The total was 59.0", tool: "lookup", mustContain: ["59.0"] },
+        { id: "refund", text: "The refund was accepted", tool: "pay", mustContain: ["accepted"] },
+        { id: "shipped", text: "The order shipped", tool: "lookup", mustContain: ["shipped"] },
+      ]),
+    );
   });
-  afterAll(() => { fs.rmSync(root, { recursive: true, force: true }); });
+  afterAll(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 
   const cli = (args: string[]) => {
     let out = "";
     let err = "";
-    const code = runCli(args, { out: (t) => { out += t; }, err: (t) => { err += t; } }, { runsDirectory: runs, checks: fake });
+    const code = runCli(
+      args,
+      {
+        out: (t) => {
+          out += t;
+        },
+        err: (t) => {
+          err += t;
+        },
+      },
+      { runsDirectory: runs, checks: fake },
+    );
     return { code, out, err };
   };
-  const write = (name: string, text: string | Uint8Array) => { const p = path.join(root, name); fs.writeFileSync(p, text); return p; };
+  const write = (name: string, text: string | Uint8Array) => {
+    const p = path.join(root, name);
+    fs.writeFileSync(p, text);
+    return p;
+  };
 
   it("reports each claim in plain words", () => {
     const r = cli(["claims", files.full, "--claims", files.claims]);
@@ -141,10 +186,18 @@ describe("claims command", () => {
 
   it("writes JSON for scripts", () => {
     const r = cli(["claims", files.full, "--claims", files.claims, "--json"]);
-    const parsed = JSON.parse(r.out) as { counts: unknown; contentMode: string; results: Array<{ id: string; verdict: string; reason: string; evidenceEvent: number | null }> };
+    const parsed = JSON.parse(r.out) as {
+      counts: unknown;
+      contentMode: string;
+      results: Array<{ id: string; verdict: string; reason: string; evidenceEvent: number | null }>;
+    };
     expect(parsed.contentMode).toBe("FULL");
     expect(parsed.counts).toEqual({ supported: 2, notSupported: 1, cannotCheck: 0 });
-    expect(parsed.results.map((x) => [x.id, x.verdict, x.reason])).toEqual([["total", "SUPPORTED", "FOUND"], ["refund", "SUPPORTED", "FOUND"], ["shipped", "NOT_SUPPORTED", "NOT_FOUND"]]);
+    expect(parsed.results.map((x) => [x.id, x.verdict, x.reason])).toEqual([
+      ["total", "SUPPORTED", "FOUND"],
+      ["refund", "SUPPORTED", "FOUND"],
+      ["shipped", "NOT_SUPPORTED", "NOT_FOUND"],
+    ]);
     expect(typeof parsed.results[0].evidenceEvent).toBe("number");
   });
 
@@ -153,7 +206,7 @@ describe("claims command", () => {
     const r = cli(["claims", files.full, "--claims", bad]);
     expect(r.code).toBe(2);
     expect(r.out).toBe("");
-    expect(r.err).toContain('error: Claim 1 (x): a field name is not allowed');
+    expect(r.err).toContain("error: Claim 1 (x): a field name is not allowed");
     expect(r.err).not.toContain("typo");
     const broken = write("broken-claims.json", "{");
     expect(cli(["claims", files.full, "--claims", broken]).err).toContain("not valid JSON");
@@ -165,7 +218,7 @@ describe("claims command", () => {
     expect(cli(["claims", files.full, "--claims", files.claims, "--claims", files.claims]).code).toBe(2);
     expect(cli(["claims", path.join(root, "missing.jsonl"), "--claims", files.claims]).code).toBe(1);
     expect(cli(["claims", files.full, "--claims", path.join(root, "missing.json")]).code).toBe(1);
-    const notARun = write("not-a-run.jsonl", "{\"hello\":1}\n");
+    const notARun = write("not-a-run.jsonl", '{"hello":1}\n');
     const r = cli(["claims", notARun, "--claims", files.claims]);
     expect(r.code).toBe(1);
     expect(r.err).toMatch(/^error: /);
@@ -173,13 +226,22 @@ describe("claims command", () => {
 
   it("cannot be used to reach a terminal: tool names, titles and claim text are escaped", () => {
     const esc = "\u001b[2J";
-    const hostile = write("hostile.runlog.jsonl", serializeRunLog(importTraceBytes({
-      spans: traceBytes([span(0, "a", `evil${esc}tool‮`, "total is 59.0")]), contentMode: "FULL",
-    })));
-    const claims = write("hostile-claims.json", claimsJson([
-      { id: "a", text: `forged${esc}\nResult: 99 supported`, tool: `evil${esc}tool‮`, mustContain: ["59.0"] },
-      { id: "b", text: "missing tool", tool: "nothing", mustContain: ["x"] },
-    ]));
+    const hostile = write(
+      "hostile.runlog.jsonl",
+      serializeRunLog(
+        importTraceBytes({
+          spans: traceBytes([span(0, "a", `evil${esc}tool‮`, "total is 59.0")]),
+          contentMode: "FULL",
+        }),
+      ),
+    );
+    const claims = write(
+      "hostile-claims.json",
+      claimsJson([
+        { id: "a", text: `forged${esc}\nResult: 99 supported`, tool: `evil${esc}tool‮`, mustContain: ["59.0"] },
+        { id: "b", text: "missing tool", tool: "nothing", mustContain: ["x"] },
+      ]),
+    );
     const r = cli(["claims", hostile, "--claims", claims]);
     expect(r.code).toBe(0);
     // eslint-disable-next-line no-control-regex
@@ -191,11 +253,17 @@ describe("claims command", () => {
 
   it("writes --json that a terminal cannot be steered by: unsafe characters are escaped, values unchanged", () => {
     const unsafe = ["\u202e", "\u2066", "\u009b", "\u007f", "\u2028", "\u061c"].map((c) => c).join("");
-    const hostile = write("hostile-json.runlog.jsonl", serializeRunLog(importTraceBytes({ spans: traceBytes([span(0, "a", "lookup", "total is 59.0")]), contentMode: "FULL" })));
-    const claims = write("hostile-json-claims.json", claimsJson([
-      { id: "a", text: "shown" + unsafe + "text", tool: "lookup", mustContain: ["59.0"] },
-      { id: "b", text: "missing", tool: "lookup", mustContain: ["nope" + unsafe] },
-    ]));
+    const hostile = write(
+      "hostile-json.runlog.jsonl",
+      serializeRunLog(importTraceBytes({ spans: traceBytes([span(0, "a", "lookup", "total is 59.0")]), contentMode: "FULL" })),
+    );
+    const claims = write(
+      "hostile-json-claims.json",
+      claimsJson([
+        { id: "a", text: "shown" + unsafe + "text", tool: "lookup", mustContain: ["59.0"] },
+        { id: "b", text: "missing", tool: "lookup", mustContain: ["nope" + unsafe] },
+      ]),
+    );
     const r = cli(["claims", hostile, "--claims", claims, "--json"]);
     expect(r.code).toBe(0);
     // eslint-disable-next-line no-control-regex
@@ -206,7 +274,7 @@ describe("claims command", () => {
   });
 
   it("jsonForTerminal leaves ordinary text, quotes and emoji alone", () => {
-    const text = JSON.stringify({ a: "caf\u00e9 \"quoted\" \ud83d\ude00 \\ back" });
+    const text = JSON.stringify({ a: 'caf\u00e9 "quoted" \ud83d\ude00 \\ back' });
     expect(jsonForTerminal(text)).toBe(text);
   });
 
@@ -235,7 +303,11 @@ describe("the example on the screen", () => {
 
   it("gives two supported and one not supported on the demo run with content stored", () => {
     const check = checkClaims(buildRunModel(parseRunLog(asset("demo-run-full.runlog.jsonl"))).events, example.claims);
-    expect(check.results.map((r) => [r.claim.id, r.verdict])).toEqual([["order-total", "SUPPORTED"], ["refund-accepted", "SUPPORTED"], ["order-delivered", "NOT_SUPPORTED"]]);
+    expect(check.results.map((r) => [r.claim.id, r.verdict])).toEqual([
+      ["order-total", "SUPPORTED"],
+      ["refund-accepted", "SUPPORTED"],
+      ["order-delivered", "NOT_SUPPORTED"],
+    ]);
     // issue_refund ran twice: the first call timed out, the second was accepted, so the claim is supported by the second.
     expect(check.results[1].stepsChecked).toBe(2);
   });

@@ -17,8 +17,13 @@ import { ImportError } from "./run-import-error.js";
 import { MAX_OUTPUT_EVENTS, MAX_RUN_LOG_BYTES } from "./run-limits.js";
 import { ALLOWLIST, KNOWN_CONTENT_KEYS, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
 import {
-  runEventListSchema, RUN_EVENT_SCHEMA_VERSION,
-  type ContentMode, type Field, type RunEvent, type StepKind, type TaggedValue,
+  runEventListSchema,
+  RUN_EVENT_SCHEMA_VERSION,
+  type ContentMode,
+  type Field,
+  type RunEvent,
+  type StepKind,
+  type TaggedValue,
 } from "./run-events.js";
 
 export const IMPORTER = { id: "dropscope-otlp-json", version: "4" } as const;
@@ -43,8 +48,13 @@ export type EmitOptions = {
 };
 
 const KIND_OF_OPERATION = new Map<string, StepKind>([
-  ["chat", "LLM_CALL"], ["text_completion", "LLM_CALL"], ["generate_content", "LLM_CALL"], ["embeddings", "LLM_CALL"],
-  ["execute_tool", "TOOL_CALL"], ["invoke_agent", "AGENT"], ["create_agent", "AGENT"],
+  ["chat", "LLM_CALL"],
+  ["text_completion", "LLM_CALL"],
+  ["generate_content", "LLM_CALL"],
+  ["embeddings", "LLM_CALL"],
+  ["execute_tool", "TOOL_CALL"],
+  ["invoke_agent", "AGENT"],
+  ["create_agent", "AGENT"],
 ]);
 
 // ---- secret and personal-data scanner (spec 6.6): bounded patterns, counts only ----
@@ -87,7 +97,11 @@ class Emitter {
       const value = stack.pop() as TaggedValue;
       if (value.t === "s") this.scanString(value.v);
       else if (value.t === "a") for (const e of value.v) stack.push(e);
-      else if (value.t === "k") for (const [k, e] of value.v) { this.scanString(k); stack.push(e); }
+      else if (value.t === "k")
+        for (const [k, e] of value.v) {
+          this.scanString(k);
+          stack.push(e);
+        }
     }
   }
   private scanString(text: string): void {
@@ -108,7 +122,11 @@ class Emitter {
       const bytesBefore = this.withheldBytes;
       const key = this.field(tagStr(a.key), check !== undefined);
       const value = this.field(a.value, check !== undefined && check(a.value));
-      return { entry: { ordinal: a.ordinal, key, value }, withheld: this.withheldParts - partsBefore, bytes: this.withheldBytes - bytesBefore };
+      return {
+        entry: { ordinal: a.ordinal, key, value },
+        withheld: this.withheldParts - partsBefore,
+        bytes: this.withheldBytes - bytesBefore,
+      };
     });
   }
 }
@@ -215,8 +233,7 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     return compareUtf8(a.canonical, b.canonical);
   });
 
-  const contentOf = (drafts: ContentDraft[]) =>
-    [...drafts].sort((a, b) => compareString(a.field, b.field) || a.ordinal - b.ordinal);
+  const contentOf = (drafts: ContentDraft[]) => [...drafts].sort((a, b) => compareString(a.field, b.field) || a.ordinal - b.ordinal);
 
   // Logs: attributes split, body and moved attributes become content.
   type LogBundle = { ordinal: number; log: NormalLog; logEvent: Draft; contents: ContentDraft[] };
@@ -229,7 +246,13 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     for (const a of log.attributes) {
       if (ALLOWLIST.has(a.key)) kept.push(a);
       else if (KNOWN_CONTENT_KEYS.has(a.key)) contents.push({ field: a.key, ordinal: a.ordinal + 1, value: em.field(a.value, false) });
-      else contents.push({ field: "gen_ai.other", fieldKey: em.field(tagStr(a.key), false), ordinal: a.ordinal + 1, value: em.field(a.value, false) });
+      else
+        contents.push({
+          field: "gen_ai.other",
+          fieldKey: em.field(tagStr(a.key), false),
+          ordinal: a.ordinal + 1,
+          value: em.field(a.value, false),
+        });
     }
     const usageAttrs = log.attributes.filter((a) => a.key === "gen_ai.usage.input_tokens" || a.key === "gen_ai.usage.output_tokens").length;
     if (usageAttrs > 0) addNote("USAGE_NOT_SUMMED", log.stepId, { count: usageAttrs, scope: "log" });
@@ -239,9 +262,17 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     const logEvent: Draft = {
       type: "LogRecorded",
       payload: {
-        logOrdinal: ordinal, stepId: log.stepId, contextId: log.contextId, timeNs: log.timeNs, observedTimeNs: log.observedTimeNs,
-        severityNumber: log.severityNumber, severityText: em.field(tagStr(log.severityText), false), flags: log.flags,
-        eventName: em.field(tagStr(log.eventName), false), droppedAttributesCount: log.droppedAttributesCount, attributes,
+        logOrdinal: ordinal,
+        stepId: log.stepId,
+        contextId: log.contextId,
+        timeNs: log.timeNs,
+        observedTimeNs: log.observedTimeNs,
+        severityNumber: log.severityNumber,
+        severityText: em.field(tagStr(log.severityText), false),
+        flags: log.flags,
+        eventName: em.field(tagStr(log.eventName), false),
+        droppedAttributesCount: log.droppedAttributesCount,
+        attributes,
         unknownFields: log.unknownFields === null ? null : em.field(log.unknownFields, false),
       },
     } as Draft;
@@ -256,10 +287,20 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     logsOfStep.set(bundle.log.stepId, list);
   }
   const logContentEvents = (bundle: LogBundle): Draft[] =>
-    bundle.contents.map((c) => make({
-      type: "ContentRecorded",
-      payload: { stepId: null, logOrdinal: bundle.ordinal, channel: "LOG_RECORD", field: c.field, ...(c.fieldKey ? { fieldKey: c.fieldKey } : {}), ordinal: c.ordinal, value: c.value },
-    } as Draft));
+    bundle.contents.map((c) =>
+      make({
+        type: "ContentRecorded",
+        payload: {
+          stepId: null,
+          logOrdinal: bundle.ordinal,
+          channel: "LOG_RECORD",
+          field: c.field,
+          ...(c.fieldKey ? { fieldKey: c.fieldKey } : {}),
+          ordinal: c.ordinal,
+          value: c.value,
+        },
+      } as Draft),
+    );
 
   // Spans.
   type StepBundle = { span: NormalSpan; start: Draft; end: Draft; tail: Draft[] };
@@ -268,7 +309,8 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     const operation = attr(span.attributes, "gen_ai.operation.name");
     const operationText = operation !== undefined && operation.t === "s" ? operation.v : null;
     const kind: StepKind = operationText !== null ? (KIND_OF_OPERATION.get(operationText) ?? "OTHER") : "OTHER";
-    if (operation !== undefined && !(operationText !== null && KIND_OF_OPERATION.has(operationText))) addNote("UNRECOGNIZED_OPERATION", span.spanId);
+    if (operation !== undefined && !(operationText !== null && KIND_OF_OPERATION.has(operationText)))
+      addNote("UNRECOGNIZED_OPERATION", span.spanId);
     if (span.unknownCount > 0) addNote("UNKNOWN_FIELD", span.spanId, { count: span.unknownCount });
 
     // Label from structural data only (spec 6.4).
@@ -281,14 +323,22 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     for (const a of span.attributes) {
       if (KNOWN_CONTENT_KEYS.has(a.key)) contents.push({ field: a.key, ordinal: a.ordinal, value: em.field(a.value, false) });
       else if (a.key.startsWith("gen_ai.") && !ALLOWLIST.has(a.key)) {
-        contents.push({ field: "gen_ai.other", fieldKey: em.field(tagStr(a.key), false), ordinal: a.ordinal, value: em.field(a.value, false) });
+        contents.push({
+          field: "gen_ai.other",
+          fieldKey: em.field(tagStr(a.key), false),
+          ordinal: a.ordinal,
+          value: em.field(a.value, false),
+        });
       } else kept.push(a);
     }
 
     const attributeResults = em.attributeList(kept, true);
     const eventResults = span.events.map((e) => ({
-      ordinal: e.ordinal, timeNs: e.timeNs, name: em.field(tagStr(e.name), false),
-      attributes: em.attributeList(e.attributes, true), droppedAttributesCount: e.droppedAttributesCount,
+      ordinal: e.ordinal,
+      timeNs: e.timeNs,
+      name: em.field(tagStr(e.name), false),
+      attributes: em.attributeList(e.attributes, true),
+      droppedAttributesCount: e.droppedAttributesCount,
       unknownFields: e.unknownFields === null ? null : em.field(e.unknownFields, false),
     }));
     // Counts only attribute keys and values; names, status messages and other fields are not attributes.
@@ -302,12 +352,22 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     const start: Draft = {
       type: "StepStarted",
       payload: {
-        stepId: span.spanId, parentStepId: span.parentStepId, contextId: span.contextId, kind,
+        stepId: span.spanId,
+        parentStepId: span.parentStepId,
+        contextId: span.contextId,
+        kind,
         operationName: operation === undefined ? null : em.field(operation, ALLOWLIST.get("gen_ai.operation.name")?.(operation) === true),
-        name: em.field(tagStr(span.name), false), label, otlpKind: span.kind, startNs: span.startNs,
-        traceState: em.field(tagStr(span.traceState), false), flags: span.flags,
-        droppedAttributesCount: span.droppedAttributesCount, droppedEventsCount: span.droppedEventsCount, droppedLinksCount: span.droppedLinksCount,
-        attributes: attributeResults.map((x) => x.entry), links: span.links.map((l) => em.field(l, false)),
+        name: em.field(tagStr(span.name), false),
+        label,
+        otlpKind: span.kind,
+        startNs: span.startNs,
+        traceState: em.field(tagStr(span.traceState), false),
+        flags: span.flags,
+        droppedAttributesCount: span.droppedAttributesCount,
+        droppedEventsCount: span.droppedEventsCount,
+        droppedLinksCount: span.droppedLinksCount,
+        attributes: attributeResults.map((x) => x.entry),
+        links: span.links.map((l) => em.field(l, false)),
         unknownFields: span.unknownFields === null ? null : em.field(span.unknownFields, false),
       },
     } as Draft;
@@ -315,7 +375,10 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     const end: Draft = {
       type: "StepEnded",
       payload: {
-        stepId: span.spanId, endNs: span.endNs, endEffectiveNs: span.endEffectiveNs, statusCode: span.statusCode,
+        stepId: span.spanId,
+        endNs: span.endNs,
+        endEffectiveNs: span.endEffectiveNs,
+        statusCode: span.statusCode,
         statusMessage: em.field(tagStr(span.statusMessage), false),
         events: eventResults.map((e) => ({ ...e, attributes: e.attributes.map((x) => x.entry) })),
       },
@@ -324,14 +387,18 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
 
     // Usage (spec 8.1): LLM_CALL spans only.
     const tail: Draft[] = [];
-    const usageAttrCount = span.attributes.filter((a) => a.key === "gen_ai.usage.input_tokens" || a.key === "gen_ai.usage.output_tokens").length;
+    const usageAttrCount = span.attributes.filter(
+      (a) => a.key === "gen_ai.usage.input_tokens" || a.key === "gen_ai.usage.output_tokens",
+    ).length;
     if (kind === "LLM_CALL") {
       const input = usageValue(span.attributes, "gen_ai.usage.input_tokens");
       const output = usageValue(span.attributes, "gen_ai.usage.output_tokens");
       const unusable = Number(input.unusable) + Number(output.unusable);
       if (unusable > 0) addNote("UNUSABLE_USAGE", span.spanId, { count: unusable });
       if (input.value !== null || output.value !== null) {
-        tail.push(make({ type: "UsageRecorded", payload: { stepId: span.spanId, inputTokens: input.value, outputTokens: output.value } } as Draft));
+        tail.push(
+          make({ type: "UsageRecorded", payload: { stepId: span.spanId, inputTokens: input.value, outputTokens: output.value } } as Draft),
+        );
       }
     } else if (usageAttrCount > 0) {
       addNote("USAGE_NOT_SUMMED", span.spanId, { count: usageAttrCount, scope: "span" });
@@ -339,10 +406,20 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
 
     const ordered = contentOf(contents);
     for (const c of ordered) {
-      tail.push(make({
-        type: "ContentRecorded",
-        payload: { stepId: span.spanId, logOrdinal: null, channel: "SPAN_ATTRIBUTE", field: c.field, ...(c.fieldKey ? { fieldKey: c.fieldKey } : {}), ordinal: c.ordinal, value: c.value },
-      } as Draft));
+      tail.push(
+        make({
+          type: "ContentRecorded",
+          payload: {
+            stepId: span.spanId,
+            logOrdinal: null,
+            channel: "SPAN_ATTRIBUTE",
+            field: c.field,
+            ...(c.fieldKey ? { fieldKey: c.fieldKey } : {}),
+            ordinal: c.ordinal,
+            value: c.value,
+          },
+        } as Draft),
+      );
     }
     let contentCount = ordered.length;
     for (const bundle of logsOfStep.get(span.spanId) ?? []) {
@@ -362,7 +439,10 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
     slots.push({ time: BigInt(span.startNs), cls: 1, depthKey: span.depth, spanId: span.spanId, isStart: true });
     slots.push({ time: BigInt(span.endEffectiveNs), cls: zero ? 2 : 0, depthKey: -span.depth, spanId: span.spanId, isStart: false });
   }
-  slots.sort((a, b) => (a.time === b.time ? 0 : a.time < b.time ? -1 : 1) || a.cls - b.cls || a.depthKey - b.depthKey || compareString(a.spanId, b.spanId));
+  slots.sort(
+    (a, b) =>
+      (a.time === b.time ? 0 : a.time < b.time ? -1 : 1) || a.cls - b.cls || a.depthKey - b.depthKey || compareString(a.spanId, b.spanId),
+  );
 
   const body: Draft[] = [];
   for (const slot of slots) {
@@ -384,7 +464,8 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
   for (const input of options.inputs) {
     if (input.enumNamesAccepted > 0) addNote("ENUM_NAME_ACCEPTED", null, { role: input.role, count: input.enumNamesAccepted });
   }
-  if ((options.envelopeUnknownCount ?? 0) > 0) addNote("UNKNOWN_FIELD", null, { count: options.envelopeUnknownCount as number, scope: "envelope" });
+  if ((options.envelopeUnknownCount ?? 0) > 0)
+    addNote("UNKNOWN_FIELD", null, { count: options.envelopeUnknownCount as number, scope: "envelope" });
   if (em.scanCounts.size > 0) {
     addNote("SECRET_PATTERN_COUNT", null, Object.fromEntries([...em.scanCounts.entries()].sort(([a], [b]) => compareString(a, b))));
   }
@@ -393,22 +474,40 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
   const unique = new Map<string, ImportNoteDraft>();
   for (const note of notes) unique.set(canonicalJson(note), note);
   const noteEvents: Draft[] = [...unique.values()]
-    .sort((a, b) => compareString(a.code, b.code) || compareString(a.stepId ?? "", b.stepId ?? "") || compareString(canonicalJson(a.detail), canonicalJson(b.detail)))
+    .sort(
+      (a, b) =>
+        compareString(a.code, b.code) ||
+        compareString(a.stepId ?? "", b.stepId ?? "") ||
+        compareString(canonicalJson(a.detail), canonicalJson(b.detail)),
+    )
     .map((n) => make({ type: "ImportNote", payload: { code: n.code, stepId: n.stepId, detail: n.detail } } as Draft));
 
-  const artifactId = sha256Hex(canonicalJson({
-    traceId: run.traceId,
-    inputs: [...options.inputs].sort((a, b) => compareString(a.role, b.role)).map((i) => ({ role: i.role, sha256: i.sha256 })),
-    contentMode: options.contentMode, importer: IMPORTER, limitsVersion: LIMITS_VERSION, conventionVersion,
-    schemaVersion: RUN_EVENT_SCHEMA_VERSION,
-  }));
+  const artifactId = sha256Hex(
+    canonicalJson({
+      traceId: run.traceId,
+      inputs: [...options.inputs].sort((a, b) => compareString(a.role, b.role)).map((i) => ({ role: i.role, sha256: i.sha256 })),
+      contentMode: options.contentMode,
+      importer: IMPORTER,
+      limitsVersion: LIMITS_VERSION,
+      conventionVersion,
+      schemaVersion: RUN_EVENT_SCHEMA_VERSION,
+    }),
+  );
   const started: Draft = {
     type: "RunStarted",
     payload: {
-      traceId: run.traceId, derivedOrder: true, importer: { ...IMPORTER }, conventionVersion, contentMode: options.contentMode,
+      traceId: run.traceId,
+      derivedOrder: true,
+      importer: { ...IMPORTER },
+      conventionVersion,
+      contentMode: options.contentMode,
       selectedTrace: run.selectedTrace,
-      inputs: [...options.inputs].sort((a, b) => compareString(a.role, b.role)).map((i) => ({ role: i.role, byteLength: i.byteLength, sha256: i.sha256 })),
-      limitsVersion: LIMITS_VERSION, artifactId, contexts: contextPayloads,
+      inputs: [...options.inputs]
+        .sort((a, b) => compareString(a.role, b.role))
+        .map((i) => ({ role: i.role, byteLength: i.byteLength, sha256: i.sha256 })),
+      limitsVersion: LIMITS_VERSION,
+      artifactId,
+      contexts: contextPayloads,
     },
   } as Draft;
   // The header's contexts were accounted one by one; count its remaining fields here.

@@ -25,6 +25,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: The dropscope command runs after a fresh install
+        run: npx dropscope state src/frontend/assets/demo-run.runlog.jsonl --at 24
 
   e2e:
     # Browser tests on Linux. Picture comparisons are skipped: their baselines are recorded on Windows only.

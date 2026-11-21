@@ -183,6 +183,19 @@ function checkResolvedComponents(resolved: string): void {
   }
 }
 
+// macOS keeps /tmp, /var and /etc as links to /private/<name>. Those three links are part of the system image,
+// and os.tmpdir() lies under one of them, so they are accepted; every other link is still refused.
+function isMacSystemLink(file: string): boolean {
+  if (process.platform !== "darwin") return false;
+  const name = path.basename(file);
+  if (path.dirname(file) !== "/" || !["tmp", "var", "etc"].includes(name)) return false;
+  try {
+    return fs.readlinkSync(file) === `private/${name}`;
+  } catch {
+    return false;
+  }
+}
+
 // Resolves the path and rejects any symbolic link or junction in any existing component.
 export function safeResolve(raw: string, allowMissingTail = false): string {
   checkPathText(raw);
@@ -201,7 +214,7 @@ export function safeResolve(raw: string, allowMissingTail = false): string {
       if ((error as NodeJS.ErrnoException).code === "ENOENT" && allowMissingTail) return resolved;
       return fail("E_PATH", "MISSING_OR_UNREADABLE");
     }
-    if (stat.isSymbolicLink()) fail("E_PATH", "LINK_IN_PATH");
+    if (stat.isSymbolicLink() && !isMacSystemLink(current)) fail("E_PATH", "LINK_IN_PATH");
   }
   return resolved;
 }

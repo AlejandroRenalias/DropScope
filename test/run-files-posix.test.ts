@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   FILE_ATTRIBUTE_OFFLINE, SF_DATALESS, defaultChecks, defaultRunsDirectory, ensureRunsDirectory, makePosixChecks,
-  readInputFile, syncedRootWarning, windowsChecks,
+  readInputFile, safeResolve, syncedRootWarning, windowsChecks,
 } from "../src/run-files.js";
 import { ImportError } from "../src/run-import-error.js";
 import { importTraceBytes } from "../src/run-import.js";
@@ -128,6 +128,18 @@ describe("macOS placeholder checks", () => {
     const open = vi.spyOn(fs, "openSync");
     expect(codeOf(() => readInputFile(file, 100, checks))).toBe("E_FILE_KIND:CLOUD_PLACEHOLDER_OR_OFFLINE");
     expect(open).not.toHaveBeenCalled();
+  });
+});
+
+describe.skipIf(process.platform !== "darwin")("macOS system links", () => {
+  it("accepts /tmp, /var and /etc as the system defines them, and still refuses a link made by the user", () => {
+    expect(safeResolve("/tmp/dropscope-no-such-file", true)).toBe("/tmp/dropscope-no-such-file");
+    expect(safeResolve(path.join(os.tmpdir(), "dropscope-no-such-file"), true)).toContain("dropscope-no-such-file");
+    const target = path.join(root, "target");
+    fs.mkdirSync(target);
+    const link = path.join(root, "link");
+    fs.symlinkSync(target, link);
+    expect(codeOf(() => safeResolve(path.join(link, "x"), true))).toBe("E_PATH:LINK_IN_PATH");
   });
 });
 

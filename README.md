@@ -66,16 +66,15 @@ The command prints where the run file was saved. See the [run event contract](do
 
 ### Works with
 
-DropScope reads the standard `gen_ai.*` attributes. Whether a stack works depends on the attribute names its instrumentation writes. Each row was checked with a small synthetic trace written from the project's public documentation and source, not with a capture from a real installation.
+DropScope reads the standard `gen_ai.*` attributes. Whether a stack works depends on the attribute names its instrumentation writes. DropScope also reads the names that OpenInference, OpenLLMetry and LangSmith use, and each step records which attribute it was read from. Each row was checked with a small synthetic trace written from the project's public documentation and source, not with a capture from a real installation, so a real stack can differ.
 
 | Emitter | Status | What to expect |
 | --- | --- | --- |
 | OpenTelemetry instrumentation for the OpenAI Agents SDK | Tested | Agent, model-call and tool steps, with token totals. Handoff steps show as "Other". |
 | Pydantic AI (Logfire or any OTel backend) | Tested | Agent, model-call and tool steps, with token totals. The Logfire attributes are ignored. |
-| OpenLLMetry (Traceloop), current versions | Partial | Model calls and token totals work. Its workflow and tool spans show as "Other". |
-| OpenLLMetry (Traceloop), older versions | Partial | The trace imports, but steps show as "Other" and there are no token totals: it has no `gen_ai.operation.name` and uses `gen_ai.usage.prompt_tokens`. |
-| LangChain and LangGraph, through the LangSmith OTel export | Partial | Same as older OpenLLMetry: it imports, steps show as "Other", no token totals. |
-| OpenInference (Arize Phoenix and Arize AX) | Not supported | The trace imports, but it uses its own `openinference.*` and `llm.*` names, so every step shows as "Other" and there are no token totals. |
+| OpenLLMetry (Traceloop), current and older versions | Tested | Model-call and tool steps, with token totals. Workflow spans show as "Other". Older versions are read through `llm.request.type` and the prompt and completion token names. |
+| LangChain and LangGraph, through the LangSmith OTel export | Tested | Model-call and tool steps, with token totals. The chain span shows as "Other". Read through `langsmith.span.kind`. |
+| OpenInference (Arize Phoenix and Arize AX) | Tested | Agent, model-call and tool steps, with token totals. Read through `openinference.span.kind` and `llm.token_count.*`. |
 
 In every row the default import keeps no prompt, answer or tool content. Details and the fixtures are in [Works with](docs/WORKS_WITH.md).
 

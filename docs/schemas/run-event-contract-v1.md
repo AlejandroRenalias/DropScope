@@ -1,6 +1,6 @@
 # Run-event contract v1 (companion spec to ADR-027)
 
-**Status:** Accepted together with ADR-027 (2026-10-13, revision 3). Numbers marked (P) are provisional and must be measured on real traces. It does not amend `docs/schemas/contracts.md`; it defines a separate event family.
+**Status:** Accepted together with ADR-027 (2026-10-13, revision 3). Revision 4 (2026-11-21, contract v1.1, schema version 3) adds the mapping of other emitters' names, see [ADR-029](../adr/ADR-029-name-mapping-for-common-emitters.md) and section 13. Numbers marked (P) are provisional and must be measured on real traces. It does not amend `docs/schemas/contracts.md`; it defines a separate event family.
 
 Conventions: "fail closed" means the import stops with a closed error code (section 12) and publishes nothing. Integers that may exceed 2^53 are decimal strings. Strings compare by UTF-16 code unit. Fixed-schema objects serialize with keys sorted by code unit; user data uses the tagged form in section 3.
 
@@ -47,14 +47,14 @@ Conventions: "fail closed" means the import stops with a closed error code (sect
 
 ## 5. Events
 
-`schemaVersion` is 2 (version 1 was a draft shape that was never released and is not supported; see section 13). Envelope: `schemaVersion`, `sequenceNumber` (starts at 1, +1 per event), `runId`, `type`, `payload`. "Field" is the field form (3.3).
+`schemaVersion` is 3 for files the importer writes now; a reader also accepts 2 (version 1 was a draft shape that was never released and is not supported; see section 13). Envelope: `schemaVersion`, `sequenceNumber` (starts at 1, +1 per event), `runId`, `type`, `payload`. "Field" is the field form (3.3).
 
 | Event | Payload |
 | --- | --- |
 | `RunStarted` | `traceId`; `derivedOrder: true`; `importer {id, version}`; `conventionVersion`; `contentMode` (`HASH_ONLY`, `FULL`); `selectedTrace`; `inputs [{role, byteLength, sha256}]` by role; `limitsVersion`; `artifactId`; `contexts [{contextId, resource {attributes, schemaUrl, droppedAttributesCount, unknownFields}, scope {name, version, attributes, schemaUrl, droppedAttributesCount, unknownFields}}]` (attributes as lists of `{ordinal, key: Field, value: Field}`; names, versions and URLs as Field; `unknownFields` a Field or null). A `contextId` is `c` followed by digits, assigned in the order of the contexts' content hashes. No path, no wall-clock time. |
-| `StepStarted` | `stepId`; `parentStepId` or null; `contextId`; `kind` (`LLM_CALL`, `TOOL_CALL`, `AGENT`, `OTHER`); `operationName` (Field or null; null only when the span has no operation attribute); `name` Field; `label` (derived string, section 6.4); `otlpKind`; `startNs`; `traceState` Field; `flags`; `droppedAttributesCount`; `droppedEventsCount`; `droppedLinksCount`; `attributes` (list as above, excluding fields moved to `ContentRecorded`); `links` (list of Field); `unknownFields` Field or null. |
+| `StepStarted` | `stepId`; `parentStepId` or null; `contextId`; `kind` (`LLM_CALL`, `TOOL_CALL`, `AGENT`, `OTHER`); `kindSource` (version 3 only: the attribute key that decided the kind, one of `gen_ai.operation.name`, `openinference.span.kind`, `traceloop.span.kind`, `langsmith.span.kind`, `llm.request.type`, or null exactly when the kind is `OTHER`); `operationName` (Field or null; null only when the span has no operation attribute); `name` Field; `label` (derived string, section 6.4); `otlpKind`; `startNs`; `traceState` Field; `flags`; `droppedAttributesCount`; `droppedEventsCount`; `droppedLinksCount`; `attributes` (list as above, excluding fields moved to `ContentRecorded`); `links` (list of Field); `unknownFields` Field or null. |
 | `StepEnded` | `stepId`; `endNs` or null; `endEffectiveNs`; `statusCode` (0, 1, 2; 2 is error); `statusMessage` Field; `events [{ordinal, timeNs, name: Field, attributes, droppedAttributesCount, unknownFields}]` (`unknownFields` a Field or null). |
-| `UsageRecorded` | `stepId`; `inputTokens` and `outputTokens`, each a decimal string or null (null means absent). Emitted only for `LLM_CALL` steps with at least one usable metric. |
+| `UsageRecorded` | `stepId`; `inputTokens` and `outputTokens`, each a decimal string or null (null means absent); in version 3 also `inputSource` and `outputSource`, the attribute key each count was read from (section 8.1), null exactly when that count is null. Emitted only for `LLM_CALL` steps with at least one usable metric. |
 | `ContentRecorded` | `stepId` or null; `logOrdinal` or null (exactly one of the two is set; `SPAN_ATTRIBUTE` needs `stepId`, `LOG_RECORD` needs `logOrdinal`); `channel` (`SPAN_ATTRIBUTE`, `LOG_RECORD`); `field` (one of the five known content names verbatim, else the literal `gen_ai.other` with the key in `fieldKey` Field); `ordinal`; `value` Field. A log record body is recorded with `field` `gen_ai.other`, `fieldKey` the verbatim string `log.body`, and `ordinal` 0; log attributes moved to content use their attribute ordinal plus one, so ordinal 0 on the `LOG_RECORD` channel is always the body. |
 | `LogRecorded` | `logOrdinal` (position in log order); `stepId` or null; `contextId`; `timeNs`; `observedTimeNs`; `severityNumber`; `severityText` Field; `flags`; `eventName` Field; `droppedAttributesCount`; `attributes` (excluding content fields); `unknownFields` Field or null. The body is recorded as `ContentRecorded`. |
 | `ImportNote` | `code`; `stepId` or null; `detail` per the table in 7: each code has exactly the detail shape listed there, no other keys. Details contain only counts, importer ids and enumerated names, never user keys or values. |
@@ -62,7 +62,16 @@ Conventions: "fail closed" means the import stops with a closed error code (sect
 
 Content fields: `gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.system_instructions`, `gen_ai.tool.call.arguments`, `gen_ai.tool.call.result`, any other `gen_ai.*` attribute not on the allowlist (6.2), and every log body and log attribute that is not otherwise allowlisted.
 
-Kinds: `gen_ai.operation.name` of `chat`, `text_completion`, `generate_content` or `embeddings` is `LLM_CALL`; `execute_tool` is `TOOL_CALL`; `invoke_agent` or `create_agent` is `AGENT`; anything else, including a missing operation, is `OTHER`. A present but unmapped operation emits `UNRECOGNIZED_OPERATION`; a missing operation does not.
+Kinds (version 3): the standard `gen_ai.operation.name` decides when the span has it. `chat`, `text_completion`, `generate_content` or `embeddings` is `LLM_CALL`; `execute_tool` is `TOOL_CALL`; `invoke_agent` or `create_agent` is `AGENT`; any other present value is `OTHER` and emits `UNRECOGNIZED_OPERATION`, and no other key can override it. When the span has no operation name, the first of the following keys that is present and maps to a kind other than `OTHER` decides, and its key is recorded in `kindSource`. If none maps, the kind is `OTHER` and no note is emitted.
+
+| Key (in this order) | Maps to `LLM_CALL` | `TOOL_CALL` | `AGENT` | `OTHER` (no source recorded) |
+| --- | --- | --- | --- | --- |
+| `openinference.span.kind` | `LLM`, `EMBEDDING` | `TOOL` | `AGENT` | every other value, such as `CHAIN` and `RETRIEVER` |
+| `traceloop.span.kind` | none | `tool` | `agent` | `workflow`, `task` and every other value |
+| `langsmith.span.kind` | `llm`, `embedding` | `tool` | none | `chain` and every other value |
+| `llm.request.type` | `chat`, `completion`, `embedding` | none | none | every other value |
+
+Values are compared exactly (case included). A value that is not a string maps to nothing. Version 2 files have only the standard rule and no `kindSource`.
 
 ## 6. Privacy classification
 
@@ -82,12 +91,16 @@ Kinds: `gen_ai.operation.name` of `chat`, `text_completion`, `generate_content` 
 | `gen_ai.agent.id`, `gen_ai.response.id` | string | `^[A-Za-z0-9._:-]{1,128}$` |
 | `error.type` | string | `^[A-Za-z0-9._:-]{1,128}$` |
 | `server.port` | int | 0 to 65535 |
+| `llm.request.type`, `traceloop.span.kind`, `langsmith.span.kind` | string | `^[a-z_]{1,32}$` (version 3) |
+| `openinference.span.kind` | string | `^[A-Z_]{1,32}$` (version 3) |
+| `llm.model_name` | string | `^[A-Za-z0-9._:/@+-]{1,128}$` (version 3) |
+| `gen_ai.usage.prompt_tokens`, `gen_ai.usage.completion_tokens`, `llm.token_count.prompt`, `llm.token_count.completion`, `llm.token_count.total` | int | non-negative (version 3) |
 | scope `name` / `version` | string | `^[a-z0-9._-]{1,128}$` / `^[0-9A-Za-z.+-]{1,64}$` |
 | `schemaUrl` | string | `^https://opentelemetry\.io/schemas/[0-9.]{1,32}$` |
 
    `server.address` and every resource attribute are content.
 3. `HASH_ONLY` (default): every content value is withheld (`{"w": {...}}`); structural values are verbatim. `FULL` (explicit per-import option): every value is verbatim. This section overrides any retention statement elsewhere. `LENGTH_ONLY` is deferred from v1. A sanitized export for sharing needs its own contract and covers input fingerprints, identifiers and metadata as well as content hashes.
-4. The `label` of a step is derived only from structural data: its kind, its `operationName` if verbatim, and its model if it passes its pattern.
+4. The `label` of a step is derived only from structural data: its kind, its `operationName` if verbatim, and its model (the first present of `gen_ai.request.model`, `gen_ai.response.model`, `llm.model_name`) if it passes its pattern.
 5. The input fingerprints and hashes of low-entropy values can confirm a guess about predictable content. Run files are therefore local-only artifacts and must not be shared or committed.
 6. The secret and personal-data scanner runs over content before withholding, once for each distinct resource content (by hash) and once for each distinct context's own content, so its counts do not depend on input order or on how input objects were shared, with a per-string cap (the aim is linear time, but the current patterns are not proven linear: a text built to defeat the `jwt` pattern made a scan about ten times slower, recorded as an open item in `PROGRESS.md`), and emits only `SECRET_PATTERN_COUNT` (counts per pattern class). It never stores or echoes a matched value.
 
@@ -112,13 +125,13 @@ Kinds: `gen_ai.operation.name` of `chat`, `text_completion`, `generate_content` 
 
 ## 8. Usage and state
 
-1. Usage is read only from `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` of `LLM_CALL` spans, and only as non-negative safe integers (each at most 2^53 - 1). Duplicate keys with equal values count once; with different values the metric is unusable (`UNUSABLE_USAGE`) and is not summed. An absent metric is null, which is different from zero.
+1. Usage is read only from `LLM_CALL` spans, and only as non-negative safe integers (each at most 2^53 - 1). Input tokens come from the first of `gen_ai.usage.input_tokens`, `gen_ai.usage.prompt_tokens`, `llm.token_count.prompt` that is present on the span; output tokens from the first of `gen_ai.usage.output_tokens`, `gen_ai.usage.completion_tokens`, `llm.token_count.completion`. The first key that is present decides even when its value is unusable: the later keys are not tried, so two emitters' numbers are never mixed. Totals (`gen_ai.usage.total_tokens`, `llm.token_count.total`) are never read. Duplicate attributes of the chosen key with equal values count once; with different values the metric is unusable (`UNUSABLE_USAGE`) and is not summed. An absent metric is null, which is different from zero.
 2. Totals accumulate as exact integers (BigInt) and serialize as decimal strings. There is no overflow rejection.
 3. State at step N, where N is a `sequenceNumber`: open and closed steps; counts by kind; cumulative input and output tokens; content available by field and channel; errors (steps with status code 2); notes by code. No claim is made about the model's hidden context.
 
 ## 9. Reducer admission
 
-Reject (fail closed on read, abort before publish) any history that violates: `RunStarted` first and unique, with the declared `contentMode`; `sequenceNumber` starting at 1 and rising by exactly 1; one constant `runId`; `StepStarted` ids unique; `StepEnded` exactly once per started step and only for an open step; `UsageRecorded` at most once per step, only for an `LLM_CALL` step, after its `StepEnded`; `ContentRecorded` and `LogRecorded` referencing an existing step (or null with an orphan note); no `value` Field in `ContentRecorded` unless `contentMode` is `FULL` and no withheld form where the field is structural; `ImportNote` only after every step, usage, content and log event, with the detail shape of its code (section 7); every context id unique and of the form in section 5; a step `label` equal to the label derived from its structural fields (6.4), in both modes; in a `HASH_ONLY` run, every value classified as content withheld, which includes span names, status messages, event names, trace state, links, unknown fields, severity text, log event names, resource attributes, and every attribute key or value not allowed by 6.2; in a `FULL` run, no withheld form anywhere; `RunEnded` unique, last, with no open steps and a matching `eventCount`. Parent references are checked at `RunEnded` for existence only, not for timing, because skewed clocks can start a child before its parent.
+Reject (fail closed on read, abort before publish) any history that violates: `RunStarted` first and unique, with the declared `contentMode`; `sequenceNumber` starting at 1 and rising by exactly 1; one constant `runId`; `StepStarted` ids unique; `StepEnded` exactly once per started step and only for an open step; `UsageRecorded` at most once per step, only for an `LLM_CALL` step, after its `StepEnded`; `ContentRecorded` and `LogRecorded` referencing an existing step (or null with an orphan note); no `value` Field in `ContentRecorded` unless `contentMode` is `FULL` and no withheld form where the field is structural; `ImportNote` only after every step, usage, content and log event, with the detail shape of its code (section 7); every context id unique and of the form in section 5; a step `label` equal to the label derived from its structural fields (6.4), in both modes; every event carrying the same `schemaVersion`; in version 3, a `kindSource` on every step that is null exactly for kind `OTHER` and otherwise names a key that is present verbatim on the step (the operation name for `gen_ai.operation.name`) with a value that maps to the step's kind (section 5), and `inputSource` and `outputSource` on every `UsageRecorded` that are null exactly when their count is null; in version 2, none of these three fields; in a `HASH_ONLY` run, every value classified as content withheld, which includes span names, status messages, event names, trace state, links, unknown fields, severity text, log event names, resource attributes, and every attribute key or value not allowed by 6.2; in a `FULL` run, no withheld form anywhere; `RunEnded` unique, last, with no open steps and a matching `eventCount`. Parent references are checked at `RunEnded` for existence only, not for timing, because skewed clocks can start a child before its parent.
 
 ## 10. Limits (P, one table, part of `limitsVersion`)
 

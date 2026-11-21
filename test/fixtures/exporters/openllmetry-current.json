@@ -1,0 +1,187 @@
+{
+ "resourceSpans": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "synthetic-support"
+      }
+     },
+     {
+      "key": "telemetry.sdk.name",
+      "value": {
+       "stringValue": "opentelemetry"
+      }
+     }
+    ]
+   },
+   "scopeSpans": [
+    {
+     "scope": {
+      "name": "opentelemetry.instrumentation.openai.v1",
+      "version": "0.50.0"
+     },
+     "spans": [
+      {
+       "traceId": "0000000000000000000000000000e102",
+       "spanId": "0000000000000001",
+       "name": "support.workflow",
+       "kind": 1,
+       "startTimeUnixNano": "1760000000000000000",
+       "endTimeUnixNano": "1760000006000000000",
+       "attributes": [
+        {
+         "key": "traceloop.span.kind",
+         "value": {
+          "stringValue": "workflow"
+         }
+        },
+        {
+         "key": "traceloop.workflow.name",
+         "value": {
+          "stringValue": "support"
+         }
+        },
+        {
+         "key": "traceloop.entity.name",
+         "value": {
+          "stringValue": "support"
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      },
+      {
+       "traceId": "0000000000000000000000000000e102",
+       "spanId": "0000000000000002",
+       "parentSpanId": "0000000000000001",
+       "name": "openai.chat",
+       "kind": 3,
+       "startTimeUnixNano": "1760000000500000000",
+       "endTimeUnixNano": "1760000002000000000",
+       "attributes": [
+        {
+         "key": "gen_ai.operation.name",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "llm.request.type",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "example-model"
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "example-model"
+         }
+        },
+        {
+         "key": "gen_ai.usage.input_tokens",
+         "value": {
+          "intValue": "120"
+         }
+        },
+        {
+         "key": "gen_ai.usage.output_tokens",
+         "value": {
+          "intValue": "30"
+         }
+        },
+        {
+         "key": "gen_ai.usage.total_tokens",
+         "value": {
+          "intValue": "150"
+         }
+        },
+        {
+         "key": "gen_ai.prompt.0.role",
+         "value": {
+          "stringValue": "user"
+         }
+        },
+        {
+         "key": "gen_ai.prompt.0.content",
+         "value": {
+          "stringValue": "Where is order 1042?"
+         }
+        },
+        {
+         "key": "gen_ai.completion.0.role",
+         "value": {
+          "stringValue": "assistant"
+         }
+        },
+        {
+         "key": "gen_ai.completion.0.content",
+         "value": {
+          "stringValue": "It shipped on Monday."
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      },
+      {
+       "traceId": "0000000000000000000000000000e102",
+       "spanId": "0000000000000003",
+       "parentSpanId": "0000000000000001",
+       "name": "lookup_order.tool",
+       "kind": 1,
+       "startTimeUnixNano": "1760000002000000000",
+       "endTimeUnixNano": "1760000003000000000",
+       "attributes": [
+        {
+         "key": "traceloop.span.kind",
+         "value": {
+          "stringValue": "tool"
+         }
+        },
+        {
+         "key": "traceloop.entity.name",
+         "value": {
+          "stringValue": "lookup_order"
+         }
+        },
+        {
+         "key": "traceloop.entity.input",
+         "value": {
+          "stringValue": "{\"order_id\":\"1042\"}"
+         }
+        },
+        {
+         "key": "traceloop.entity.output",
+         "value": {
+          "stringValue": "{\"status\":\"shipped\"}"
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

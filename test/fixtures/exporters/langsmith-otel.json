@@ -1,0 +1,163 @@
+{
+ "resourceSpans": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "synthetic-support"
+      }
+     }
+    ]
+   },
+   "scopeSpans": [
+    {
+     "scope": {
+      "name": "langsmith",
+      "version": "0.4.0"
+     },
+     "spans": [
+      {
+       "traceId": "0000000000000000000000000000e105",
+       "spanId": "0000000000000001",
+       "name": "support_graph",
+       "kind": 1,
+       "startTimeUnixNano": "1760000000000000000",
+       "endTimeUnixNano": "1760000006000000000",
+       "attributes": [
+        {
+         "key": "langsmith.span.kind",
+         "value": {
+          "stringValue": "chain"
+         }
+        },
+        {
+         "key": "langsmith.trace.session_name",
+         "value": {
+          "stringValue": "synthetic"
+         }
+        },
+        {
+         "key": "langsmith.span.id",
+         "value": {
+          "stringValue": "00000000-0000-4000-8000-000000000001"
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      },
+      {
+       "traceId": "0000000000000000000000000000e105",
+       "spanId": "0000000000000002",
+       "parentSpanId": "0000000000000001",
+       "name": "ChatModel",
+       "kind": 3,
+       "startTimeUnixNano": "1760000000500000000",
+       "endTimeUnixNano": "1760000002000000000",
+       "attributes": [
+        {
+         "key": "langsmith.span.kind",
+         "value": {
+          "stringValue": "llm"
+         }
+        },
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "llm.request.type",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "example-model"
+         }
+        },
+        {
+         "key": "gen_ai.prompt.0.role",
+         "value": {
+          "stringValue": "user"
+         }
+        },
+        {
+         "key": "gen_ai.prompt.0.content",
+         "value": {
+          "stringValue": "Where is order 1042?"
+         }
+        },
+        {
+         "key": "gen_ai.completion.0.role",
+         "value": {
+          "stringValue": "assistant"
+         }
+        },
+        {
+         "key": "gen_ai.completion.0.content",
+         "value": {
+          "stringValue": "It shipped on Monday."
+         }
+        },
+        {
+         "key": "gen_ai.usage.prompt_tokens",
+         "value": {
+          "intValue": "120"
+         }
+        },
+        {
+         "key": "gen_ai.usage.completion_tokens",
+         "value": {
+          "intValue": "30"
+         }
+        },
+        {
+         "key": "gen_ai.usage.total_tokens",
+         "value": {
+          "intValue": "150"
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      },
+      {
+       "traceId": "0000000000000000000000000000e105",
+       "spanId": "0000000000000003",
+       "parentSpanId": "0000000000000001",
+       "name": "lookup_order",
+       "kind": 1,
+       "startTimeUnixNano": "1760000002000000000",
+       "endTimeUnixNano": "1760000003000000000",
+       "attributes": [
+        {
+         "key": "langsmith.span.kind",
+         "value": {
+          "stringValue": "tool"
+         }
+        },
+        {
+         "key": "gen_ai.tool.name",
+         "value": {
+          "stringValue": "lookup_order"
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

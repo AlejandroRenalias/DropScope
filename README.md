@@ -30,7 +30,7 @@ With DropScope you can ask:
 | **Claim check** | Is each claim you wrote backed by what the run recorded? | `claims` | Claim check card |
 | **Run diff** | Where do two runs first differ? | `diff` | Compare with another run card |
 
-The screens are on the **Replay** page: open it, then choose **Imported agent run**.
+The screens are on the **Run replay** page, which is the page the app opens on.
 
 ## Try it
 
@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-Open the address Vite prints (normally `http://localhost:5173`), choose **Mission Replay** in the top bar, then **Imported agent run**. A demo run loads at once. The [guided tour](docs/GUIDED_TOUR.md) walks through each screen with exact buttons and commands.
+Open the address Vite prints (normally `http://localhost:5173`), The **Run replay** page opens with a demo run already loaded. The [guided tour](docs/GUIDED_TOUR.md) walks through each screen with exact buttons and commands.
 
 The same checks work from the command line on the demo files in the repository:
 
@@ -73,7 +73,7 @@ The command prints where the run file was saved. See the [run event contract](do
 
 ## The original mission replay
 
-Before it turned to agent run forensics, DropScope was a replayable research-workflow simulator. That part still works (the **Research Office**, **Tribunal Room**, **Review Office**, **Final Report** and **Mission Replay** screens, with its **Mission history** source). It uses fixed synthetic missions. Its normal flow starts no worker and makes no network request; two guarded pilots exist that act only when you ask them to (see the install guide). Its older guides are [Install and run](docs/INSTALLATION.md), [First mission replay](docs/FIRST_MISSION_REPLAY.md), [Architecture overview](docs/ARCHITECTURE_OVERVIEW.md) and [Synthetic fixtures](docs/SYNTHETIC_FIXTURES.md).
+Before it turned to agent run forensics, DropScope was a replayable research-workflow simulator. That part still works (the **Research Office**, **Tribunal Room**, **Review Office**, **Final Report** and **Mission Replay** screens), now behind the **Mission simulator (legacy)** link in the top bar. It uses fixed synthetic missions. Its normal flow starts no worker and makes no network request; two guarded pilots exist that act only when you ask them to (see the install guide). Its older guides are [Install and run](docs/INSTALLATION.md), [First mission replay](docs/FIRST_MISSION_REPLAY.md), [Architecture overview](docs/ARCHITECTURE_OVERVIEW.md) and [Synthetic fixtures](docs/SYNTHETIC_FIXTURES.md).
 
 ## Checking the project
 

@@ -26,18 +26,12 @@ test.beforeEach(async ({ page }) => {
 const demoTrace = () => new Uint8Array(readFileSync(new URL("../test/fixtures/demo-run-trace.json", import.meta.url)));
 
 async function openRunReplay(page: Page) {
-  if ((page.viewportSize()?.width ?? 1440) <= 760) {
-    const toggle = page.getByRole("button", { name: /^Workspace/ });
-    if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
-  }
-  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
-  await page.getByRole("button", { name: "Imported agent run" }).click();
   return page.getByRole("region", { name: "Agent run replay" });
 }
 
 const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
-test("shows the built-in demo run and keeps the mission replay one click away", async ({ page }) => {
+test("opens on the built-in demo run and keeps the legacy simulator one link away", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const replay = await openRunReplay(page);
   await expect(replay).toContainText("Event 42 / 42");
@@ -46,9 +40,10 @@ test("shows the built-in demo run and keeps the mission replay one click away", 
   await expect(page.locator(".run-source-card")).toContainText("Showing the built-in synthetic demo run.");
   // The mission's rails do not belong next to a run.
   await expect(page.getByRole("complementary", { name: "Mission status" })).toBeHidden();
-  await page.getByRole("button", { name: "Mission history" }).click();
-  await expect(page.getByRole("region", { name: "Mission Replay" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Mission state at this event" })).toBeVisible();
+  await page.getByRole("link", { name: "Mission simulator (legacy)" }).click();
+  await expect(page.getByRole("button", { name: "Research Office" })).toBeVisible();
+  await page.getByRole("link", { name: /back to agent run replay/ }).click();
+  await expect(page.getByRole("region", { name: "Agent run replay" })).toBeVisible();
 });
 
 test("scrubbing rebuilds the recorded state, step by step", async ({ page }) => {

@@ -188,3 +188,15 @@
 .rd-totals tbody th { font-weight: 600; }
 .rd-totals .rd-differs td { font-weight: 700; }
 @media (max-width: 760px) { .rd-row { grid-template-columns: 1fr; } .rd-head { display: none; } .rd-cell::before, .rd-why::before { display: block; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; } .rd-row .rd-cell:nth-child(1)::before { content: "Run A"; } .rd-row .rd-cell:nth-child(2)::before { content: "Run B"; } .rd-why::before { content: "What differs"; } }
+
+/* Default screen shell and the link between the agent run replay and the legacy mission simulator. */
+.runs-app .topbar .brand em { display: inline; margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--rule); color: var(--muted); font-size: 14px; font-style: normal; font-weight: 400; }
+.topbar .workspace-nav a { min-height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; color: var(--muted); font-size: 15px; text-decoration: none; }
+.topbar .workspace-nav a.active { background: var(--brand-tint); color: var(--brand-strong); font-weight: 600; }
+.topbar .workspace-nav a:focus-visible, .legacy-link:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; }
+.legacy-link { color: var(--muted); font-size: 14px; text-decoration: none; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; white-space: nowrap; }
+.legacy-link:hover { color: var(--paper); background: var(--surface-soft); }
+.runs-content { max-width: 1180px; margin: 0 auto; width: 100%; }
+@media (max-width: 760px) { .runs-app .topbar .brand em { display: none; } .runs-app .topbar-row { gap: 8px; padding: 0 12px; } .legacy-link { font-size: 13px; padding: 6px 8px; } }
+.legacy-return { color: var(--brand-strong); font-size: 14px; }
+.legacy-return:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

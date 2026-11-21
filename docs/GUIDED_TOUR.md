@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Open the address Vite prints (normally `http://localhost:5173`). In the top bar choose **Mission Replay**, then **Imported agent run**. The built-in demo run loads. Leave this page open; each step below says where to click.
+Open the address Vite prints (normally `http://localhost:5173`). The app opens on **Run replay** and the built-in demo run loads. Leave this page open; each step below says where to click.
 
 The commands use these demo files:
 
@@ -55,7 +55,7 @@ What to notice:
 
 ## Step 2: the state at any step
 
-**On screen.** On the **Imported agent run** view, drag the timeline to event 22 (or use the arrow keys on it). The event card says **Step failed**: the first refund attempt ended with an error after 500 ms. The "Steps at this event" tree shows which steps are running, finished or failed at that moment, and the token counts so far.
+**On screen.** On the **Run replay** page, drag the timeline to event 22 (or use the arrow keys on it). The event card says **Step failed**: the first refund attempt ended with an error after 500 ms. The "Steps at this event" tree shows which steps are running, finished or failed at that moment, and the token counts so far.
 
 **On the command line.**
 

@@ -34,7 +34,7 @@ Open **Review Office**. The initial blind review records a revision request, and
 
 ### 4. Mission Replay: rebuild from history
 
-Open **Mission Replay**. Move the **Position** slider backward and forward, or select an event's **Inspect** button. The projected office, budget, tasks, and review state are rebuilt from the valid event prefix at that position.
+Open **Mission Replay** (in the legacy simulator: choose **Mission simulator (legacy)** in the top bar first). Move the **Position** slider backward and forward, or select an event's **Inspect** button. The projected office, budget, tasks, and review state are rebuilt from the valid event prefix at that position.
 
 The filter buttons only change the event list. They never modify the saved mission. Select **Reload saved mission** or refresh the browser to see the same local history reconstructed again.
 

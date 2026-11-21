@@ -32,6 +32,7 @@ import { CommandFrame, ResearchOfficeCenter } from "./research-office.js";
 import { uniqueAgents } from "./research-model.js";
 import { ReplayScreen } from "./replay-screen.js";
 import { FinalReport } from "./report-view.js";
+import { RunsApp } from "./runs-app.js";
 
 type RuntimeState = "idle" | "loading" | "success" | "error";
 
@@ -261,7 +262,7 @@ function Office() {
   return <div className={`app ${view === "floor" ? "view-floor" : ""} ${reduced ? "reduced" : ""}`}>
     <header className="topbar">
       <div className="topbar-row">
-        <div className="brand"><span className="brand-mark" aria-hidden="true" /><span className="brand-name">DropScope</span><em>Research OS</em></div>
+        <div className="brand"><span className="brand-mark" aria-hidden="true" /><span className="brand-name">DropScope</span></div>
         <div className={`research-navigation ${workspaceOpen ? "is-open" : ""}`} onKeyDown={(event) => { if (event.key === "Escape" && workspaceOpen) { setWorkspaceOpen(false); event.currentTarget.querySelector<HTMLButtonElement>(".workspace-toggle")?.focus(); } }}>
           <button className="workspace-toggle" type="button" aria-controls="research-navigation-links" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}><span className="ws-label">Workspace </span><span className="ws-current">{currentLabel}</span><CaretDown size={16} aria-hidden="true" /></button>
           <div id="research-navigation-links"><WorkspaceNavigation view={view} onChange={(next) => { const wasOpen = workspaceOpen; setWorkspaceOpen(false); setView(next); if (wasOpen) requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(".workspace-toggle")?.focus()); }} /></div>
@@ -275,7 +276,7 @@ function Office() {
     <div className={`source-banner ${runtimeState === "error" && !demoRuntimeUnavailable ? "action-error" : ""}`}>
       <div className="source-banner-row">
         <span className="source-notice"><strong className="source-label">{synthetic ? "Synthetic demo · recorded replay" : "Local history · recorded replay"}</strong><span className="source-copy">{synthetic ? "Illustrative data, not market research." : "Inspect attempt provenance before treating findings as market evidence."}</span></span>
-        <details className="source-details"><summary>Source details</summary><p>{sourceDetail} Read-only projection.</p></details>
+        <a className="legacy-return" href="#">Mission simulator (legacy): back to agent run replay</a><details className="source-details"><summary>Source details</summary><p>{sourceDetail} Read-only projection.</p></details>
       </div>
       {view === "floor" && runtimeMessage && <div className="runtime-context" role="status"><strong>{demoRuntimeUnavailable ? "Local runtime is offline. The synthetic demo remains available." : runtimeStatusTitle}</strong><details><summary>Runtime details</summary><p><strong>{runtimeStatusTitle}</strong> {runtimeMessage}</p></details>{showMissionNextActions && <button className="quiet-button" onClick={() => setView("report")}>Read final report</button>}</div>}
     </div>
@@ -299,4 +300,13 @@ function Office() {
     </main>
   </div>;
 }
-createRoot(document.getElementById("root")!).render(<StrictMode><Theme appearance="light" accentColor="blue" grayColor="slate" radius="small"><Office /></Theme></StrictMode>);
+function Root() {
+  const [legacy, setLegacy] = useState(() => window.location.hash === "#missions");
+  useEffect(() => {
+    const sync = () => setLegacy(window.location.hash === "#missions");
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  return legacy ? <Office /> : <RunsApp />;
+}
+createRoot(document.getElementById("root")!).render(<StrictMode><Theme appearance="light" accentColor="blue" grayColor="slate" radius="small"><Root /></Theme></StrictMode>);

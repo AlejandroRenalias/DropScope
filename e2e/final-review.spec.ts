@@ -41,8 +41,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function openRunReplay(page: Page) {
-  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
-  await page.getByRole("button", { name: "Imported agent run" }).click();
   return page.getByRole("region", { name: "Agent run replay" });
 }
 

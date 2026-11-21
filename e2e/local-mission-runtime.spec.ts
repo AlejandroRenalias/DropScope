@@ -34,7 +34,7 @@ test.afterAll(async () => {
 });
 
 test("launches, preserves retry evidence, reloads, and replays the local mission", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#missions");
   await expect(page.locator(".source-label")).toHaveText("Synthetic demo · recorded replay");
   await openMissionControls(page);
   const firstMissionSetup = page.getByRole("region", { name: "First mission setup" });
@@ -94,7 +94,7 @@ test("launches, preserves retry evidence, reloads, and replays the local mission
 
 test("runs the isolated live-worker pilot through the injected safe browser fake", async ({ page }) => {
   nextPreflightResult = { accessStatus: "CHATGPT_AUTHENTICATED", diagnosticCode: "NOT_APPLICABLE" };
-  await page.goto("/");
+  await page.goto("/#missions");
   await openMissionControls(page);
   await page.locator("#fixture-select").selectOption("live-worker-pilot");
   await page.getByRole("button", { name: "Launch local mission" }).click();
@@ -129,7 +129,7 @@ test("runs the isolated live-worker pilot through the injected safe browser fake
 });
 
 test("captures Google Trends only after the explicit browser action, then reloads its persisted evidence", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#missions");
   await openMissionControls(page);
   await page.locator("#fixture-select").selectOption("google-trends-pilot");
   await page.getByRole("button", { name: "Launch local mission" }).click();
@@ -159,7 +159,7 @@ test("captures Google Trends only after the explicit browser action, then reload
 });
 
 test("imports one selected Google Trends comparison CSV as replayed unscored context", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#missions");
   await openMissionControls(page);
   await page.locator("#fixture-select").selectOption("google-trends-comparison-pilot");
   await page.getByRole("button", { name: "Launch local mission" }).click();
@@ -192,7 +192,7 @@ test("imports one selected Google Trends comparison CSV as replayed unscored con
 });
 
 test("replays the fixed Failure Autopsy through the shared local mission runtime", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#missions");
   await openMissionControls(page);
   await page.locator("#fixture-select").selectOption("failure-autopsy-pilot");
   await page.getByRole("button", { name: "Launch local mission" }).click();
@@ -210,7 +210,7 @@ test("replays the fixed Failure Autopsy through the shared local mission runtime
 });
 
 test("replays Product Investigation with automatic Failure Autopsy pressure", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#missions");
   await openMissionControls(page);
   await page.locator("#fixture-select").selectOption("product-investigation-pilot");
   await page.getByRole("button", { name: "Launch local mission" }).click();
@@ -226,7 +226,7 @@ test("replays Product Investigation with automatic Failure Autopsy pressure", as
 
 test("replays a safe account-read timeout diagnostic without starting a worker", async ({ page }) => {
   nextPreflightResult = { accessStatus: "UNAVAILABLE", diagnosticCode: "ACCOUNT_READ_TIMED_OUT" };
-  await page.goto("/");
+  await page.goto("/#missions");
   await openMissionControls(page);
   await page.locator("#fixture-select").selectOption("live-worker-pilot");
   await page.getByRole("button", { name: "Launch local mission" }).click();
@@ -245,7 +245,7 @@ test("replays a safe account-read timeout diagnostic without starting a worker",
 
 test("replays an app-server initialization exit without starting a worker", async ({ page }) => {
   nextPreflightResult = { accessStatus: "UNAVAILABLE", diagnosticCode: "APP_SERVER_EXITED_DURING_INITIALIZATION" };
-  await page.goto("/");
+  await page.goto("/#missions");
   await openMissionControls(page);
   await page.locator("#fixture-select").selectOption("live-worker-pilot");
   await page.getByRole("button", { name: "Launch local mission" }).click();

@@ -23,12 +23,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function openRunReplay(page: Page) {
-  if ((page.viewportSize()?.width ?? 1440) <= 760) {
-    const toggle = page.getByRole("button", { name: /^Workspace/ });
-    if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
-  }
-  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
-  await page.getByRole("button", { name: "Imported agent run" }).click();
   return page.getByRole("region", { name: "Agent run replay" });
 }
 

@@ -64,6 +64,21 @@ npm run forensics -- import my-trace.json --full     # keep content, needed for 
 
 The command prints where the run file was saved. See the [run event contract](docs/schemas/run-event-contract-v1.md) for what is kept and what is dropped. Read the note below on real traces first.
 
+### Works with
+
+DropScope reads the standard `gen_ai.*` attributes. Whether a stack works depends on the attribute names its instrumentation writes. Each row was checked with a small synthetic trace written from the project's public documentation and source, not with a capture from a real installation.
+
+| Emitter | Status | What to expect |
+| --- | --- | --- |
+| OpenTelemetry instrumentation for the OpenAI Agents SDK | Tested | Agent, model-call and tool steps, with token totals. Handoff steps show as "Other". |
+| Pydantic AI (Logfire or any OTel backend) | Tested | Agent, model-call and tool steps, with token totals. The Logfire attributes are ignored. |
+| OpenLLMetry (Traceloop), current versions | Partial | Model calls and token totals work. Its workflow and tool spans show as "Other". |
+| OpenLLMetry (Traceloop), older versions | Partial | The trace imports, but steps show as "Other" and there are no token totals: it has no `gen_ai.operation.name` and uses `gen_ai.usage.prompt_tokens`. |
+| LangChain and LangGraph, through the LangSmith OTel export | Partial | Same as older OpenLLMetry: it imports, steps show as "Other", no token totals. |
+| OpenInference (Arize Phoenix and Arize AX) | Not supported | The trace imports, but it uses its own `openinference.*` and `llm.*` names, so every step shows as "Other" and there are no token totals. |
+
+In every row the default import keeps no prompt, answer or tool content. Details and the fixtures are in [Works with](docs/WORKS_WITH.md).
+
 ## Where files go, and what runs on your computer
 
 - Run files are saved outside the repository, in a folder only your account can use:
@@ -97,6 +112,7 @@ npm run test:e2e    # browser tests (needs Chrome; the picture baselines are Win
 
 - [Guided tour](docs/GUIDED_TOUR.md): ten minutes with the demos.
 - [Run event contract](docs/schemas/run-event-contract-v1.md) and [ADR-027](docs/adr/ADR-027-run-event-contract-and-trace-import-boundary.md): how a run file is built and checked.
+- [Works with](docs/WORKS_WITH.md): which trace emitters import, and what is missing for the others.
 - [Limitations and responsible use](docs/LIMITATIONS_AND_RESPONSIBLE_USE.md).
 
 ## License

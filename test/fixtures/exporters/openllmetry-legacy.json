@@ -1,0 +1,125 @@
+{
+ "resourceSpans": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "synthetic-support"
+      }
+     }
+    ]
+   },
+   "scopeSpans": [
+    {
+     "scope": {
+      "name": "opentelemetry.instrumentation.openai.v1",
+      "version": "0.30.0"
+     },
+     "spans": [
+      {
+       "traceId": "0000000000000000000000000000e103",
+       "spanId": "0000000000000001",
+       "name": "support.workflow",
+       "kind": 1,
+       "startTimeUnixNano": "1760000000000000000",
+       "endTimeUnixNano": "1760000006000000000",
+       "attributes": [
+        {
+         "key": "traceloop.span.kind",
+         "value": {
+          "stringValue": "workflow"
+         }
+        },
+        {
+         "key": "traceloop.workflow.name",
+         "value": {
+          "stringValue": "support"
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      },
+      {
+       "traceId": "0000000000000000000000000000e103",
+       "spanId": "0000000000000002",
+       "parentSpanId": "0000000000000001",
+       "name": "openai.chat",
+       "kind": 3,
+       "startTimeUnixNano": "1760000000500000000",
+       "endTimeUnixNano": "1760000002000000000",
+       "attributes": [
+        {
+         "key": "gen_ai.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "llm.request.type",
+         "value": {
+          "stringValue": "chat"
+         }
+        },
+        {
+         "key": "gen_ai.request.model",
+         "value": {
+          "stringValue": "example-model"
+         }
+        },
+        {
+         "key": "gen_ai.response.model",
+         "value": {
+          "stringValue": "example-model"
+         }
+        },
+        {
+         "key": "gen_ai.usage.prompt_tokens",
+         "value": {
+          "intValue": "120"
+         }
+        },
+        {
+         "key": "gen_ai.usage.completion_tokens",
+         "value": {
+          "intValue": "30"
+         }
+        },
+        {
+         "key": "llm.usage.total_tokens",
+         "value": {
+          "intValue": "150"
+         }
+        },
+        {
+         "key": "gen_ai.prompt.0.role",
+         "value": {
+          "stringValue": "user"
+         }
+        },
+        {
+         "key": "gen_ai.prompt.0.content",
+         "value": {
+          "stringValue": "Where is order 1042?"
+         }
+        },
+        {
+         "key": "gen_ai.completion.0.content",
+         "value": {
+          "stringValue": "It shipped on Monday."
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

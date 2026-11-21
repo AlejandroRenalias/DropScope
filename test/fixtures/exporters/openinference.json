@@ -1,0 +1,181 @@
+{
+ "resourceSpans": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "synthetic-support"
+      }
+     },
+     {
+      "key": "openinference.project.name",
+      "value": {
+       "stringValue": "synthetic"
+      }
+     }
+    ]
+   },
+   "scopeSpans": [
+    {
+     "scope": {
+      "name": "openinference.instrumentation.openai_agents",
+      "version": "1.0.0"
+     },
+     "spans": [
+      {
+       "traceId": "0000000000000000000000000000e104",
+       "spanId": "0000000000000001",
+       "name": "Support agent",
+       "kind": 1,
+       "startTimeUnixNano": "1760000000000000000",
+       "endTimeUnixNano": "1760000006000000000",
+       "attributes": [
+        {
+         "key": "openinference.span.kind",
+         "value": {
+          "stringValue": "AGENT"
+         }
+        },
+        {
+         "key": "input.value",
+         "value": {
+          "stringValue": "Where is order 1042?"
+         }
+        },
+        {
+         "key": "output.value",
+         "value": {
+          "stringValue": "It shipped on Monday."
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      },
+      {
+       "traceId": "0000000000000000000000000000e104",
+       "spanId": "0000000000000002",
+       "parentSpanId": "0000000000000001",
+       "name": "ChatCompletion",
+       "kind": 3,
+       "startTimeUnixNano": "1760000000500000000",
+       "endTimeUnixNano": "1760000002000000000",
+       "attributes": [
+        {
+         "key": "openinference.span.kind",
+         "value": {
+          "stringValue": "LLM"
+         }
+        },
+        {
+         "key": "llm.model_name",
+         "value": {
+          "stringValue": "example-model"
+         }
+        },
+        {
+         "key": "llm.provider",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "llm.system",
+         "value": {
+          "stringValue": "openai"
+         }
+        },
+        {
+         "key": "llm.token_count.prompt",
+         "value": {
+          "intValue": "120"
+         }
+        },
+        {
+         "key": "llm.token_count.completion",
+         "value": {
+          "intValue": "30"
+         }
+        },
+        {
+         "key": "llm.token_count.total",
+         "value": {
+          "intValue": "150"
+         }
+        },
+        {
+         "key": "llm.input_messages.0.message.role",
+         "value": {
+          "stringValue": "user"
+         }
+        },
+        {
+         "key": "llm.input_messages.0.message.content",
+         "value": {
+          "stringValue": "Where is order 1042?"
+         }
+        },
+        {
+         "key": "llm.output_messages.0.message.role",
+         "value": {
+          "stringValue": "assistant"
+         }
+        },
+        {
+         "key": "llm.output_messages.0.message.content",
+         "value": {
+          "stringValue": "It shipped on Monday."
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      },
+      {
+       "traceId": "0000000000000000000000000000e104",
+       "spanId": "0000000000000003",
+       "parentSpanId": "0000000000000001",
+       "name": "lookup_order",
+       "kind": 1,
+       "startTimeUnixNano": "1760000002000000000",
+       "endTimeUnixNano": "1760000003000000000",
+       "attributes": [
+        {
+         "key": "openinference.span.kind",
+         "value": {
+          "stringValue": "TOOL"
+         }
+        },
+        {
+         "key": "tool.name",
+         "value": {
+          "stringValue": "lookup_order"
+         }
+        },
+        {
+         "key": "input.value",
+         "value": {
+          "stringValue": "{\"order_id\":\"1042\"}"
+         }
+        },
+        {
+         "key": "output.value",
+         "value": {
+          "stringValue": "{\"status\":\"shipped\"}"
+         }
+        }
+       ],
+       "status": {
+        "code": 1
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

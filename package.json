@@ -31,7 +31,7 @@
     "evaluate": "tsx src/evaluation-cli.ts",
     "runtime:dev": "tsx src/local-runtime-cli.ts",
     "forensics": "tsx src/run-cli.ts",
-    "build:cli": "tsc -p tsconfig.build.json",
+    "build:cli": "tsc -p tsconfig.build.json && node -e \"require('node:fs').chmodSync('dist-cli/bin.js', 0o755)\"",
     "prepare": "npm run build:cli"
   },
   "devDependencies": {

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Phase 4.4 with the user's approval. This decision adds no automatic source request.
+Accepted. This decision adds no automatic source request.
 
 ## Context
 

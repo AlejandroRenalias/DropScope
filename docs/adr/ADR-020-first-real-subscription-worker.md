@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Phase 3.9 with the user's explicit real-run and safest-permission approval.
+Accepted.
 
 ## Decision
 

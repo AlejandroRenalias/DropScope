@@ -4,11 +4,11 @@
 
 DropScope fixtures are fixed local inputs for exercising the same orchestration engine under different conditions. They are teaching and regression artifacts, not product recommendations, market research, or commercial evidence.
 
-## Deterministic Learning Fixtures
+## Deterministic Fixtures
 
-| Fixture ID | What it demonstrates | Expected learning result |
+| Fixture ID | What it demonstrates | Expected result |
 | --- | --- | --- |
-| `mixed-opportunity-market` | A small market-learning task graph with demand and risk dependencies. | How dependency order shapes a normal mission. |
+| `mixed-opportunity-market` | A small market-research task graph with demand and risk dependencies. | How dependency order shapes a normal mission. |
 | `evidence-drought` | Insufficient evidence for a candidate. | A mission can stop without forcing a recommendation. |
 | `safety-ambiguity` | Risk and evidence-completeness branches across several candidates. | Eligibility is a policy gate, not a ranking preference. |
 | `crosscurrent-workspace-market` | Parallel work, a deterministic transient retry, recorded dry-run provenance, audit, blind review, divergence, and revision. | The full event and quality loop can be replayed after completion. |
@@ -23,7 +23,7 @@ npm.cmd run evaluate
 
 ## Guarded Boundary Pilots
 
-These IDs are deliberately narrow tests of separate boundaries. They are not required for normal local learning or evaluation.
+These IDs are deliberately narrow tests of separate boundaries. They are not required for normal local use or evaluation.
 
 | Fixture ID | Boundary under test | Important limit |
 | --- | --- | --- |
@@ -34,7 +34,7 @@ These IDs are deliberately narrow tests of separate boundaries. They are not req
 ## Run a Fixture Locally
 
 1. Follow [the installation guide](INSTALLATION.md) to start the loopback runtime and browser interface.
-2. In the browser’s **Local runtime** control strip, choose one of the deterministic learning fixtures.
+2. In the browser’s **Local runtime** control strip, choose one of the deterministic fixtures.
 3. Select **Launch local mission** and explore the Agent Desk, Final Report, and Mission Replay views.
 4. Refresh the browser or select **Reload saved mission** to observe event-derived reconstruction.
 

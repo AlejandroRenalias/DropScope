@@ -6,8 +6,8 @@ import { parseStrictJson } from "../src/strict-json.js";
 
 const TRACE = "0123456789abcdef0123456789abcdef";
 const SPAN = "00000000000000a1";
-const spikeDir = new URL("../docs/development/spike-2026-10-13/traces/", import.meta.url);
-const load = (name: string) => parseStrictJson(readFileSync(new URL(name, spikeDir)), "parse");
+const otlpDir = new URL("./fixtures/otlp/", import.meta.url);
+const load = (name: string) => parseStrictJson(readFileSync(new URL(name, otlpDir)), "parse");
 const json = (value: unknown) => parseStrictJson(new TextEncoder().encode(JSON.stringify(value)), "parse");
 
 const span = (overrides: Record<string, unknown> = {}) => ({

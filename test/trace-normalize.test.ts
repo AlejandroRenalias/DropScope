@@ -222,7 +222,7 @@ describe("contexts and determinism", () => {
 });
 
 describe("real spike traces", () => {
-  const dir = new URL("../docs/development/spike-2026-10-13/traces/", import.meta.url);
+  const dir = new URL("./fixtures/otlp/", import.meta.url);
   const load = (name: string) => parseStrictJson(readFileSync(new URL(name, dir)), "parse");
 
   it("normalizes trace d with its logs, associating every log with a step", () => {

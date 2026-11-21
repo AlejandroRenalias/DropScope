@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Phase 5.6 with the user's approval. This decision is limited to the local evaluation harness.
+Accepted. This decision is limited to the local evaluation harness.
 
 ## Decision
 

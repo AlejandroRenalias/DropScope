@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Phase 3.8d.
+Accepted.
 
 ## Decision
 

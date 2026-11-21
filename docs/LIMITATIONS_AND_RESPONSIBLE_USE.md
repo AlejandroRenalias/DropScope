@@ -1,6 +1,6 @@
 # Limitations and Responsible Use
 
-DropScope is a local-first software-engineering learning project with two parts. The main part is **agent run forensics**: a local, offline tool that imports a recorded AI agent run (an OTLP/JSON trace), saves a validated run file, and then shows what the run recorded at any step, re-applies a spending limit, checks claims against the recorded content, and compares two runs. The older part is an event-sourced research workflow (the "mission replay") built on deterministic fixtures, replayable mission histories, and explicitly guarded boundaries. The [README](../README.md) describes the first part.
+DropScope is a local-first project with two parts. The main part is **agent run forensics**: a local, offline tool that imports a recorded AI agent run (an OTLP/JSON trace), saves a validated run file, and then shows what the run recorded at any step, re-applies a spending limit, checks claims against the recorded content, and compares two runs. The older part is an event-sourced research workflow (the "mission replay") built on deterministic fixtures, replayable mission histories, and explicitly guarded boundaries. The [README](../README.md) describes the first part.
 
 ## What DropScope Is Not
 
@@ -21,7 +21,7 @@ DropScope is a local-first software-engineering learning project with two parts.
 
 ## Use Fixtures Responsibly
 
-The normal fixtures are fixed synthetic or recorded learning inputs. Use them to understand scheduling, budgets, risk gates, review, recovery, and replay. Do not present their candidate names, rankings, scores, timelines, or reports as real market findings.
+The normal fixtures are fixed synthetic or recorded inputs. Use them to understand scheduling, budgets, risk gates, review, recovery, and replay. Do not present their candidate names, rankings, scores, timelines, or reports as real market findings.
 
 Changing a fixture is a controlled software test. It does not validate a new market, change frozen policy, or grant an external capability. See the [synthetic fixture catalog](SYNTHETIC_FIXTURES.md) and [holdout fixture result](HOLDOUT_RESULT.md) for their precise scope.
 
@@ -43,5 +43,3 @@ Do not place credentials, tokens, private keys, personal data, or confidential r
 ## Human Decision Responsibility
 
 Use independent, current, lawful research and appropriate professional review before making commercial, legal, safety, regulatory, financial, or operational decisions. You remain responsible for any action taken from information shown by DropScope.
-
-Before sharing the repository, follow the [public release readiness checklist](PUBLIC_RELEASE_CHECKLIST.md). Publication, licensing, remote access, and any Git-history decision remain explicit owner choices.

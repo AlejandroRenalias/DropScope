@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Phase 4.1 source-contract design with the user's approval of Google Trends as the first public source. No product fetch is enabled by this decision alone.
+Accepted. No product fetch is enabled by this decision alone.
 
 ## Decision
 

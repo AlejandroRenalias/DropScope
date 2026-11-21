@@ -2,7 +2,7 @@
 // apply the privacy mode, order the events, and emit the run-event list. Output is validated against the
 // event schemas before it is returned.
 //
-// Decisions that fill gaps in the spec (raise with the user):
+// Decisions that fill gaps in the spec (open questions for the maintainers):
 // - A log record body is recorded as ContentRecorded with field `gen_ai.other`, fieldKey "log.body" and
 //   ordinal 0; log attributes moved to ContentRecorded use ordinal = attribute ordinal + 1, so ordinal 0
 //   on the LOG_RECORD channel is always the body.

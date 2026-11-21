@@ -248,3 +248,6 @@
 .run-replay .quiet-button, .run-replay .cc-file-button, .run-source-card .quiet-button { min-height: 38px; padding: 7px 14px; font-size: 14px; }
 
 .legacy-link .short { display: none; }
+
+/* Buttons do not inherit the page font, so their text can run wider on some systems; let a long label wrap instead of widening the page on a phone. */
+.run-replay .quiet-button, .run-replay .cc-file-button, .run-source-card .quiet-button { max-width: 100%; white-space: normal; text-align: left; }

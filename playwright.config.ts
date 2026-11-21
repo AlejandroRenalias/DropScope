@@ -7,5 +7,5 @@ export default defineConfig({
   // lifecycles must not overlap.
   workers: 1,
   reporter: "list",
-  use: { baseURL: "http://127.0.0.1:5177", trace: "on-first-retry", channel: "chrome", ...devices["Desktop Chrome"] },
+  use: { baseURL: "http://127.0.0.1:5177", trace: "on-first-retry", channel: process.env.DROPSCOPE_BUNDLED_BROWSER === "1" ? undefined : "chrome", ...devices["Desktop Chrome"] },
 });

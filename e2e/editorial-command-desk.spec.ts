@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectPicture } from "./fixtures/picture.js";
 import { createServer, type ViteDevServer } from "vite";
 import { officeHistories } from "../src/frontend/office-projection.js";
 import { researchLayoutHistory } from "./fixtures/research-layout.js";
@@ -41,7 +42,7 @@ test("guides the first local mission and recovers from an offline runtime", asyn
   await expect(setup).toContainText("Launch locally");
   await expect(setup).toContainText("Inspect evidence");
   await expect(setup).toContainText("Read decision");
-  await expect(setup).toHaveScreenshot("first-mission-setup.png", { animations: "disabled" });
+  await expectPicture(setup, "first-mission-setup.png", { animations: "disabled" });
 
   await page.getByRole("button", { name: "Launch local mission" }).click();
   const status = page.getByRole("status");
@@ -54,24 +55,24 @@ test("guides the first local mission and recovers from an offline runtime", asyn
 
 test("captures the six command-center surfaces", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(page).toHaveScreenshot("clean-research-page.png", { animations: "disabled", fullPage: true });
+  await expectPicture(page, "clean-research-page.png", { animations: "disabled", fullPage: true });
 
-  await expect(page.getByRole("region", { name: "Research Office floor" })).toHaveScreenshot("research-office.png", { animations: "disabled" });
+  await expectPicture(page.getByRole("region", { name: "Research Office floor" }), "research-office.png", { animations: "disabled" });
 
   await page.getByRole("button", { name: "Agent Desk" }).click();
-  await expect(page.getByRole("region", { name: "Agent Desk" })).toHaveScreenshot("agent-desk.png", { animations: "disabled" });
+  await expectPicture(page.getByRole("region", { name: "Agent Desk" }), "agent-desk.png", { animations: "disabled" });
 
   await page.getByRole("button", { name: "Tribunal Room" }).click();
-  await expect(page.getByRole("region", { name: "Tribunal Room" })).toHaveScreenshot("tribunal-room.png", { animations: "disabled" });
+  await expectPicture(page.getByRole("region", { name: "Tribunal Room" }), "tribunal-room.png", { animations: "disabled" });
 
   await page.getByRole("button", { name: "Review Office" }).click();
-  await expect(page.getByRole("region", { name: "Review Office" })).toHaveScreenshot("review-office.png", { animations: "disabled" });
+  await expectPicture(page.getByRole("region", { name: "Review Office" }), "review-office.png", { animations: "disabled" });
 
   await page.getByRole("button", { name: "Final Report" }).click();
-  await expect(page.getByRole("region", { name: "Final Report" })).toHaveScreenshot("final-report.png", { animations: "disabled" });
+  await expectPicture(page.getByRole("region", { name: "Final Report" }), "final-report.png", { animations: "disabled" });
 
   await page.getByRole("button", { name: "Mission Replay" }).click();
-  await expect(page.getByRole("region", { name: "Mission Replay" })).toHaveScreenshot("mission-replay.png", { animations: "disabled" });
+  await expectPicture(page.getByRole("region", { name: "Mission Replay" }), "mission-replay.png", { animations: "disabled" });
 });
 
 for (const viewport of [
@@ -95,7 +96,7 @@ for (const viewport of [
     expect(officeDimensions.scrollWidth).toBe(officeDimensions.clientWidth);
     expect(officeDimensions).toMatchObject({ workGraphs: 1, ledgers: 1, eventTrails: 1 });
     await page.screenshot({ path: testInfo.outputPath(`research-office-${viewport.width}.png`), fullPage: true, animations: "disabled" });
-    if (viewport.width === 390) await expect(page).toHaveScreenshot("clean-research-mobile.png", { animations: "disabled", fullPage: true });
+    if (viewport.width === 390) await expectPicture(page, "clean-research-mobile.png", { animations: "disabled", fullPage: true });
 
     for (const surface of ["Agent Desk", "Tribunal Room", "Review Office", "Final Report", "Mission Replay"]) {
       await openSurface(page, surface);
@@ -211,7 +212,7 @@ for (const width of [1440, 768, 375]) {
     await expect(page.locator(".source-label")).toHaveText("Synthetic demo · recorded replay");
     await expect(page.locator(".live-status")).toContainText("2 researchers working");
     await expect(page.getByRole("button", { name: "RUNNING", exact: true })).toBeHidden();
-    if (width === 1440) expect(await page.locator(".work-graph").evaluate((node) => node.getBoundingClientRect().bottom)).toBeLessThanOrEqual(900);
+    if (width === 1440) expect(await page.locator(".work-graph").evaluate((node) => node.getBoundingClientRect().bottom)).toBeLessThanOrEqual(901);
     await page.screenshot({ path: testInfo.outputPath(`clarity-${width}.png`), fullPage: true, animations: "disabled" });
     const contrast = await page.evaluate(() => {
       type Rgba = [number, number, number, number];

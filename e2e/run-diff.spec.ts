@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectPicture } from "./fixtures/picture.js";
 import { createServer, type ViteDevServer } from "vite";
 import { importTraceBytes } from "../src/run-import.js";
 import { serializeRunLog } from "../src/run-store.js";
@@ -141,7 +142,7 @@ test.describe("run diff", () => {
     const panel = replay.getByRole("region", { name: "Compare with another run" });
     await panel.getByRole("button", { name: "Compare with the demo variant" }).click();
     await expect(panel.locator(".rd-totals")).toBeVisible();
-    await expect(panel).toHaveScreenshot("run-diff-panel.png", { animations: "disabled" });
+    await expectPicture(panel, "run-diff-panel.png", { animations: "disabled" });
   });
 
   test("looks the same with steps that exist in only one run", async ({ page }) => {
@@ -158,6 +159,6 @@ test.describe("run diff", () => {
     await expect(panel.locator(".rd-onlyB .rd-chip")).toHaveText("Only in B");
     await expect(panel.getByText("First difference", { exact: true })).toHaveCount(1);
     await expect(panel.locator(".rd-first")).toHaveCount(1);
-    await expect(panel).toHaveScreenshot("run-diff-panel-one-sided.png", { animations: "disabled" });
+    await expectPicture(panel, "run-diff-panel-one-sided.png", { animations: "disabled" });
   });
 });

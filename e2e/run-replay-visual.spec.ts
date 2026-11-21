@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectPicture } from "./fixtures/picture.js";
 import { createServer, type ViteDevServer } from "vite";
 
 // The visual baseline of the run replay screen. Kept in its own file so the baseline can be reviewed and
@@ -24,9 +25,9 @@ test("captures the run replay surface", async ({ page }) => {
   const replay = page.getByRole("region", { name: "Agent run replay" });
   await replay.getByLabel("Timeline position").fill("22");
   await expect(replay.getByRole("heading", { name: "Step failed" })).toBeVisible();
-  await expect(replay).toHaveScreenshot("run-replay.png", { animations: "disabled" });
+  await expectPicture(replay, "run-replay.png", { animations: "disabled" });
   // The timeline with the budget marker legend: the legend must not touch the tick numbers.
-  await expect(replay.locator("#rr-timeline")).toHaveScreenshot("timeline-legend.png", { animations: "disabled" });
+  await expectPicture(replay.locator("#rr-timeline"), "timeline-legend.png", { animations: "disabled" });
 });
 
 test("captures the budget replay panel with a result", async ({ page }) => {
@@ -42,7 +43,7 @@ test("captures the budget replay panel with a result", async ({ page }) => {
   await expect(panel.locator(".bp-result")).toContainText("would have stopped this run at event 31 of 42");
   await replay.getByLabel("Timeline position").fill("31");
   await expect(panel.locator(".bp-gauge.over")).toContainText("4,065 tokens");
-  await expect(panel).toHaveScreenshot("budget-replay.png", { animations: "disabled" });
+  await expectPicture(panel, "budget-replay.png", { animations: "disabled" });
 });
 
 test("captures the claim check panel with results", async ({ page }) => {
@@ -57,5 +58,5 @@ test("captures the claim check panel with results", async ({ page }) => {
   const panel = replay.getByRole("region", { name: "Claim check" });
   await panel.getByRole("button", { name: /Try an example/ }).click();
   await expect(panel.locator(".cc-summary")).toContainText("2 supported, 1 not supported");
-  await expect(panel).toHaveScreenshot("claim-check.png", { animations: "disabled" });
+  await expectPicture(panel, "claim-check.png", { animations: "disabled" });
 });

@@ -79,6 +79,17 @@ DropScope reads the standard `gen_ai.*` attributes. Whether a stack works depend
 
 In every row the default import keeps no prompt, answer or tool content. Details and the fixtures are in [Works with](docs/WORKS_WITH.md).
 
+## Command line
+
+The checks run as a `dropscope` command (Node.js 22.12 or newer). From a clone of this repository, run `npm install` once (it builds the command), then:
+
+```bash
+npx dropscope state src/frontend/assets/demo-run.runlog.jsonl --at 24
+npx dropscope import my-trace.json
+```
+
+`npm link` makes `dropscope` available in any folder. The command is the same as `npm run forensics --`. It is not published to the npm registry yet.
+
 ## Where files go, and what runs on your computer
 
 - Run files are saved outside the repository, in a folder only your account can use:

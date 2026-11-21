@@ -2,7 +2,23 @@
   "name": "dropscope",
   "version": "0.1.0",
   "private": true,
+  "description": "Replay and check recorded AI agent runs on your own computer.",
+  "license": "MIT",
   "type": "module",
+  "bin": {
+    "dropscope": "dist-cli/bin.js"
+  },
+  "files": [
+    "dist-cli",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlejandroRenalias/DropScope.git"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
@@ -14,24 +30,26 @@
     "demo:recovery": "tsx src/recovery-demo.ts",
     "evaluate": "tsx src/evaluation-cli.ts",
     "runtime:dev": "tsx src/local-runtime-cli.ts",
-    "forensics": "tsx src/run-cli.ts"
+    "forensics": "tsx src/run-cli.ts",
+    "build:cli": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build:cli"
   },
   "devDependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@playwright/test": "^1.65.1",
+    "@radix-ui/themes": "^3.3.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
   },
   "dependencies": {
-    "@phosphor-icons/react": "^2.1.10",
-    "@radix-ui/themes": "^3.3.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
     "zod": "^4.6.7"
   }
 }

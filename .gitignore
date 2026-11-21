@@ -18,3 +18,4 @@ service-account*.json
 *.key
 *.p12
 *.pfx
+dist-cli/

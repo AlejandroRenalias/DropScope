@@ -24,7 +24,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "dev": "vite",
-    "build:web": "vite build",
+    "build": "vite build",
     "test:e2e": "playwright test",
     "demo": "tsx src/cli.ts",
     "demo:recovery": "tsx src/recovery-demo.ts",
@@ -32,7 +32,7 @@
     "runtime:dev": "tsx src/local-runtime-cli.ts",
     "forensics": "tsx src/run-cli.ts",
     "build:cli": "tsc -p tsconfig.build.json",
-    "prepublishOnly": "npm run build:cli"
+    "prepare": "npm run build:cli"
   },
   "devDependencies": {
     "@phosphor-icons/react": "^2.1.10",

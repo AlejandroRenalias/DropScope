@@ -19,7 +19,7 @@ From the repository root:
 npm.cmd install
 npm.cmd run typecheck
 npm.cmd test
-npm.cmd run build:web
+npm.cmd run build
 ```
 
 The browser end-to-end suite is optional for a first look, but is the full local acceptance check:

@@ -27,7 +27,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run build:web
+      - run: npm run build
         env:
           DROPSCOPE_BASE: /DropScope/
       - uses: actions/upload-pages-artifact@v5

@@ -6,8 +6,6 @@ test/fixtures/otlp/* text eol=lf
 test/fixtures/demo-run-trace.json text eol=lf
 test/fixtures/demo-run-variant-trace.json text eol=lf
 
-# The compiled command is committed so that installing straight from GitHub works without a build step (CI checks it is current).
-dist-cli/** text eol=lf
 
 # Synthetic exporter fixtures are compared byte for byte with their generator.
 test/fixtures/exporters/*.json text eol=lf

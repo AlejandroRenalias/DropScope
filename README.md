@@ -81,14 +81,14 @@ In every row the default import keeps no prompt, answer or tool content. Details
 
 ## Command line
 
-The checks run as a `dropscope` command (Node.js 22.12 or newer). From a clone of this repository, run `npm install` once, then:
+The checks run as a `dropscope` command (Node.js 22.12 or newer). From a clone of this repository, run `npm install` once (it builds the command), then:
 
 ```bash
 npx dropscope state src/frontend/assets/demo-run.runlog.jsonl --at 24
 npx dropscope import my-trace.json
 ```
 
-To have the command everywhere, install it straight from GitHub: `npm install -g github:AlejandroRenalias/DropScope`. It is not published to the npm registry. The command is the same as `npm run forensics --`; the compiled files are in `dist-cli`, and `npm run build:cli` rebuilds them.
+`npm link` makes `dropscope` available in any folder. The command is the same as `npm run forensics --`. It is not published to the npm registry yet.
 
 ## Where files go, and what runs on your computer
 
@@ -115,7 +115,7 @@ Before it turned to agent run forensics, DropScope was a replayable research-wor
 ```bash
 npm run typecheck   # types
 npm test            # unit tests
-npm run build:web   # production build of the web app
+npm run build       # production build
 npm run test:e2e    # browser tests (needs Chrome; the picture baselines are Windows only)
 ```
 

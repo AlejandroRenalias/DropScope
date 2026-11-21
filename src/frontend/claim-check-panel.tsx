@@ -51,7 +51,7 @@ export function ClaimCheckPanel({ model, setPosition }: { model: RunModel; setPo
     }
   };
 
-  return <section className="panel-card cc" aria-labelledby={`${uid}-title`}>
+  return <section className="panel-card cc" id="rr-claims" aria-labelledby={`${uid}-title`}>
     <header className="surface-heading"><div><span className="eyebrow">Is it backed by the recording?</span><h2 id={`${uid}-title`}>Claim check</h2></div><span className="badge cc-badge">Checks the recording</span></header>
     <p className="bp-note">{CLAIM_NOTE}</p>
     {!stored && <p className="cc-withheld" role="note"><strong>This run keeps no content.</strong> Only sizes and fingerprints were saved, so every claim about content will say "Cannot check". Import the trace again with <code>--full</code> to check claims, or use the demo run with content stored.</p>}

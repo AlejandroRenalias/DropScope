@@ -44,7 +44,7 @@ export function BudgetReplayPanel({ model, input, setInput, errors, result, posi
     </div>
   );
 
-  return <section className="panel-card bp" aria-labelledby={`${uid}-title`}>
+  return <section className="panel-card bp" id="rr-budget" aria-labelledby={`${uid}-title`}>
     <header className="surface-heading"><div><span className="eyebrow">What if there had been a budget?</span><h2 id={`${uid}-title`}>Budget replay</h2></div><span className="badge bp-badge">Counterfactual</span></header>
     <p className="bp-note">{COUNTERFACTUAL_NOTE}</p>
 
@@ -62,6 +62,7 @@ export function BudgetReplayPanel({ model, input, setInput, errors, result, posi
 
     {errors.length > 0 && touched && <ul className="bp-errors" role="status" aria-live="polite">{errors.map((message) => <li key={message}>{message}</li>)}</ul>}
     {!touched && <p className="bp-hint">Type one or more limits to see where a guard would have stopped this run.</p>}
+    {input.maxTotalTokens === EXAMPLE_BUDGET.maxTotalTokens && Object.keys(input).length === 1 && <p className="bp-hint">This is the example limit (4,000 total tokens). Change it or clear it to try your own.</p>}
 
     {result && <>
       <div className="bp-gauges" role="group" aria-label="Budget used at this event">

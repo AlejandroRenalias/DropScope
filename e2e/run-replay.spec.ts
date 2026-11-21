@@ -99,7 +99,7 @@ test("jumps to a step or a note from the lists", async ({ page }) => {
   const replay = await openRunReplay(page);
   await replay.getByRole("button", { name: /Go to the start of Agent: qa-reviewer/ }).click();
   await expect(replay.getByRole("heading", { name: "Agent started" })).toBeVisible();
-  await replay.getByRole("button", { name: /Go to event \d+/ }).first().click();
+  await replay.getByRole("region", { name: "Importer notes" }).getByRole("button", { name: /Go to event \d+/ }).first().click();
   await expect(replay.getByRole("heading", { name: /^Importer note:/ })).toBeVisible();
 });
 
@@ -176,12 +176,17 @@ for (const width of [1440, 768, 375]) {
 }
 
 test.describe("budget replay", () => {
-  test("says plainly that it is a what-if and shows nothing until a limit is typed", async ({ page }) => {
+  test("says plainly that it is a what-if, opens with a ready example, and shows nothing once the limits are cleared", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const replay = await openRunReplay(page);
     const panel = replay.getByRole("region", { name: "Budget replay" });
     await expect(panel).toContainText("Counterfactual");
     await expect(panel).toContainText("DropScope never controls an agent");
+    await expect(panel.getByRole("textbox", { name: "Total tokens" })).toHaveValue("4000");
+    await expect(panel).toContainText("This is the example limit");
+    await expect(panel.getByRole("status")).toContainText("would have stopped this run");
+    await expect(replay.locator(".tick.rr-breach")).toHaveCount(1);
+    await panel.getByRole("button", { name: "Clear limits" }).click();
     await expect(panel).toContainText("Type one or more limits");
     await expect(panel.getByRole("status")).toHaveCount(0);
     await expect(replay.locator(".tick.rr-breach")).toHaveCount(0);
@@ -284,4 +289,26 @@ test.describe("budget replay", () => {
       expect(await noOverflow(page)).toBe(true);
     });
   }
+});
+
+test("keeps the scrub bar in view while scrolling, and the jump list leads to each section", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const replay = await openRunReplay(page);
+  await page.addStyleTag({ content: ".topbar { position: sticky !important; }" });
+  const nav = replay.getByRole("navigation", { name: "On this page" });
+  await nav.getByRole("link", { name: "Compare runs" }).click();
+  await expect(replay.getByRole("region", { name: "Compare with another run" })).toBeInViewport();
+  const slider = replay.getByLabel("Timeline position");
+  await expect(slider).toBeInViewport();
+  await replay.getByRole("link", { name: "Chronology" }).click();
+  await expect(replay.getByRole("region", { name: "Event chronology" })).toBeInViewport();
+  await expect(slider).toBeInViewport();
+  await expect(replay.locator(".rr-dock")).toContainText("Event 42 / 42");
+});
+
+test("keeps the product name and the legacy link in the top bar at 390 px", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".brand-name")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Mission simulator (legacy)" })).toBeVisible();
+  expect(await noOverflow(page)).toBe(true);
 });

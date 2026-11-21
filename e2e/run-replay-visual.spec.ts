@@ -21,8 +21,6 @@ test("captures the run replay surface", async ({ page }) => {
   await page.reload();
   await page.addStyleTag({ content: ".topbar { position: static !important; }" });
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
-  await page.getByRole("button", { name: "Imported agent run" }).click();
   const replay = page.getByRole("region", { name: "Agent run replay" });
   await replay.getByLabel("Timeline position").fill("22");
   await expect(replay.getByRole("heading", { name: "Step failed" })).toBeVisible();
@@ -36,8 +34,6 @@ test("captures the budget replay panel with a result", async ({ page }) => {
   await page.reload();
   await page.addStyleTag({ content: ".topbar { position: static !important; }" });
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
-  await page.getByRole("button", { name: "Imported agent run" }).click();
   const replay = page.getByRole("region", { name: "Agent run replay" });
   const panel = replay.getByRole("region", { name: "Budget replay" });
   await panel.getByRole("button", { name: /Try an example/ }).click();
@@ -54,8 +50,6 @@ test("captures the claim check panel with results", async ({ page }) => {
   await page.reload();
   await page.addStyleTag({ content: ".topbar { position: static !important; }" });
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByRole("button", { name: "Mission Replay", exact: true }).click();
-  await page.getByRole("button", { name: "Imported agent run" }).click();
   await page.getByRole("button", { name: "Demo run with content stored" }).click();
   const replay = page.getByRole("region", { name: "Agent run replay" });
   const panel = replay.getByRole("region", { name: "Claim check" });

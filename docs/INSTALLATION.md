@@ -38,7 +38,7 @@ In the first window, start the browser interface:
 npm.cmd run dev
 ```
 
-Open the local URL that Vite prints in that window (normally `http://localhost:5173`). In the second window, set `DROPSCOPE_TRUSTED_UI_ORIGIN` to that origin without its trailing slash if Vite selected a different port (for example, `$env:DROPSCOPE_TRUSTED_UI_ORIGIN = "http://localhost:5174"`), then start the local mission runtime:
+Open the local URL that Vite prints in that window (normally `http://localhost:5173`). The app opens on the agent run replay; choose **Mission simulator (legacy)** in the top bar, or add `#missions` to the address, to reach the mission screens described here. In the second window, set `DROPSCOPE_TRUSTED_UI_ORIGIN` to that origin without its trailing slash if Vite selected a different port (for example, `$env:DROPSCOPE_TRUSTED_UI_ORIGIN = "http://localhost:5174"`), then start the local mission runtime:
 
 ```powershell
 npm.cmd run runtime:dev

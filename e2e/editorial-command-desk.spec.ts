@@ -16,7 +16,7 @@ test.afterAll(async () => {
 
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/#missions");
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
   await page.addStyleTag({ content: ".topbar { position: static !important; }" });

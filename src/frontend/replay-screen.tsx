@@ -63,7 +63,7 @@ export function RunScreen() {
       </div>
       {error && <p className="inline-error" role="alert">{error}</p>}
       <details className="run-source-help"><summary>How to make a run file</summary>
-        <p>Import a trace (OTLP/JSON) with <code>npm run forensics -- import &lt;spans.json&gt; --logs &lt;logs.json&gt;</code>. The command saves a run file in <code>%LOCALAPPDATA%\DropScope\runs</code>. By default prompts and answers are not kept, only their sizes and fingerprints. Run files stay on this computer: this page reads the file in your browser and sends it nowhere.</p>
+        <p>Import a trace (OTLP/JSON) with <code>npm run forensics -- import &lt;spans.json&gt; --logs &lt;logs.json&gt;</code>. The command saves a run file in a private DropScope folder and prints its path. By default prompts and answers are not kept, only their sizes and fingerprints. Run files stay on this computer: this page reads the file in your browser and sends it nowhere.</p>
       </details>
     </section>
     <RunReplay model={run.model} position={runPosition} setPosition={setPosition} sourceLabel={`${run.label}${run.label.endsWith(".") ? "" : "."}`} />

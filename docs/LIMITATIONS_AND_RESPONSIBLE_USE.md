@@ -16,7 +16,7 @@ DropScope is a local-first project with two parts. The main part is **agent run 
 - Budget replay is a what-if: it re-applies a limit you type to the numbers the run recorded. It does not control or stop any agent.
 - "Differ" in the run diff means the recordings differ in what is compared (the README and the command list what is not compared). It does not say which run is right.
 - It has been tested on invented demo runs and on a few traces produced by instrumented libraries against a local stub server. **No real production trace has been analyzed.** Do not rely on it for audits, incident reports, compliance or legal evidence.
-- It runs on Windows only. Other operating systems are refused.
+- Import and the file commands run on Windows, Linux and macOS. Other operating systems are refused. The Linux and macOS file checks are newer and less tested than the Windows ones. On macOS, a Desktop or Documents folder that iCloud syncs cannot be recognised by its path; keep traces elsewhere.
 - The forensics code makes no model calls and no explicit network requests; this is true by inspection of the code, and no automated test enforces it. One known exception: Windows can access a file on a mapped network drive before DropScope refuses it. The commands start the built-in Windows tools PowerShell and `icacls` to read file properties and lock the runs folder.
 
 ## Use Fixtures Responsibly
@@ -34,7 +34,7 @@ Changing a fixture is a controlled software test. It does not validate a new mar
 
 ## Data and Privacy
 
-Saved run files are written to `%LOCALAPPDATA%\DropScope\runs`, outside the repository. By default a run file keeps no prompts or answers, only their size and a fingerprint; a run imported with `--full` keeps the text. Fingerprints of predictable text can be guessed, so treat every run file as private: do not share it or commit it. **Do not import real agent traces into this project**: real traces can hold personal data and secrets, and the project has no real access boundary for them ([ADR-028](adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). All traces in the repository are invented.
+Saved run files are written outside the repository: to `%LOCALAPPDATA%\DropScope\runs` on Windows, `~/Library/Application Support/DropScope/runs` on macOS, and `$XDG_DATA_HOME/dropscope/runs` (default `~/.local/share/dropscope/runs`) on Linux. By default a run file keeps no prompts or answers, only their size and a fingerprint; a run imported with `--full` keeps the text. Fingerprints of predictable text can be guessed, so treat every run file as private: do not share it or commit it. **Do not import real agent traces into this project**: real traces can hold personal data and secrets, and the project has no real access boundary for them ([ADR-028](adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). All traces in the repository are invented.
 
 Local mission histories are stored under `.dropscope-data/` and are Git-ignored. Treat them as local project data: review them before copying or sharing, and delete them only when you intentionally want to discard those histories.
 

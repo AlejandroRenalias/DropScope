@@ -190,9 +190,9 @@ describe("command line seams", () => {
     }
   });
 
-  it("refuses cleanly on a platform other than Windows, for every command", () => {
+  it("refuses cleanly on a platform without file checks, for every command", () => {
     const original = Object.getOwnPropertyDescriptor(process, "platform") as PropertyDescriptor;
-    Object.defineProperty(process, "platform", { value: "linux" });
+    Object.defineProperty(process, "platform", { value: "aix" });
     try {
       for (const args of [["state", "x"], ["budget", "x", "--max-steps", "1"], ["claims", "x", "--claims", "y"], ["diff", "x", "y"], ["import", "x"]]) {
         const r = run(args);

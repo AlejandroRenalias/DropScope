@@ -83,7 +83,7 @@ function parseFlags(args: string[], valued: string[], boolean: string[]): { posi
 
 export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): number {
   try {
-    // Inside the try block: on a platform other than Windows this refuses with a normal error message.
+    // Inside the try block: on a platform without file checks this refuses with a normal error message.
     const checks = options.checks ?? defaultChecks();
     const [command, ...rest] = argv;
     if (command === "import") {

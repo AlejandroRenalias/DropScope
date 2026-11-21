@@ -333,7 +333,7 @@ describe("findings 9 to 11", () => {
 describe("spec deviations reported by the review", () => {
   it("refuses to run on a platform where the checks cannot be provided", () => {
     const original = Object.getOwnPropertyDescriptor(process, "platform") as PropertyDescriptor;
-    Object.defineProperty(process, "platform", { value: "linux" });
+    Object.defineProperty(process, "platform", { value: "aix" });
     try {
       expect(codeOf(() => defaultChecks())).toBe("E_PLATFORM:UNSUPPORTED_PLATFORM");
     } finally {

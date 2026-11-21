@@ -111,6 +111,7 @@ npm run test:e2e    # browser tests (needs Chrome; the picture baselines are Win
 ## Where to read more
 
 - [Guided tour](docs/GUIDED_TOUR.md): ten minutes with the demos.
+- [Architecture](docs/ARCHITECTURE.md): the path from a trace file to a saved run, the checks and the screens, with one diagram.
 - [Run event contract](docs/schemas/run-event-contract-v1.md) and [ADR-027](docs/adr/ADR-027-run-event-contract-and-trace-import-boundary.md): how a run file is built and checked.
 - [Works with](docs/WORKS_WITH.md): which trace emitters import, and what is missing for the others.
 - [Limitations and responsible use](docs/LIMITATIONS_AND_RESPONSIBLE_USE.md).

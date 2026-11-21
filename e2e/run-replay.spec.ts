@@ -122,6 +122,28 @@ test("opens a run file the import command saved, in the browser", async ({ page 
   await expect(page.locator(".run-source-card")).toContainText("Showing the built-in synthetic demo run.");
 });
 
+test("says when a step type and token counts were read from names other tools use", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const replay = await openRunReplay(page);
+  const trace = new Uint8Array(readFileSync(new URL("../test/fixtures/exporters/openinference.json", import.meta.url)));
+  const events = importTraceBytes({ spans: trace });
+  const file = serializeRunLog(events);
+  await page
+    .locator(".file-button input")
+    .setInputFiles({ name: "openinference.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(file) });
+  await expect(page.locator(".run-source-card")).toContainText("Run file openinference.runlog.jsonl.");
+  await replay.getByRole("button", { name: /Go to the start of Model call/ }).click();
+  await expect(replay.getByRole("heading", { name: "Model call started" })).toBeVisible();
+  await expect(replay.locator(".event-summary")).toContainText("Its type was read from the attribute openinference.span.kind");
+  await page.screenshot({ path: testInfo.outputPath("mapped-kind.png"), animations: "disabled" });
+  const usageEvent = events.find((e) => e.type === "UsageRecorded")?.sequenceNumber ?? 0;
+  await replay.getByLabel("Timeline position").fill(String(usageEvent));
+  await expect(replay.getByRole("heading", { name: "Tokens recorded" })).toBeVisible();
+  await expect(replay.locator(".event-summary")).toContainText(
+    "The counts were read from llm.token_count.prompt and llm.token_count.completion",
+  );
+});
+
 test("refuses broken and tampered files with a sentence that never repeats their content", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openRunReplay(page);

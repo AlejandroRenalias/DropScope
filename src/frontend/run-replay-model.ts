@@ -352,6 +352,22 @@ export function loadRunFromBytes(bytes: Uint8Array): RunModel {
   return buildRunModel(parseRunLog(bytes));
 }
 
+// Contract v1.1: a step's type or token counts may have been read from names that other tools use. Say so, so that nobody
+// takes the reading for something the trace stated in the standard way.
+const STANDARD_KIND_SOURCE = "gen_ai.operation.name";
+const STANDARD_USAGE_SOURCES = new Set(["gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens"]);
+
+function kindSourceNote(source: string | null | undefined): string {
+  return source === null || source === undefined || source === STANDARD_KIND_SOURCE
+    ? ""
+    : ` Its type was read from the attribute ${source}, a name other tools use instead of the standard one.`;
+}
+
+function usageSourceNote(inputSource: string | null | undefined, outputSource: string | null | undefined): string {
+  const names = [inputSource, outputSource].filter((name): name is string => typeof name === "string" && !STANDARD_USAGE_SOURCES.has(name));
+  return names.length === 0 ? "" : ` The counts were read from ${names.join(" and ")}, names other tools use instead of the standard ones.`;
+}
+
 export function describeRunEvent(event: RunEvent, model: RunModel): EventDescription {
   const stepName = (id: string | null): string => (id === null ? "no step" : (model.stepsById.get(id)?.title ?? "an unknown step"));
   switch (event.type) {
@@ -369,7 +385,7 @@ export function describeRunEvent(event: RunEvent, model: RunModel): EventDescrip
         category: "step",
         stepId: event.payload.stepId,
         title: `${kindLabel(event.payload.kind)} started`,
-        summary: `${step?.title ?? "Step"} began, ${parent}.`,
+        summary: `${step?.title ?? "Step"} began, ${parent}.${kindSourceNote(event.payload.kindSource)}`,
       };
     }
     case "StepEnded": {
@@ -391,7 +407,7 @@ export function describeRunEvent(event: RunEvent, model: RunModel): EventDescrip
         category: "tokens",
         stepId: event.payload.stepId,
         title: "Tokens recorded",
-        summary: `${stepName(event.payload.stepId)} used ${i === null ? "an unreported number of" : formatNumber(i)} input and ${o === null ? "an unreported number of" : formatNumber(o)} output tokens.`,
+        summary: `${stepName(event.payload.stepId)} used ${i === null ? "an unreported number of" : formatNumber(i)} input and ${o === null ? "an unreported number of" : formatNumber(o)} output tokens.${usageSourceNote(event.payload.inputSource, event.payload.outputSource)}`,
       };
     }
     case "ContentRecorded": {

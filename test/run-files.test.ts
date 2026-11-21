@@ -4,19 +4,38 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
-  FILE_ATTRIBUTE_OFFLINE, FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS, FILE_ATTRIBUTE_RECALL_ON_OPEN,
-  defaultChecks, ensureRunsDirectory, posixChecks, readInputFile, safeResolve, windowsChecks, type PlatformChecks,
+  FILE_ATTRIBUTE_OFFLINE,
+  FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS,
+  FILE_ATTRIBUTE_RECALL_ON_OPEN,
+  defaultChecks,
+  ensureRunsDirectory,
+  posixChecks,
+  readInputFile,
+  safeResolve,
+  windowsChecks,
+  type PlatformChecks,
 } from "../src/run-files.js";
 import { ImportError } from "../src/run-import-error.js";
 
 const windows = process.platform === "win32";
 let root: string;
-beforeAll(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-files-")); });
-afterAll(() => { fs.rmSync(root, { recursive: true, force: true }); });
+beforeAll(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-files-"));
+});
+afterAll(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
 
-const fake = (attributes: number | null = 0): PlatformChecks => ({ name: "fake", fileAttributes: () => attributes, prepareRunsDirectory: () => {} });
+const fake = (attributes: number | null = 0): PlatformChecks => ({
+  name: "fake",
+  fileAttributes: () => attributes,
+  prepareRunsDirectory: () => {},
+});
 const codeOf = (fn: () => unknown): string | null => {
-  try { fn(); return null; } catch (error) {
+  try {
+    fn();
+    return null;
+  } catch (error) {
     if (error instanceof ImportError) return `${error.code}:${error.reason ?? ""}`;
     throw error;
   }
@@ -54,7 +73,12 @@ describe("readInputFile", () => {
   });
 
   it("fails closed when the platform check itself fails", () => {
-    const broken: PlatformChecks = { ...fake(), fileAttributes: () => { throw new ImportError("E_PLATFORM", "file", null, "ATTRIBUTES_UNREADABLE"); } };
+    const broken: PlatformChecks = {
+      ...fake(),
+      fileAttributes: () => {
+        throw new ImportError("E_PLATFORM", "file", null, "ATTRIBUTES_UNREADABLE");
+      },
+    };
     expect(codeOf(() => readInputFile(write("x.json", "{}"), 10, broken))).toBe("E_PLATFORM:ATTRIBUTES_UNREADABLE");
   });
 
@@ -71,18 +95,29 @@ describe("readInputFile", () => {
   it("rejects a file symbolic link when the platform lets this account create one", (ctx) => {
     const target = write("target.json", "{}");
     const link = path.join(root, "filelink.json");
-    try { fs.symlinkSync(target, link, "file"); } catch { ctx.skip(); return; }
+    try {
+      fs.symlinkSync(target, link, "file");
+    } catch {
+      ctx.skip();
+      return;
+    }
     expect(codeOf(() => readInputFile(link, 10, fake()))).toBe("E_PATH:LINK_IN_PATH");
   });
 
   it.skipIf(!windows)("rejects network, device and stream paths on Windows", () => {
     for (const bad of ["\\\\server\\share\\x.json", "//server/share/x.json", "\\\\.\\C:\\x.json", "\\\\?\\C:\\x.json"]) {
-      expect(codeOf(() => readInputFile(bad, 10, fake())), bad).toBe("E_PATH:UNC_OR_DEVICE_PATH");
+      expect(
+        codeOf(() => readInputFile(bad, 10, fake())),
+        bad,
+      ).toBe("E_PATH:UNC_OR_DEVICE_PATH");
     }
     const file = write("s.json", "{}");
     expect(codeOf(() => readInputFile(`${file}:hidden`, 10, fake()))).toBe("E_PATH:STREAM_OR_DRIVE_IN_PATH");
     for (const name of ["NUL", "con.txt", "COM1", "lpt9.json"]) {
-      expect(codeOf(() => readInputFile(path.join(root, name), 10, fake())), name).toBe("E_PATH:DEVICE_NAME");
+      expect(
+        codeOf(() => readInputFile(path.join(root, name), 10, fake())),
+        name,
+      ).toBe("E_PATH:DEVICE_NAME");
     }
     expect(codeOf(() => readInputFile(`${file}.`, 10, fake()))).toBe("E_PATH:TRAILING_DOT_OR_SPACE");
   });
@@ -92,8 +127,14 @@ describe("readInputFile", () => {
     const realpath = vi.spyOn(fs.realpathSync, "native");
     try {
       for (const bad of ["/\\server\\share\\x.json", "\\/server/share/x.json", "//server\\share", "\\\\?\\UNC\\server\\share\\x.json"]) {
-        expect(codeOf(() => readInputFile(bad, 10, fake())), bad).toBe("E_PATH:UNC_OR_DEVICE_PATH");
-        expect(codeOf(() => safeResolve(bad, true)), bad).toBe("E_PATH:UNC_OR_DEVICE_PATH");
+        expect(
+          codeOf(() => readInputFile(bad, 10, fake())),
+          bad,
+        ).toBe("E_PATH:UNC_OR_DEVICE_PATH");
+        expect(
+          codeOf(() => safeResolve(bad, true)),
+          bad,
+        ).toBe("E_PATH:UNC_OR_DEVICE_PATH");
       }
       expect(touched).not.toHaveBeenCalled();
       expect(realpath).not.toHaveBeenCalled();
@@ -103,17 +144,25 @@ describe("readInputFile", () => {
     }
   });
 
-  it.skipIf(!windows)("uses real Windows attributes and drive type", () => {
-    const file = write("real.json", "{\"a\":1}");
-    const attrs = windowsChecks.fileAttributes(file);
-    expect(typeof attrs).toBe("number");
-    expect((attrs as number) & (FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_RECALL_ON_OPEN | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS)).toBe(0);
-    expect(Buffer.from(readInputFile(file, 100, defaultChecks())).toString()).toBe("{\"a\":1}");
-  }, 60_000);
+  it.skipIf(!windows)(
+    "uses real Windows attributes and drive type",
+    () => {
+      const file = write("real.json", '{"a":1}');
+      const attrs = windowsChecks.fileAttributes(file);
+      expect(typeof attrs).toBe("number");
+      expect((attrs as number) & (FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_RECALL_ON_OPEN | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS)).toBe(0);
+      expect(Buffer.from(readInputFile(file, 100, defaultChecks())).toString()).toBe('{"a":1}');
+    },
+    60_000,
+  );
 
-  it.skipIf(!windows)("fails closed when Windows cannot report attributes for the path", () => {
-    expect(codeOf(() => windowsChecks.fileAttributes(path.join(root, "missing-file.json")))).toBe("E_PLATFORM:POWERSHELL_UNAVAILABLE");
-  }, 60_000);
+  it.skipIf(!windows)(
+    "fails closed when Windows cannot report attributes for the path",
+    () => {
+      expect(codeOf(() => windowsChecks.fileAttributes(path.join(root, "missing-file.json")))).toBe("E_PLATFORM:POWERSHELL_UNAVAILABLE");
+    },
+    60_000,
+  );
 });
 
 describe("ensureRunsDirectory", () => {
@@ -137,14 +186,22 @@ describe("ensureRunsDirectory", () => {
     expect(codeOf(() => ensureRunsDirectory(link, fake()))).toBe("E_PATH:LINK_IN_PATH");
   });
 
-  it.skipIf(!windows)("grants only the current user, SYSTEM and Administrators, and rejects a loosened directory", () => {
-    const dir = path.join(root, "owner-only", "runs");
-    ensureRunsDirectory(dir, windowsChecks);
-    const listing = execFileSync(path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "icacls.exe"), [dir], { encoding: "utf8" });
-    expect(/Everyone|BUILTIN\\Users|Authenticated Users/i.test(listing)).toBe(false);
-    execFileSync(path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "icacls.exe"), [dir, "/grant", "*S-1-1-0:(R)"], { stdio: "ignore" });
-    expect(codeOf(() => ensureRunsDirectory(dir, windowsChecks))).toBe("E_PLATFORM:RUNS_DIR_NOT_OWNER_ONLY");
-  }, 90_000);
+  it.skipIf(!windows)(
+    "grants only the current user, SYSTEM and Administrators, and rejects a loosened directory",
+    () => {
+      const dir = path.join(root, "owner-only", "runs");
+      ensureRunsDirectory(dir, windowsChecks);
+      const listing = execFileSync(path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "icacls.exe"), [dir], {
+        encoding: "utf8",
+      });
+      expect(/Everyone|BUILTIN\\Users|Authenticated Users/i.test(listing)).toBe(false);
+      execFileSync(path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "icacls.exe"), [dir, "/grant", "*S-1-1-0:(R)"], {
+        stdio: "ignore",
+      });
+      expect(codeOf(() => ensureRunsDirectory(dir, windowsChecks))).toBe("E_PLATFORM:RUNS_DIR_NOT_OWNER_ONLY");
+    },
+    90_000,
+  );
 
   it.skipIf(windows)("requires a private mode on POSIX", () => {
     const dir = path.join(root, "posix-runs");

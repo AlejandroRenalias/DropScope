@@ -6,13 +6,23 @@ import { CodexSubscriptionLiveWorkerAdapter, type SubscriptionLiveWorkerError } 
 import type { AppServerProcess } from "../src/subscription-runtime-preflight.js";
 import type { WorkerRequest } from "../src/worker-adapter.js";
 
-const request: WorkerRequest = { missionId: "mission-1", taskId: "pilot-evidence", attemptId: "pilot-evidence:a1", objective: "Analyze the supplied local pilot fixture only.", workerRole: "EVIDENCE_RESEARCHER", maxCost: 10 };
+const request: WorkerRequest = {
+  missionId: "mission-1",
+  taskId: "pilot-evidence",
+  attemptId: "pilot-evidence:a1",
+  objective: "Analyze the supplied local pilot fixture only.",
+  workerRole: "EVIDENCE_RESEARCHER",
+  maxCost: 10,
+};
 
 class FakeLiveAppServer extends EventEmitter implements AppServerProcess {
   readonly stdin = new PassThrough();
   readonly stdout = new PassThrough();
   readonly messages: Array<Record<string, unknown>> = [];
-  readonly kill = vi.fn(() => { this.emit("exit"); return true; });
+  readonly kill = vi.fn(() => {
+    this.emit("exit");
+    return true;
+  });
 
   constructor(
     private readonly turn: (server: FakeLiveAppServer) => void,
@@ -34,15 +44,26 @@ class FakeLiveAppServer extends EventEmitter implements AppServerProcess {
     });
   }
 
-  respond(id: number, result: unknown): void { this.stdout.write(`${JSON.stringify({ id, result })}\n`); }
-  notify(method: string, params: unknown): void { this.stdout.write(`${JSON.stringify({ method, params })}\n`); }
-  request(method: string, params: unknown): void { this.stdout.write(`${JSON.stringify({ id: "private-request-id", method, params })}\n`); }
+  respond(id: number, result: unknown): void {
+    this.stdout.write(`${JSON.stringify({ id, result })}\n`);
+  }
+  notify(method: string, params: unknown): void {
+    this.stdout.write(`${JSON.stringify({ method, params })}\n`);
+  }
+  request(method: string, params: unknown): void {
+    this.stdout.write(`${JSON.stringify({ id: "private-request-id", method, params })}\n`);
+  }
 }
 
 describe("CodexSubscriptionLiveWorkerAdapter", () => {
   it("starts exactly one thread and turn, keeps identifiers private, and returns only final assistant JSON", async () => {
     const process = new FakeLiveAppServer((server) => {
-      const result = JSON.stringify({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED", finding: "Inline pilot evidence only." });
+      const result = JSON.stringify({
+        taskId: request.taskId,
+        attemptId: request.attemptId,
+        status: "COMPLETED",
+        finding: "Inline pilot evidence only.",
+      });
       server.notify("item/completed", { item: { type: "agentMessage", text: result } });
       // App-server may omit terminal items because the item notification above
       // is the authoritative transcript event.
@@ -50,10 +71,17 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
     });
 
     const output = await new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot");
-    expect(output).toEqual({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED", finding: "Inline pilot evidence only." });
+    expect(output).toEqual({
+      taskId: request.taskId,
+      attemptId: request.attemptId,
+      status: "COMPLETED",
+      finding: "Inline pilot evidence only.",
+    });
     expect(process.messages.filter((message) => message.method === "thread/start")).toHaveLength(1);
     expect(process.messages.filter((message) => message.method === "turn/start")).toHaveLength(1);
-    expect(process.messages.find((message) => message.method === "turn/start")).toMatchObject({ params: { cwd: "C:/isolated-pilot", sandboxPolicy: { type: "readOnly", networkAccess: false } } });
+    expect(process.messages.find((message) => message.method === "turn/start")).toMatchObject({
+      params: { cwd: "C:/isolated-pilot", sandboxPolicy: { type: "readOnly", networkAccess: false } },
+    });
     expect(JSON.stringify(output)).not.toContain("private-thread-id");
     expect(process.kill).toHaveBeenCalledOnce();
   });
@@ -65,18 +93,29 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
       server.request("item/commandExecution/requestApproval", { command: "private command", threadId: "private", turnId: "private" });
     });
 
-    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process, () => now).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "APPROVAL_DECLINED", elapsedMs: 9 } satisfies Partial<SubscriptionLiveWorkerError>));
+    await expect(
+      new CodexSubscriptionLiveWorkerAdapter(
+        () => process,
+        () => now,
+      ).run(request, "C:/isolated-pilot"),
+    ).rejects.toEqual(
+      expect.objectContaining({ outcome: "APPROVAL_DECLINED", elapsedMs: 9 } satisfies Partial<SubscriptionLiveWorkerError>),
+    );
     expect(process.messages.some((message) => "result" in message && JSON.stringify(message).includes("accept"))).toBe(false);
     expect(process.kill).toHaveBeenCalledOnce();
   });
 
   it("refuses a non-ChatGPT account in the same app-server session before a thread starts", async () => {
     const process = new FakeLiveAppServer(
-      () => { throw new Error("a turn must not start"); },
+      () => {
+        throw new Error("a turn must not start");
+      },
       { account: { type: "apiKey" } },
     );
 
-    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "UNAVAILABLE" }));
+    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(
+      expect.objectContaining({ outcome: "UNAVAILABLE" }),
+    );
     expect(process.messages.some((message) => message.method === "thread/start" || message.method === "turn/start")).toBe(false);
     expect(process.kill).toHaveBeenCalledOnce();
   });
@@ -86,7 +125,9 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
       server.notify("item/started", { item: { type: "mcpToolCall", server: "private", tool: "side-effect" } });
     });
 
-    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "TURN_FAILED" }));
+    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(
+      expect.objectContaining({ outcome: "TURN_FAILED" }),
+    );
     expect(process.kill).toHaveBeenCalledOnce();
   });
 
@@ -96,14 +137,24 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
         turn: {
           status: "completed",
           items: [
-            { type: "agentMessage", text: JSON.stringify({ taskId: request.taskId, attemptId: request.attemptId, status: "COMPLETED", finding: "Must not be accepted." }) },
+            {
+              type: "agentMessage",
+              text: JSON.stringify({
+                taskId: request.taskId,
+                attemptId: request.attemptId,
+                status: "COMPLETED",
+                finding: "Must not be accepted.",
+              }),
+            },
             { type: "mcpToolCall", server: "private", tool: "side-effect" },
           ],
         },
       });
     });
 
-    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "TURN_FAILED" }));
+    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(
+      expect.objectContaining({ outcome: "TURN_FAILED" }),
+    );
     expect(process.kill).toHaveBeenCalledOnce();
   });
 
@@ -113,6 +164,8 @@ describe("CodexSubscriptionLiveWorkerAdapter", () => {
       server.notify("turn/completed", { turn: { status: "completed" } });
     });
 
-    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(expect.objectContaining({ outcome: "INVALID_RESULT" }));
+    await expect(new CodexSubscriptionLiveWorkerAdapter(() => process).run(request, "C:/isolated-pilot")).rejects.toEqual(
+      expect.objectContaining({ outcome: "INVALID_RESULT" }),
+    );
   });
 });

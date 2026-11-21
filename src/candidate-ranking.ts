@@ -25,18 +25,19 @@ const scores = (input: CandidateRankingInput) => [
 function assertScores(input: CandidateRankingInput): void {
   if (!input.candidateId) throw new Error("Candidate ID is required.");
   if (typeof input.eligible !== "boolean") throw new Error("Candidate eligibility must be a boolean.");
-  if (scores(input).some((score) => !Number.isInteger(score) || score < 0 || score > 100)) throw new Error("Candidate scores must be integers from 0 through 100.");
+  if (scores(input).some((score) => !Number.isInteger(score) || score < 0 || score > 100))
+    throw new Error("Candidate scores must be integers from 0 through 100.");
 }
 
 export function calculateResearchPriority(input: CandidateRankingInput): number {
   assertScores(input);
   return Math.round(
-    input.customerProblemEvidenceScore * 0.30
-    + input.evidenceQualityScore * 0.20
-    + input.trendDurabilityScore * 0.15
-    + (100 - input.advertisingSaturationScore) * 0.15
-    + (100 - input.operationalRiskScore) * 0.10
-    + (100 - input.failureRiskScore) * 0.10,
+    input.customerProblemEvidenceScore * 0.3 +
+      input.evidenceQualityScore * 0.2 +
+      input.trendDurabilityScore * 0.15 +
+      (100 - input.advertisingSaturationScore) * 0.15 +
+      (100 - input.operationalRiskScore) * 0.1 +
+      (100 - input.failureRiskScore) * 0.1,
   );
 }
 
@@ -44,7 +45,10 @@ export function rankEligibleCandidates(inputs: CandidateRankingInput[]): RankedC
   return inputs
     .map((input) => ({ ...input, researchPriorityScore: calculateResearchPriority(input) }))
     .filter((candidate) => candidate.eligible)
-    .sort((left, right) => right.researchPriorityScore - left.researchPriorityScore
-      || right.evidenceQualityScore - left.evidenceQualityScore
-      || (left.candidateId < right.candidateId ? -1 : left.candidateId > right.candidateId ? 1 : 0));
+    .sort(
+      (left, right) =>
+        right.researchPriorityScore - left.researchPriorityScore ||
+        right.evidenceQualityScore - left.evidenceQualityScore ||
+        (left.candidateId < right.candidateId ? -1 : left.candidateId > right.candidateId ? 1 : 0),
+    );
 }

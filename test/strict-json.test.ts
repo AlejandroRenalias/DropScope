@@ -66,7 +66,24 @@ describe("strict JSON: rejected input", () => {
   });
 
   it("rejects malformed numbers, literals, strings and escapes", () => {
-    for (const bad of ["01", "1.", ".5", "+1", "-", "1e", "NaN", "tru", "nul", "'a'", '"a', '"\\x"', '"\\u12"', '"\u0001"', "{1:2}", '{"a" 1}']) {
+    for (const bad of [
+      "01",
+      "1.",
+      ".5",
+      "+1",
+      "-",
+      "1e",
+      "NaN",
+      "tru",
+      "nul",
+      "'a'",
+      '"a',
+      '"\\x"',
+      '"\\u12"',
+      '"\u0001"',
+      "{1:2}",
+      '{"a" 1}',
+    ]) {
       expect(codeOf(bad), bad).toBe("E_SYNTAX");
     }
   });

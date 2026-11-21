@@ -5,7 +5,10 @@ export function displayResearchCopy(value: string): string {
 }
 
 function humanizedType(type: string): string {
-  return type.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
+  return type
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/^./, (letter) => letter.toUpperCase());
 }
 
 export function summarizeResearchEvent(event: MissionEvent): string {
@@ -19,6 +22,7 @@ export function summarizeResearchEvent(event: MissionEvent): string {
   else parts.push(humanizedType(event.type));
 
   if (event.type === "BudgetReserved" && typeof payload.attemptId === "string") parts.push(`Attempt ${payload.attemptId}`);
-  else if (typeof payload.attemptId === "string" && !parts.some((part) => part.includes(payload.attemptId as string))) parts.push(`Attempt ${payload.attemptId}`);
+  else if (typeof payload.attemptId === "string" && !parts.some((part) => part.includes(payload.attemptId as string)))
+    parts.push(`Attempt ${payload.attemptId}`);
   return parts.join(" · ");
 }

@@ -1,13 +1,30 @@
 import { JsonlEventStore } from "./event-store.js";
-import { failureAutopsyPilotFixtureId, googleTrendsComparisonPilotFixtureId, googleTrendsPilotFixtureId, liveWorkerPilotFixtureId, productInvestigationPilotFixtureId, loadFixture } from "./fixture-model.js";
+import {
+  failureAutopsyPilotFixtureId,
+  googleTrendsComparisonPilotFixtureId,
+  googleTrendsPilotFixtureId,
+  liveWorkerPilotFixtureId,
+  productInvestigationPilotFixtureId,
+  loadFixture,
+} from "./fixture-model.js";
 import { replay, type MissionState } from "./reducer.js";
-import { prepareGoogleTrendsComparisonPilotSchedule, prepareGoogleTrendsPilotSchedule, prepareLiveWorkerPilotSchedule, runSimulatedSchedule, type ScheduleResult } from "./scheduler.js";
+import {
+  prepareGoogleTrendsComparisonPilotSchedule,
+  prepareGoogleTrendsPilotSchedule,
+  prepareLiveWorkerPilotSchedule,
+  runSimulatedSchedule,
+  type ScheduleResult,
+} from "./scheduler.js";
 import type { MissionEvent } from "./contracts.js";
 import { determineCandidateEligibility, type CandidateEligibility } from "./candidate-eligibility.js";
 import { evaluateRiskGate } from "./risk-policy.js";
 import type { RiskGateDecision } from "./research-domain.js";
 import { buildCandidateReport, type CandidateReport } from "./report.js";
-import { buildFailureAutopsyQualityPipeline, buildFixtureQualityPipeline, buildProductInvestigationQualityPipeline } from "./fixture-quality-pipeline.js";
+import {
+  buildFailureAutopsyQualityPipeline,
+  buildFixtureQualityPipeline,
+  buildProductInvestigationQualityPipeline,
+} from "./fixture-quality-pipeline.js";
 import { RecordedWorkerAdapter } from "./worker-adapter.js";
 
 export interface FixtureRunResult {
@@ -29,49 +46,70 @@ export async function runFixtureMission(options: {
   missionSeed?: number;
 }): Promise<FixtureRunResult> {
   const fixture = loadFixture(options.fixtureId);
-  const recordedWorkerAssignment = fixture.fixtureId === "crosscurrent-workspace-market"
-    ? {
-        workerRole: "EVIDENCE_RESEARCHER",
-        adapter: new RecordedWorkerAdapter({
-          "workflow-interviews:a2": {
-            taskId: "workflow-interviews",
-            attemptId: "workflow-interviews:a2",
-            status: "COMPLETED" as const,
-            finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem.",
-          },
-        }),
-      }
-    : undefined;
-  const schedule = fixture.fixtureId === liveWorkerPilotFixtureId
-    ? await prepareLiveWorkerPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
-    : fixture.fixtureId === googleTrendsPilotFixtureId
-      ? await prepareGoogleTrendsPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
-      : fixture.fixtureId === googleTrendsComparisonPilotFixtureId
-        ? await prepareGoogleTrendsComparisonPilotSchedule({ missionId: options.missionId, historyPath: options.eventStore ? undefined : options.historyPath, eventStore: options.eventStore })
-      : await runSimulatedSchedule({
-    missionId: options.missionId,
-    missionSeed: options.missionSeed ?? fixture.seed,
-    totalBudget: fixture.budget,
-    historyPath: options.eventStore ? undefined : options.historyPath,
-    eventStore: options.eventStore,
-    maxConcurrency: options.maxConcurrency,
-    completeMission: false,
-    recordedWorkerAssignment,
-    subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
-    missionMode: fixture.fixtureId === failureAutopsyPilotFixtureId ? "FAILURE_AUTOPSY" : fixture.fixtureId === productInvestigationPilotFixtureId ? "PRODUCT_INVESTIGATION" : undefined,
-    tasks: fixture.tasks.map((task) => ({
-      taskId: task.id,
-      objective: task.objective,
-      cost: task.cost,
-      durationMs: task.durationMs,
-      workClass: task.workClass,
-      researchKey: task.researchKey,
-      dependencies: task.dependencies,
-      workerRole: task.workerRole,
-    })),
-  });
+  const recordedWorkerAssignment =
+    fixture.fixtureId === "crosscurrent-workspace-market"
+      ? {
+          workerRole: "EVIDENCE_RESEARCHER",
+          adapter: new RecordedWorkerAdapter({
+            "workflow-interviews:a2": {
+              taskId: "workflow-interviews",
+              attemptId: "workflow-interviews:a2",
+              status: "COMPLETED" as const,
+              finding: "Recorded Evidence Researcher: recurring workflow evidence supports the workspace problem.",
+            },
+          }),
+        }
+      : undefined;
+  const schedule =
+    fixture.fixtureId === liveWorkerPilotFixtureId
+      ? await prepareLiveWorkerPilotSchedule({
+          missionId: options.missionId,
+          historyPath: options.eventStore ? undefined : options.historyPath,
+          eventStore: options.eventStore,
+        })
+      : fixture.fixtureId === googleTrendsPilotFixtureId
+        ? await prepareGoogleTrendsPilotSchedule({
+            missionId: options.missionId,
+            historyPath: options.eventStore ? undefined : options.historyPath,
+            eventStore: options.eventStore,
+          })
+        : fixture.fixtureId === googleTrendsComparisonPilotFixtureId
+          ? await prepareGoogleTrendsComparisonPilotSchedule({
+              missionId: options.missionId,
+              historyPath: options.eventStore ? undefined : options.historyPath,
+              eventStore: options.eventStore,
+            })
+          : await runSimulatedSchedule({
+              missionId: options.missionId,
+              missionSeed: options.missionSeed ?? fixture.seed,
+              totalBudget: fixture.budget,
+              historyPath: options.eventStore ? undefined : options.historyPath,
+              eventStore: options.eventStore,
+              maxConcurrency: options.maxConcurrency,
+              completeMission: false,
+              recordedWorkerAssignment,
+              subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
+              missionMode:
+                fixture.fixtureId === failureAutopsyPilotFixtureId
+                  ? "FAILURE_AUTOPSY"
+                  : fixture.fixtureId === productInvestigationPilotFixtureId
+                    ? "PRODUCT_INVESTIGATION"
+                    : undefined,
+              tasks: fixture.tasks.map((task) => ({
+                taskId: task.id,
+                objective: task.objective,
+                cost: task.cost,
+                durationMs: task.durationMs,
+                workClass: task.workClass,
+                researchKey: task.researchKey,
+                dependencies: task.dependencies,
+                workerRole: task.workerRole,
+              })),
+            });
   const riskDecisions = fixture.candidateEvaluations.map((candidate) => evaluateRiskGate(candidate.riskInput));
-  const candidateEligibility = fixture.candidateEvaluations.map((candidate, index) => determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }));
+  const candidateEligibility = fixture.candidateEvaluations.map((candidate, index) =>
+    determineCandidateEligibility({ ...candidate, riskDecision: riskDecisions[index]! }),
+  );
   const report = buildCandidateReport(fixture.candidateEvaluations, riskDecisions, candidateEligibility);
   const store = options.eventStore ?? new JsonlEventStore(options.historyPath);
   const events = await store.readAll();
@@ -79,19 +117,38 @@ export async function runFixtureMission(options: {
   if (scheduledState.status !== "RUNNING") {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
-  if (fixture.fixtureId === liveWorkerPilotFixtureId || fixture.fixtureId === googleTrendsPilotFixtureId || fixture.fixtureId === googleTrendsComparisonPilotFixtureId) {
+  if (
+    fixture.fixtureId === liveWorkerPilotFixtureId ||
+    fixture.fixtureId === googleTrendsPilotFixtureId ||
+    fixture.fixtureId === googleTrendsComparisonPilotFixtureId
+  ) {
     return { fixtureId: fixture.fixtureId, events, state: scheduledState, schedule, candidateEligibility, riskDecisions, report };
   }
   if (fixture.fixtureId === "crosscurrent-workspace-market") {
-    const qualityEvents = buildFixtureQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
+    const qualityEvents = buildFixtureQualityPipeline({
+      missionId: options.missionId,
+      startingSequence: events.length,
+      report,
+      riskDecisions,
+    });
     for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
   }
   if (fixture.fixtureId === failureAutopsyPilotFixtureId) {
-    const qualityEvents = buildFailureAutopsyQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
+    const qualityEvents = buildFailureAutopsyQualityPipeline({
+      missionId: options.missionId,
+      startingSequence: events.length,
+      report,
+      riskDecisions,
+    });
     for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
   }
   if (fixture.fixtureId === productInvestigationPilotFixtureId) {
-    const qualityEvents = buildProductInvestigationQualityPipeline({ missionId: options.missionId, startingSequence: events.length, report, riskDecisions });
+    const qualityEvents = buildProductInvestigationQualityPipeline({
+      missionId: options.missionId,
+      startingSequence: events.length,
+      report,
+      riskDecisions,
+    });
     for (const qualityEvent of qualityEvents) await store.append(qualityEvent);
   }
   const sequenceNumber = (await store.readAll()).length + 1;
@@ -102,11 +159,20 @@ export async function runFixtureMission(options: {
     eventId: `${options.missionId}-${sequenceNumber}`,
     timestamp: new Date().toISOString(),
     type: report.outcome === "INSUFFICIENT_EVIDENCE" ? "MissionTerminated" : "MissionCompleted",
-    payload: report.outcome === "INSUFFICIENT_EVIDENCE"
-      ? { status: "COMPLETED_INSUFFICIENT_EVIDENCE", reason: "No fixture candidate cleared the evidence gates." }
-      : {},
+    payload:
+      report.outcome === "INSUFFICIENT_EVIDENCE"
+        ? { status: "COMPLETED_INSUFFICIENT_EVIDENCE", reason: "No fixture candidate cleared the evidence gates." }
+        : {},
   } as MissionEvent;
   await store.append(terminalEvent);
   const completedEvents = await store.readAll();
-  return { fixtureId: fixture.fixtureId, events: completedEvents, state: replay(completedEvents), schedule, candidateEligibility, riskDecisions, report };
+  return {
+    fixtureId: fixture.fixtureId,
+    events: completedEvents,
+    state: replay(completedEvents),
+    schedule,
+    candidateEligibility,
+    riskDecisions,
+    report,
+  };
 }

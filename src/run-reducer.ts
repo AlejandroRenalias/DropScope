@@ -35,9 +35,7 @@ const fail = (reason: string, event?: RunEvent): never => {
 const isWithheld = (f: Field): boolean => "w" in f;
 const verbatimString = (f: Field): string | null => ("v" in f && f.v.t === "s" ? f.v.v : null);
 
-function checkAttributes(
-  list: Array<{ ordinal: number; key: Field; value: Field }>, allowlisted: boolean, event: RunEvent,
-): void {
+function checkAttributes(list: Array<{ ordinal: number; key: Field; value: Field }>, allowlisted: boolean, event: RunEvent): void {
   for (const a of list) {
     const key = verbatimString(a.key);
     if (!isWithheld(a.key)) {
@@ -104,7 +102,8 @@ function checkHashOnly(event: RunEvent, contextIds: Set<string>): void {
     case "ContentRecorded":
       mustBeWithheld(event.payload.value);
       // The key is withheld too, except the importer's own fixed key for a log body.
-      if (event.payload.fieldKey !== undefined && verbatimString(event.payload.fieldKey) !== "log.body") mustBeWithheld(event.payload.fieldKey);
+      if (event.payload.fieldKey !== undefined && verbatimString(event.payload.fieldKey) !== "log.body")
+        mustBeWithheld(event.payload.fieldKey);
       break;
     default:
       break;

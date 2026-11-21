@@ -32,7 +32,9 @@ export function canonicalJson(root: unknown): string {
       }
     } else {
       const record = value as Record<string, unknown>;
-      const keys = Object.keys(record).filter((k) => record[k] !== undefined).sort();
+      const keys = Object.keys(record)
+        .filter((k) => record[k] !== undefined)
+        .sort();
       out.push("{");
       work.push({ text: "}" });
       for (let i = keys.length - 1; i >= 0; i -= 1) {

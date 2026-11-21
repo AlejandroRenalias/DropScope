@@ -6,7 +6,10 @@ const protocolNotificationSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal("item/commandExecution/requestApproval"), params: z.object({}).passthrough() }),
   z.object({ method: z.literal("item/fileChange/requestApproval"), params: z.object({}).passthrough() }),
   z.object({ method: z.literal("item/permissions/requestApproval"), params: z.object({}).passthrough() }),
-  z.object({ method: z.literal("turn/completed"), params: z.object({ turn: z.object({ status: z.enum(["completed", "interrupted", "failed"]) }).passthrough() }).passthrough() }),
+  z.object({
+    method: z.literal("turn/completed"),
+    params: z.object({ turn: z.object({ status: z.enum(["completed", "interrupted", "failed"]) }).passthrough() }).passthrough(),
+  }),
 ]);
 
 export type SubscriptionWorkerProtocolNotification = z.infer<typeof protocolNotificationSchema>;
@@ -40,7 +43,8 @@ export class SubscriptionLiveWorkerProtocolFake {
     if (parsed.params.turn.status === "interrupted") return this.set({ status: "INTERRUPTED" });
     if (parsed.params.turn.status === "failed") return this.set({ status: "TURN_FAILED" });
     const result = structuredWorkerResultSchema.safeParse(structuredResult);
-    if (!result.success || result.data.taskId !== this.request.taskId || result.data.attemptId !== this.request.attemptId) return this.set({ status: "INVALID_RESULT" });
+    if (!result.success || result.data.taskId !== this.request.taskId || result.data.attemptId !== this.request.attemptId)
+      return this.set({ status: "INVALID_RESULT" });
     return this.set({ status: "COMPLETED", result: result.data });
   }
 

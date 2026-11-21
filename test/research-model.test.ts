@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { officeHistories, projectOffice } from "../src/frontend/office-projection.js";
-import { attemptChain, defaultSelection, describeChange, humanizeType, layoutTasks, nodeTitle, revisionPath, scaleAngle, uniqueAgents } from "../src/frontend/research-model.js";
+import {
+  attemptChain,
+  defaultSelection,
+  describeChange,
+  humanizeType,
+  layoutTasks,
+  nodeTitle,
+  revisionPath,
+  scaleAngle,
+  uniqueAgents,
+} from "../src/frontend/research-model.js";
 
 const prefix = (scenario: keyof typeof officeHistories, length: number) => projectOffice(officeHistories[scenario].slice(0, length));
 
@@ -17,7 +27,11 @@ describe("research constellation layout", () => {
   it("centres a single task and survives dependency cycles and unknown parents", () => {
     const base = projectOffice(officeHistories.RUNNING).tasks[0]!;
     expect(layoutTasks([base])[0]).toMatchObject({ x: 50, y: 46, level: 0 });
-    const cyclic = [{ ...base, id: "a", dependencyIds: ["b"] }, { ...base, id: "b", dependencyIds: ["a"] }, { ...base, id: "c", dependencyIds: ["missing"] }];
+    const cyclic = [
+      { ...base, id: "a", dependencyIds: ["b"] },
+      { ...base, id: "b", dependencyIds: ["a"] },
+      { ...base, id: "c", dependencyIds: ["missing"] },
+    ];
     expect(layoutTasks(cyclic)).toHaveLength(3);
   });
 
@@ -31,7 +45,9 @@ describe("research constellation layout", () => {
   it("titles nodes by role and falls back to a trimmed objective", () => {
     const tasks = projectOffice(officeHistories.RUNNING).tasks;
     expect(nodeTitle(tasks[0]!)).toBe("Market");
-    expect(nodeTitle({ ...tasks[0]!, role: null, label: "A very long objective that must be trimmed for the node" })).toBe("A very long objective tha…");
+    expect(nodeTitle({ ...tasks[0]!, role: null, label: "A very long objective that must be trimmed for the node" })).toBe(
+      "A very long objective tha…",
+    );
   });
 
   it("collapses repeated workstations into one researcher per role", () => {
@@ -57,9 +73,13 @@ describe("replay change description", () => {
 
   it("reports newly authorized and newly scheduled tasks", () => {
     const authorized = history.findIndex((event, index) => event.type === "TaskAuthorized" && index > 5) + 1;
-    expect(describeChange(prefix("RUNNING", authorized - 1), prefix("RUNNING", authorized)).lines.some((line) => line.endsWith("authorized"))).toBe(true);
+    expect(
+      describeChange(prefix("RUNNING", authorized - 1), prefix("RUNNING", authorized)).lines.some((line) => line.endsWith("authorized")),
+    ).toBe(true);
     const scheduled = history.findIndex((event, index) => event.type === "TaskScheduled" && index > 8) + 1;
-    expect(describeChange(prefix("RUNNING", scheduled - 1), prefix("RUNNING", scheduled)).lines.some((line) => line.endsWith("scheduled"))).toBe(true);
+    expect(
+      describeChange(prefix("RUNNING", scheduled - 1), prefix("RUNNING", scheduled)).lines.some((line) => line.endsWith("scheduled")),
+    ).toBe(true);
   });
 
   it("returns no changes for the very first event and for events that do not alter research state", () => {
@@ -78,7 +98,13 @@ describe("replay change description", () => {
 describe("worker provenance chain", () => {
   it("lists the task authorization and every event of one attempt in recorded order", () => {
     const chain = attemptChain(officeHistories.RUNNING, "workspace:a1");
-    expect(chain.map((step) => step.type)).toEqual(["TaskAuthorized", "TaskScheduled", "BudgetReserved", "TaskStarted", "FindingSubmitted"]);
+    expect(chain.map((step) => step.type)).toEqual([
+      "TaskAuthorized",
+      "TaskScheduled",
+      "BudgetReserved",
+      "TaskStarted",
+      "FindingSubmitted",
+    ]);
     expect(chain.map((step) => step.sequence)).toEqual([...chain.map((step) => step.sequence)].sort((a, b) => a - b));
     expect(chain.filter((step) => step.final).map((step) => step.type)).toEqual(["FindingSubmitted"]);
     expect(chain.at(-1)!.summary).toContain("Workspace demand mapped.");

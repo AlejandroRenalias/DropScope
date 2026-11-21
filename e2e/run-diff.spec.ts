@@ -96,10 +96,31 @@ test.describe("run diff", () => {
     const replay = await openRunReplay(page);
     const panel = replay.getByRole("region", { name: "Compare with another run" });
     const T = "2".repeat(32);
-    const trace = { resourceSpans: [{ resource: { attributes: [] }, scopeSpans: [{ scope: { name: "t" }, spans: [{
-      traceId: T, spanId: "00000000000000b1", name: "only tool", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000",
-      attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } }, { key: "gen_ai.tool.name", value: { stringValue: "weather" } }],
-    }] }] }] };
+    const trace = {
+      resourceSpans: [
+        {
+          resource: { attributes: [] },
+          scopeSpans: [
+            {
+              scope: { name: "t" },
+              spans: [
+                {
+                  traceId: T,
+                  spanId: "00000000000000b1",
+                  name: "only tool",
+                  startTimeUnixNano: "1000000000",
+                  endTimeUnixNano: "2000000000",
+                  attributes: [
+                    { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
+                    { key: "gen_ai.tool.name", value: { stringValue: "weather" } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
     const bytes = serializeRunLog(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify(trace)) }));
     const input = panel.locator(".cc-file-button input");
     await input.setInputFiles({ name: "other.runlog.jsonl", mimeType: "application/x-ndjson", buffer: Buffer.from(bytes) });
@@ -117,12 +138,35 @@ test.describe("run diff", () => {
     const replay = await openRunReplay(page);
     const panel = replay.getByRole("region", { name: "Compare with another run" });
     const T = "3".repeat(32);
-    const trace = { resourceSpans: [{ resource: { attributes: [] }, scopeSpans: [{ scope: { name: "t" }, spans: [{
-      traceId: T, spanId: "00000000000000c1", name: "x", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000",
-      attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } }, { key: "gen_ai.tool.name", value: { stringValue: "<img src=x onerror=alert(1)>" } }],
-    }] }] }] };
+    const trace = {
+      resourceSpans: [
+        {
+          resource: { attributes: [] },
+          scopeSpans: [
+            {
+              scope: { name: "t" },
+              spans: [
+                {
+                  traceId: T,
+                  spanId: "00000000000000c1",
+                  name: "x",
+                  startTimeUnixNano: "1000000000",
+                  endTimeUnixNano: "2000000000",
+                  attributes: [
+                    { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
+                    { key: "gen_ai.tool.name", value: { stringValue: "<img src=x onerror=alert(1)>" } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
     const bytes = serializeRunLog(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify(trace)), contentMode: "FULL" }));
-    await panel.locator(".cc-file-button input").setInputFiles({ name: "html.runlog.jsonl", mimeType: "application/x-ndjson", buffer: Buffer.from(bytes) });
+    await panel
+      .locator(".cc-file-button input")
+      .setInputFiles({ name: "html.runlog.jsonl", mimeType: "application/x-ndjson", buffer: Buffer.from(bytes) });
     await expect(panel.locator(".rd-steps")).toContainText("<img src=x onerror=alert(1)>");
     await expect(panel.locator(".rd-steps img, .rd-steps b")).toHaveCount(0);
   });
@@ -149,12 +193,35 @@ test.describe("run diff", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const replay = await openRunReplay(page);
     const panel = replay.getByRole("region", { name: "Compare with another run" });
-    const trace = { resourceSpans: [{ resource: { attributes: [] }, scopeSpans: [{ scope: { name: "t" }, spans: [{
-      traceId: "4".repeat(32), spanId: "00000000000000d1", name: "only tool", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000",
-      attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } }, { key: "gen_ai.tool.name", value: { stringValue: "weather" } }],
-    }] }] }] };
+    const trace = {
+      resourceSpans: [
+        {
+          resource: { attributes: [] },
+          scopeSpans: [
+            {
+              scope: { name: "t" },
+              spans: [
+                {
+                  traceId: "4".repeat(32),
+                  spanId: "00000000000000d1",
+                  name: "only tool",
+                  startTimeUnixNano: "1000000000",
+                  endTimeUnixNano: "2000000000",
+                  attributes: [
+                    { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
+                    { key: "gen_ai.tool.name", value: { stringValue: "weather" } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
     const bytes = serializeRunLog(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify(trace)) }));
-    await panel.locator(".cc-file-button input").setInputFiles({ name: "other.runlog.jsonl", mimeType: "application/x-ndjson", buffer: Buffer.from(bytes) });
+    await panel
+      .locator(".cc-file-button input")
+      .setInputFiles({ name: "other.runlog.jsonl", mimeType: "application/x-ndjson", buffer: Buffer.from(bytes) });
     await expect(panel.locator(".rd-onlyB")).toHaveCount(1);
     await expect(panel.locator(".rd-onlyB .rd-chip")).toHaveText("Only in B");
     await expect(panel.getByText("First difference", { exact: true })).toHaveCount(1);

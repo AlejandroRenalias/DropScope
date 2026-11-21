@@ -106,10 +106,19 @@ function factsByStep(model: RunModel): Map<string, StepFacts> {
     if (event.type === "StepStarted") {
       const p = event.payload;
       const signature = JSON.stringify([
-        p.kind, p.label, p.operationName === null ? "-" : fingerprintOf(p.operationName),
-        attributeFingerprint(p.attributes, "gen_ai.tool.name"), attributeFingerprint(p.attributes, "gen_ai.agent.name"),
+        p.kind,
+        p.label,
+        p.operationName === null ? "-" : fingerprintOf(p.operationName),
+        attributeFingerprint(p.attributes, "gen_ai.tool.name"),
+        attributeFingerprint(p.attributes, "gen_ai.agent.name"),
       ]);
-      facts.set(p.stepId, { signature, tool: attributeFingerprints(p.attributes, "gen_ai.tool.name"), message: "", content: new Map(), logRecords: [] });
+      facts.set(p.stepId, {
+        signature,
+        tool: attributeFingerprints(p.attributes, "gen_ai.tool.name"),
+        message: "",
+        content: new Map(),
+        logRecords: [],
+      });
     } else if (event.type === "StepEnded") {
       const f = facts.get(event.payload.stepId);
       if (f) f.message = fingerprintOf(event.payload.statusMessage);
@@ -168,8 +177,14 @@ function totalsOf(model: RunModel): RunTotals {
     if (last === null || end > last) last = end;
   }
   return {
-    steps: model.steps.length, modelCalls, toolCalls, failedSteps: failed, inputTokens: input, outputTokens: output,
-    durationNs: first === null || last === null || last < first ? 0n : last - first, stepsMissingTokens: missing,
+    steps: model.steps.length,
+    modelCalls,
+    toolCalls,
+    failedSteps: failed,
+    inputTokens: input,
+    outputTokens: output,
+    durationNs: first === null || last === null || last < first ? 0n : last - first,
+    stepsMissingTokens: missing,
   };
 }
 
@@ -187,7 +202,8 @@ function compareSteps(a: StepView, b: StepView, fa: StepFacts, fb: StepFacts, sa
     const differing = new Set<string>();
     for (const [key, value] of fa.content) if (fb.content.get(key) !== value) differing.add(fieldNameOf(key));
     for (const key of fb.content.keys()) if (!fa.content.has(key)) differing.add(fieldNameOf(key));
-    if (fa.logRecords.length !== fb.logRecords.length || fa.logRecords.some((record, k) => record !== fb.logRecords[k])) differing.add("log records");
+    if (fa.logRecords.length !== fb.logRecords.length || fa.logRecords.some((record, k) => record !== fb.logRecords[k]))
+      differing.add("log records");
     if (differing.size > 0) changes.push({ code: "CONTENT", a: "", b: "", fields: [...differing].sort() });
   }
   return changes;
@@ -201,20 +217,34 @@ function align(a: string[], b: string[]): Array<{ kind: "both" | "onlyA" | "only
   const table = new Uint16Array((n + 1) * width);
   for (let i = n - 1; i >= 0; i -= 1) {
     for (let j = m - 1; j >= 0; j -= 1) {
-      table[i * width + j] = a[i] === b[j] ? table[(i + 1) * width + j + 1] + 1
-        : Math.max(table[(i + 1) * width + j], table[i * width + j + 1]);
+      table[i * width + j] =
+        a[i] === b[j] ? table[(i + 1) * width + j + 1] + 1 : Math.max(table[(i + 1) * width + j], table[i * width + j + 1]);
     }
   }
   const out: Array<{ kind: "both" | "onlyA" | "onlyB"; i: number; j: number }> = [];
   let i = 0;
   let j = 0;
   while (i < n && j < m) {
-    if (a[i] === b[j]) { out.push({ kind: "both", i, j }); i += 1; j += 1; }
-    else if (table[(i + 1) * width + j] >= table[i * width + j + 1]) { out.push({ kind: "onlyA", i, j }); i += 1; }
-    else { out.push({ kind: "onlyB", i, j }); j += 1; }
+    if (a[i] === b[j]) {
+      out.push({ kind: "both", i, j });
+      i += 1;
+      j += 1;
+    } else if (table[(i + 1) * width + j] >= table[i * width + j + 1]) {
+      out.push({ kind: "onlyA", i, j });
+      i += 1;
+    } else {
+      out.push({ kind: "onlyB", i, j });
+      j += 1;
+    }
   }
-  while (i < n) { out.push({ kind: "onlyA", i, j }); i += 1; }
-  while (j < m) { out.push({ kind: "onlyB", i, j }); j += 1; }
+  while (i < n) {
+    out.push({ kind: "onlyA", i, j });
+    i += 1;
+  }
+  while (j < m) {
+    out.push({ kind: "onlyB", i, j });
+    j += 1;
+  }
   return out;
 }
 
@@ -222,8 +252,17 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   const totals = { a: totalsOf(runA), b: totalsOf(runB) };
   if (runA.steps.length > DIFF_LIMITS.maxSteps || runB.steps.length > DIFF_LIMITS.maxSteps) {
     return {
-      tooLarge: true, fullyAligned: false, items: [], firstIndex: -1, first: null, counts: { same: 0, changed: 0, onlyA: 0, onlyB: 0 },
-      totals, tools: [], contentComparable: false, unverifiedNesting: 0, identical: false,
+      tooLarge: true,
+      fullyAligned: false,
+      items: [],
+      firstIndex: -1,
+      first: null,
+      counts: { same: 0, changed: 0, onlyA: 0, onlyB: 0 },
+      totals,
+      tools: [],
+      contentComparable: false,
+      unverifiedNesting: 0,
+      identical: false,
     };
   }
   const sa = runA.steps;
@@ -237,7 +276,8 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   let prefix = 0;
   while (prefix < ta.length && prefix < tb.length && ta[prefix] === tb[prefix]) prefix += 1;
   let suffix = 0;
-  while (suffix < ta.length - prefix && suffix < tb.length - prefix && ta[ta.length - 1 - suffix] === tb[tb.length - 1 - suffix]) suffix += 1;
+  while (suffix < ta.length - prefix && suffix < tb.length - prefix && ta[ta.length - 1 - suffix] === tb[tb.length - 1 - suffix])
+    suffix += 1;
   const midA = ta.slice(prefix, ta.length - suffix);
   const midB = tb.slice(prefix, tb.length - suffix);
   const fullyAligned = (midA.length + 1) * (midB.length + 1) <= DIFF_LIMITS.maxAlignCells;
@@ -256,10 +296,15 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   // it is matched to the other run's parent. (Ids are never compared.)
   const indexA = new Map(sa.map((x, k) => [x.stepId, k]));
   const indexB = new Map(sb.map((x, k) => [x.stepId, k]));
-  const parentOf = (step: StepView, index: Map<string, number>): number => (step.parentStepId === null ? -1 : index.get(step.parentStepId) ?? -1);
+  const parentOf = (step: StepView, index: Map<string, number>): number =>
+    step.parentStepId === null ? -1 : (index.get(step.parentStepId) ?? -1);
   const partner = new Map<number, number>();
   const partnerBack = new Map<number, number>();
-  for (const p of pairs) if (p.kind === "both") { partner.set(p.i, p.j); partnerBack.set(p.j, p.i); }
+  for (const p of pairs)
+    if (p.kind === "both") {
+      partner.set(p.i, p.j);
+      partnerBack.set(p.j, p.i);
+    }
   let unverifiedNesting = 0;
   const items: DiffItem[] = pairs.map((p) => {
     if (p.kind === "onlyA") return { status: "onlyA", a: sa[p.i], b: null, changes: [] };
@@ -272,7 +317,13 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
     const unresolved = !fullyAligned && pa !== -1 && pb !== -1 && !partner.has(pa) && !partnerBack.has(pb);
     if (unresolved) unverifiedNesting += 1;
     const sameParent = unresolved || (pa === -1 ? pb === -1 : partner.get(pa) === pb);
-    const changes = compareSteps(sa[p.i], sb[p.j], factsA.get(sa[p.i].stepId) as StepFacts, factsB.get(sb[p.j].stepId) as StepFacts, sameParent);
+    const changes = compareSteps(
+      sa[p.i],
+      sb[p.j],
+      factsA.get(sa[p.i].stepId) as StepFacts,
+      factsB.get(sb[p.j].stepId) as StepFacts,
+      sameParent,
+    );
     return { status: changes.length === 0 ? "same" : "changed", a: sa[p.i], b: sb[p.j], changes };
   });
   const counts = { same: 0, changed: 0, onlyA: 0, onlyB: 0 };
@@ -294,13 +345,23 @@ export function diffRuns(runA: RunModel, runB: RunModel): DiffResult {
   };
   bump(sa, factsA, "a");
   bump(sb, factsB, "b");
-  const tools = [...toolCounts.values()].filter((e) => e.a !== e.b)
-    .map((e) => ({ tool: e.title, a: e.a, b: e.b })).sort((p, q) => (p.tool < q.tool ? -1 : p.tool > q.tool ? 1 : p.a - q.a || p.b - q.b));
+  const tools = [...toolCounts.values()]
+    .filter((e) => e.a !== e.b)
+    .map((e) => ({ tool: e.title, a: e.a, b: e.b }))
+    .sort((p, q) => (p.tool < q.tool ? -1 : p.tool > q.tool ? 1 : p.a - q.a || p.b - q.b));
 
   const identical = firstIndex === -1;
   return {
-    tooLarge: false, fullyAligned, items, firstIndex, first: firstIndex === -1 ? null : items[firstIndex], counts, totals, tools,
+    tooLarge: false,
+    fullyAligned,
+    items,
+    firstIndex,
+    first: firstIndex === -1 ? null : items[firstIndex],
+    counts,
+    totals,
+    tools,
     contentComparable: [...factsA.values(), ...factsB.values()].some((f) => f.content.size > 0 || f.logRecords.length > 0),
-    unverifiedNesting, identical,
+    unverifiedNesting,
+    identical,
   };
 }

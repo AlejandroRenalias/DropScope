@@ -27,16 +27,17 @@ export type CliOptions = { runsDirectory?: string; checks?: PlatformChecks };
 
 // Replaces control characters and bidirectional overrides so output cannot rewrite the terminal.
 export function escapeForTerminal(text: string): string {
-  return text.replace(/[\u0000-\u001f\u007f-\u009f؜‎‏‪-‮⁦-⁩]/gu,
-    (c) => `\\u{${(c.codePointAt(0) as number).toString(16)}}`);
+  return text.replace(/[\u0000-\u001f\u007f-\u009f؜‎‏‪-‮⁦-⁩]/gu, (c) => `\\u{${(c.codePointAt(0) as number).toString(16)}}`);
 }
 
 // JSON.stringify already escapes U+0000 to U+001F, but leaves DEL, the C1 controls (U+0080 to U+009F, which some
 // terminals obey), line and paragraph separators and bidirectional overrides raw. Those can only occur inside JSON
 // strings, so writing them as \uXXXX escapes keeps the JSON valid and every decoded value unchanged.
 export function jsonForTerminal(text: string): string {
-  return text.replace(/[\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
-    (c) => `\\u${(c.codePointAt(0) as number).toString(16).padStart(4, "0")}`);
+  return text.replace(
+    /[\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
+    (c) => `\\u${(c.codePointAt(0) as number).toString(16).padStart(4, "0")}`,
+  );
 }
 
 const USAGE = [
@@ -59,7 +60,11 @@ const USAGE = [
 
 class UsageError extends Error {}
 
-function parseFlags(args: string[], valued: string[], boolean: string[]): { positional: string[]; values: Map<string, string>; flags: Set<string> } {
+function parseFlags(
+  args: string[],
+  valued: string[],
+  boolean: string[],
+): { positional: string[]; values: Map<string, string>; flags: Set<string> } {
   const positional: string[] = [];
   const values = new Map<string, string>();
   const flags = new Set<string>();
@@ -94,22 +99,31 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       const logs = logsPath === undefined ? undefined : readInputFile(logsPath, MAX_INPUT_FILE, checks);
       if (spans.length + (logs?.length ?? 0) > MAX_INPUT_TOTAL) throw new ImportError("E_LIMIT", "cli", null, "INPUT_TOTAL");
       const events = importTraceBytes({
-        spans, logs, selectTrace: values.get("--trace"), contentMode: flags.has("--full") ? "FULL" : "HASH_ONLY",
+        spans,
+        logs,
+        selectTrace: values.get("--trace"),
+        contentMode: flags.has("--full") ? "FULL" : "HASH_ONLY",
       });
       const published = publishRun(events, { runsDirectory: options.runsDirectory, checks });
       const replay = createReplay(events);
       const state = replay.stateAt(replay.length);
       const header = events[0];
-      io.out([
-        `${published.status === "CREATED" ? "Imported" : "Already imported"} run ${header.runId}`,
-        `  file: ${escapeForTerminal(published.path)}`,
-        `  content mode: ${header.type === "RunStarted" ? header.payload.contentMode : ""}`,
-        `  events: ${events.length}  steps: ${state.closedStepIds.length}  logs: ${state.logCount}  errors: ${state.errorStepIds.length}`,
-        `  tokens: input ${state.inputTokens}, output ${state.outputTokens}`,
-        `  notes: ${Object.entries(state.notes).map(([code, n]) => `${code} x${n}`).join(", ") || "none"}`,
-        ...published.warnings.map((w) => `  warning: ${w} (run files would be uploaded by the sync service)`),
-        "",
-      ].join("\n"));
+      io.out(
+        [
+          `${published.status === "CREATED" ? "Imported" : "Already imported"} run ${header.runId}`,
+          `  file: ${escapeForTerminal(published.path)}`,
+          `  content mode: ${header.type === "RunStarted" ? header.payload.contentMode : ""}`,
+          `  events: ${events.length}  steps: ${state.closedStepIds.length}  logs: ${state.logCount}  errors: ${state.errorStepIds.length}`,
+          `  tokens: input ${state.inputTokens}, output ${state.outputTokens}`,
+          `  notes: ${
+            Object.entries(state.notes)
+              .map(([code, n]) => `${code} x${n}`)
+              .join(", ") || "none"
+          }`,
+          ...published.warnings.map((w) => `  warning: ${w} (run files would be uploaded by the sync service)`),
+          "",
+        ].join("\n"),
+      );
       return 0;
     }
     if (command === "state") {
@@ -129,15 +143,33 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       return 0;
     }
     if (command === "budget") {
-      const flagNames = ["--max-total-tokens", "--max-input-tokens", "--max-output-tokens", "--max-model-calls", "--max-tool-calls",
-        "--max-steps", "--max-seconds", "--max-cost", "--input-price", "--output-price", "--currency"];
+      const flagNames = [
+        "--max-total-tokens",
+        "--max-input-tokens",
+        "--max-output-tokens",
+        "--max-model-calls",
+        "--max-tool-calls",
+        "--max-steps",
+        "--max-seconds",
+        "--max-cost",
+        "--input-price",
+        "--output-price",
+        "--currency",
+      ];
       const { positional, values, flags } = parseFlags(rest, flagNames, ["--json"]);
       if (positional.length !== 1) throw new UsageError();
       const input: BudgetPolicyInput = {
-        maxTotalTokens: values.get("--max-total-tokens"), maxInputTokens: values.get("--max-input-tokens"), maxOutputTokens: values.get("--max-output-tokens"),
-        maxModelCalls: values.get("--max-model-calls"), maxToolCalls: values.get("--max-tool-calls"), maxSteps: values.get("--max-steps"),
-        maxSeconds: values.get("--max-seconds"), maxCost: values.get("--max-cost"), inputPrice: values.get("--input-price"),
-        outputPrice: values.get("--output-price"), currency: values.get("--currency"),
+        maxTotalTokens: values.get("--max-total-tokens"),
+        maxInputTokens: values.get("--max-input-tokens"),
+        maxOutputTokens: values.get("--max-output-tokens"),
+        maxModelCalls: values.get("--max-model-calls"),
+        maxToolCalls: values.get("--max-tool-calls"),
+        maxSteps: values.get("--max-steps"),
+        maxSeconds: values.get("--max-seconds"),
+        maxCost: values.get("--max-cost"),
+        inputPrice: values.get("--input-price"),
+        outputPrice: values.get("--output-price"),
+        currency: values.get("--currency"),
       };
       const parsed = parseBudgetPolicy(input);
       if (!parsed.policy) {
@@ -149,15 +181,29 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       // Step titles can come from a trace (tool and agent names in a file that keeps its content): escape them.
       const titleOf = (stepId: string): string => escapeForTerminal(model.stepsById.get(stepId)?.title ?? "a step");
       if (flags.has("--json")) {
-        const text = JSON.stringify({
-          counterfactual: true, runId: model.runId, policy: parsed.policy, firstBreach: result.first, breaches: result.breaches,
-          alsoAtSameStop: result.alsoAtSameStop,
-          remainder: result.remainder === null ? null : {
-            notStarted: result.remainder.notStarted.map((s) => s.stepId), inFlight: result.remainder.inFlight.map((s) => s.stepId),
-            tokensNotStarted: result.remainder.tokensNotStarted, tokensInFlight: result.remainder.tokensInFlight,
+        const text = JSON.stringify(
+          {
+            counterfactual: true,
+            runId: model.runId,
+            policy: parsed.policy,
+            firstBreach: result.first,
+            breaches: result.breaches,
+            alsoAtSameStop: result.alsoAtSameStop,
+            remainder:
+              result.remainder === null
+                ? null
+                : {
+                    notStarted: result.remainder.notStarted.map((s) => s.stepId),
+                    inFlight: result.remainder.inFlight.map((s) => s.stepId),
+                    tokensNotStarted: result.remainder.tokensNotStarted,
+                    tokensInFlight: result.remainder.tokensInFlight,
+                  },
+            recorded: result.recorded,
+            usageGaps: result.usageGaps,
           },
-          recorded: result.recorded, usageGaps: result.usageGaps,
-        }, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2);
+          (_key, value) => (typeof value === "bigint" ? value.toString() : value),
+          2,
+        );
         io.out(`${text}\n`);
       } else {
         io.out(`${budgetReportLines(result, model.events, titleOf).map(escapeForTerminal).join("\n")}\n`);
@@ -178,13 +224,30 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       // Step titles can come from a trace (tool and agent names in a file that keeps its content): escape them.
       const titleOf = (stepId: string): string => escapeForTerminal(model.stepsById.get(stepId)?.title ?? "a step");
       if (flags.has("--json")) {
-        io.out(`${jsonForTerminal(JSON.stringify({
-          runId: model.runId, contentMode: check.contentMode, counts: check.counts,
-          results: check.results.map((r) => ({
-            id: r.claim.id, text: r.claim.text, verdict: r.verdict, reason: r.reason, stepId: r.stepId, stepsChecked: r.stepsChecked,
-            evidenceEvent: r.evidenceEvent, stepFailed: r.stepFailed, missing: r.missing,
-          })),
-        }, null, 2))}\n`);
+        io.out(
+          `${jsonForTerminal(
+            JSON.stringify(
+              {
+                runId: model.runId,
+                contentMode: check.contentMode,
+                counts: check.counts,
+                results: check.results.map((r) => ({
+                  id: r.claim.id,
+                  text: r.claim.text,
+                  verdict: r.verdict,
+                  reason: r.reason,
+                  stepId: r.stepId,
+                  stepsChecked: r.stepsChecked,
+                  evidenceEvent: r.evidenceEvent,
+                  stepFailed: r.stepFailed,
+                  missing: r.missing,
+                })),
+              },
+              null,
+              2,
+            ),
+          )}\n`,
+        );
       } else {
         io.out(`${claimReportLines(check, titleOf).map(escapeForTerminal).join("\n")}\n`);
       }
@@ -199,14 +262,33 @@ export function runCli(argv: string[], io: CliIo, options: CliOptions = {}): num
       if (flags.has("--json")) {
         const changed = result.items.filter((i) => i.status !== "same");
         const item = (i: (typeof result.items)[number]) => ({
-          status: i.status, a: i.a === null ? null : { stepId: i.a.stepId, title: i.a.title, startEvent: i.a.startSequence },
-          b: i.b === null ? null : { stepId: i.b.stepId, title: i.b.title, startEvent: i.b.startSequence }, changes: i.changes,
+          status: i.status,
+          a: i.a === null ? null : { stepId: i.a.stepId, title: i.a.title, startEvent: i.a.startSequence },
+          b: i.b === null ? null : { stepId: i.b.stepId, title: i.b.title, startEvent: i.b.startSequence },
+          changes: i.changes,
         });
-        io.out(`${jsonForTerminal(JSON.stringify({
-          runA: modelA.runId, runB: modelB.runId, tooLarge: result.tooLarge, fullyAligned: result.fullyAligned, unverifiedNesting: result.unverifiedNesting, identical: result.identical,
-          counts: result.counts, firstDifference: result.first === null ? null : item(result.first), tools: result.tools, totals: result.totals,
-          differences: changed.slice(0, DIFF_JSON_LIMIT).map(item), differencesOmitted: Math.max(0, changed.length - DIFF_JSON_LIMIT),
-        }, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2))}\n`);
+        io.out(
+          `${jsonForTerminal(
+            JSON.stringify(
+              {
+                runA: modelA.runId,
+                runB: modelB.runId,
+                tooLarge: result.tooLarge,
+                fullyAligned: result.fullyAligned,
+                unverifiedNesting: result.unverifiedNesting,
+                identical: result.identical,
+                counts: result.counts,
+                firstDifference: result.first === null ? null : item(result.first),
+                tools: result.tools,
+                totals: result.totals,
+                differences: changed.slice(0, DIFF_JSON_LIMIT).map(item),
+                differencesOmitted: Math.max(0, changed.length - DIFF_JSON_LIMIT),
+              },
+              (_key, value) => (typeof value === "bigint" ? value.toString() : value),
+              2,
+            ),
+          )}\n`,
+        );
       } else {
         io.out(`${diffReportLines(result, { a: modelA.runId, b: modelB.runId }).map(escapeForTerminal).join("\n")}\n`);
       }

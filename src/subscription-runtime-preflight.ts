@@ -66,8 +66,12 @@ export const spawnCodexAppServer: AppServerSpawner = () => {
 class WindowsShellAppServerProcess implements AppServerProcess {
   constructor(private readonly process: ChildProcess) {}
 
-  get stdin(): Writable { return this.process.stdin as Writable; }
-  get stdout(): Readable { return this.process.stdout as Readable; }
+  get stdin(): Writable {
+    return this.process.stdin as Writable;
+  }
+  get stdout(): Readable {
+    return this.process.stdout as Readable;
+  }
 
   kill(): boolean {
     const termination = appServerTerminationSpec(process.platform, this.process.pid);
@@ -121,9 +125,7 @@ export class CodexAppServerPreflight implements SubscriptionRuntimePreflight {
         return unavailable(error instanceof AppServerTimeoutError ? "ACCOUNT_READ_TIMED_OUT" : "ACCOUNT_READ_FAILED");
       }
       const accessStatus = mapAccountReadResponse(response);
-      return accessStatus === "UNAVAILABLE"
-        ? unavailable("ACCOUNT_RESPONSE_INVALID")
-        : { accessStatus, diagnosticCode: "NOT_APPLICABLE" };
+      return accessStatus === "UNAVAILABLE" ? unavailable("ACCOUNT_RESPONSE_INVALID") : { accessStatus, diagnosticCode: "NOT_APPLICABLE" };
     } catch (error) {
       return unavailable(classifyInitializationFailure(error));
     } finally {
@@ -155,7 +157,10 @@ function unavailable(diagnosticCode: Exclude<SubscriptionRuntimePreflightDiagnos
 class AppServerRpc {
   private readonly pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
 
-  constructor(private readonly process: AppServerProcess, private readonly timeoutMs: number) {
+  constructor(
+    private readonly process: AppServerProcess,
+    private readonly timeoutMs: number,
+  ) {
     const lines = createInterface({ input: process.stdout });
     lines.on("line", (line) => this.receive(line));
     process.once("error", () => this.rejectAll(new AppServerProcessError()));
@@ -178,7 +183,11 @@ class AppServerRpc {
 
   private receive(line: string): void {
     let response: RpcResponse;
-    try { response = JSON.parse(line) as RpcResponse; } catch { return; }
+    try {
+      response = JSON.parse(line) as RpcResponse;
+    } catch {
+      return;
+    }
     if (typeof response.id !== "number") return;
     const pending = this.pending.get(response.id);
     if (!pending) return;
@@ -202,7 +211,16 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout: () =>
       onTimeout();
       reject(new AppServerTimeoutError());
     }, timeoutMs);
-    void promise.then((value) => { clearTimeout(timeout); resolve(value); }, (error: unknown) => { clearTimeout(timeout); reject(error); });
+    void promise.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
+    );
   });
 }
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { evaluationConcurrencies, evaluationFixtureIds, recommendDefaultTaskCapacity, runEvaluationBaseline, summarizeCapacityExperiment } from "../src/evaluation-baseline.js";
+import {
+  evaluationConcurrencies,
+  evaluationFixtureIds,
+  recommendDefaultTaskCapacity,
+  runEvaluationBaseline,
+  summarizeCapacityExperiment,
+} from "../src/evaluation-baseline.js";
 
 describe("repeatable evaluation baseline", () => {
   it("compares every fixed mission mode at each approved concurrency", async () => {
@@ -8,10 +14,20 @@ describe("repeatable evaluation baseline", () => {
 
     expect(repeatedResults).toEqual(results);
     expect(results).toHaveLength(evaluationFixtureIds.length * evaluationConcurrencies.length);
-    expect(results.map(({ fixtureId, maxConcurrency }) => `${fixtureId}:${maxConcurrency}`)).toEqual(evaluationFixtureIds.flatMap((fixtureId) => evaluationConcurrencies.map((maxConcurrency) => `${fixtureId}:${maxConcurrency}`)));
+    expect(results.map(({ fixtureId, maxConcurrency }) => `${fixtureId}:${maxConcurrency}`)).toEqual(
+      evaluationFixtureIds.flatMap((fixtureId) => evaluationConcurrencies.map((maxConcurrency) => `${fixtureId}:${maxConcurrency}`)),
+    );
     expect(results.every((result) => result.simulatedLatencyMs >= 0 && result.eventCount > 0 && result.spent >= 0)).toBe(true);
-    expect(results.filter((result) => result.fixtureId === "failure-autopsy-pilot").every((result) => result.terminalStatus === "COMPLETED_INSUFFICIENT_EVIDENCE" && result.reviewerVerdict === "REJECT")).toBe(true);
-    expect(results.filter((result) => result.fixtureId === "product-investigation-pilot").every((result) => result.ranking.includes("modular-desk-organizer") && result.reviewerVerdict === "REVISE")).toBe(true);
+    expect(
+      results
+        .filter((result) => result.fixtureId === "failure-autopsy-pilot")
+        .every((result) => result.terminalStatus === "COMPLETED_INSUFFICIENT_EVIDENCE" && result.reviewerVerdict === "REJECT"),
+    ).toBe(true);
+    expect(
+      results
+        .filter((result) => result.fixtureId === "product-investigation-pilot")
+        .every((result) => result.ranking.includes("modular-desk-organizer") && result.reviewerVerdict === "REVISE"),
+    ).toBe(true);
     // Runs the whole evaluation twice, so it sits near the 5 s default and timed out under load in a full run.
   }, 30_000);
 
@@ -67,8 +83,18 @@ describe("repeatable evaluation baseline", () => {
   it("rejects an incomplete capacity experiment instead of inferring a missing result", async () => {
     const summaries = await runEvaluationBaseline();
 
-    expect(() => summarizeCapacityExperiment(summaries.filter((summary) => !(summary.fixtureId === "product-investigation-pilot" && summary.maxConcurrency === 3)))).toThrow("Capacity experiment requires every configured capacity for product-investigation-pilot.");
-    expect(() => summarizeCapacityExperiment(summaries.map((summary) => summary.fixtureId === "product-investigation-pilot" && summary.maxConcurrency === 3 ? { ...summary, maxConcurrency: 2 } : summary))).toThrow("Capacity experiment is missing a configured capacity for product-investigation-pilot.");
+    expect(() =>
+      summarizeCapacityExperiment(
+        summaries.filter((summary) => !(summary.fixtureId === "product-investigation-pilot" && summary.maxConcurrency === 3)),
+      ),
+    ).toThrow("Capacity experiment requires every configured capacity for product-investigation-pilot.");
+    expect(() =>
+      summarizeCapacityExperiment(
+        summaries.map((summary) =>
+          summary.fixtureId === "product-investigation-pilot" && summary.maxConcurrency === 3 ? { ...summary, maxConcurrency: 2 } : summary,
+        ),
+      ),
+    ).toThrow("Capacity experiment is missing a configured capacity for product-investigation-pilot.");
   });
 
   it("recommends the smallest capacity that reaches every fixture minimum without changing quality or usage", async () => {
@@ -78,9 +104,14 @@ describe("repeatable evaluation baseline", () => {
       recommendationStatus: "SUPPORTED",
       suggestedTaskCapacity: 2,
       qualityAndUsageStable: true,
-      rationale: "Capacity 2 reaches every fixed fixture's minimum logical latency without changing terminal outcome, quality signals, ledger spend, or event count.",
+      rationale:
+        "Capacity 2 reaches every fixed fixture's minimum logical latency without changing terminal outcome, quality signals, ledger spend, or event count.",
     });
-    expect(recommendDefaultTaskCapacity(comparison.map((summary, index) => index === 0 ? { ...summary, qualityOutcomeStable: false } : summary))).toMatchObject({
+    expect(
+      recommendDefaultTaskCapacity(
+        comparison.map((summary, index) => (index === 0 ? { ...summary, qualityOutcomeStable: false } : summary)),
+      ),
+    ).toMatchObject({
       recommendationStatus: "INCONCLUSIVE",
       suggestedTaskCapacity: null,
       qualityAndUsageStable: false,

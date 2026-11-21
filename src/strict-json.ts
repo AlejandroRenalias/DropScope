@@ -36,9 +36,7 @@ const QUOTE = 0x22;
 const BACKSLASH = 0x5c;
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-type Frame =
-  | { kind: "array"; items: JsonValue[] }
-  | { kind: "object"; members: JsonObject; key: string };
+type Frame = { kind: "array"; items: JsonValue[] } | { kind: "object"; members: JsonObject; key: string };
 
 export function isJsonNumber(value: JsonValue): value is JsonNumber {
   return typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Map);
@@ -50,7 +48,9 @@ export function parseStrictJson(bytes: Uint8Array, stage: string, limits: JsonLi
 
 // Also reports how many nodes were parsed, so a caller can share one node budget across several files.
 export function parseStrictJsonCounted(
-  bytes: Uint8Array, stage: string, limits: JsonLimits = DEFAULT_JSON_LIMITS,
+  bytes: Uint8Array,
+  stage: string,
+  limits: JsonLimits = DEFAULT_JSON_LIMITS,
 ): { value: JsonValue; nodes: number } {
   const fail = (code: "E_SYNTAX" | "E_UNICODE" | "E_LIMIT", at: number): never => {
     throw new ImportError(code, stage, at);
@@ -119,14 +119,30 @@ export function parseStrictJsonCounted(
       const e = bytes[pos + 1];
       pos += 2;
       switch (e) {
-        case 0x22: parts.push('"'); break;
-        case 0x5c: parts.push("\\"); break;
-        case 0x2f: parts.push("/"); break;
-        case 0x62: parts.push("\b"); break;
-        case 0x66: parts.push("\f"); break;
-        case 0x6e: parts.push("\n"); break;
-        case 0x72: parts.push("\r"); break;
-        case 0x74: parts.push("\t"); break;
+        case 0x22:
+          parts.push('"');
+          break;
+        case 0x5c:
+          parts.push("\\");
+          break;
+        case 0x2f:
+          parts.push("/");
+          break;
+        case 0x62:
+          parts.push("\b");
+          break;
+        case 0x66:
+          parts.push("\f");
+          break;
+        case 0x6e:
+          parts.push("\n");
+          break;
+        case 0x72:
+          parts.push("\r");
+          break;
+        case 0x74:
+          parts.push("\t");
+          break;
         case 0x75: {
           const unit = hexAt(pos);
           pos += 4;

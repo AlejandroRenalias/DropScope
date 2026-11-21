@@ -3,8 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
-  FILE_ATTRIBUTE_OFFLINE, SF_DATALESS, defaultChecks, defaultRunsDirectory, ensureRunsDirectory, makePosixChecks,
-  readInputFile, safeResolve, syncedRootWarning, windowsChecks,
+  FILE_ATTRIBUTE_OFFLINE,
+  SF_DATALESS,
+  defaultChecks,
+  defaultRunsDirectory,
+  ensureRunsDirectory,
+  makePosixChecks,
+  readInputFile,
+  safeResolve,
+  syncedRootWarning,
+  windowsChecks,
 } from "../src/run-files.js";
 import { ImportError } from "../src/run-import-error.js";
 import { importTraceBytes } from "../src/run-import.js";
@@ -12,12 +20,22 @@ import { publishRun } from "../src/run-store.js";
 
 const windows = process.platform === "win32";
 let root: string;
-beforeAll(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-posix-")); });
-afterAll(() => { fs.rmSync(root, { recursive: true, force: true }); });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
+beforeAll(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-posix-"));
+});
+afterAll(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 const codeOf = (fn: () => unknown): string | null => {
-  try { fn(); return null; } catch (error) {
+  try {
+    fn();
+    return null;
+  } catch (error) {
     if (error instanceof ImportError) return `${error.code}:${error.reason ?? ""}`;
     throw error;
   }
@@ -25,7 +43,11 @@ const codeOf = (fn: () => unknown): string | null => {
 const withPlatform = <T>(value: string, fn: () => T): T => {
   const original = Object.getOwnPropertyDescriptor(process, "platform") as PropertyDescriptor;
   Object.defineProperty(process, "platform", { value });
-  try { return fn(); } finally { Object.defineProperty(process, "platform", original); }
+  try {
+    return fn();
+  } finally {
+    Object.defineProperty(process, "platform", original);
+  }
 };
 
 describe("platform selection", () => {
@@ -50,15 +72,19 @@ describe("default runs folder", () => {
     const expected = path.join(home, ".local", "share", "dropscope", "runs");
     for (const value of ["", "relative/dir"]) {
       vi.stubEnv("XDG_DATA_HOME", value);
-      expect(withPlatform("linux", () => defaultRunsDirectory()), value).toBe(expected);
+      expect(
+        withPlatform("linux", () => defaultRunsDirectory()),
+        value,
+      ).toBe(expected);
     }
   });
 
   it("uses ~/Library/Application Support/DropScope/runs on macOS", () => {
     const home = path.resolve(root, "home");
     vi.spyOn(os, "homedir").mockReturnValue(home);
-    expect(withPlatform("darwin", () => defaultRunsDirectory()))
-      .toBe(path.join(home, "Library", "Application Support", "DropScope", "runs"));
+    expect(withPlatform("darwin", () => defaultRunsDirectory())).toBe(
+      path.join(home, "Library", "Application Support", "DropScope", "runs"),
+    );
   });
 
   it("uses %LOCALAPPDATA%/DropScope/runs on Windows and refuses when it is unset", () => {
@@ -83,16 +109,19 @@ describe("synced folder warning on macOS and Linux paths", () => {
     expect(syncedRootWarning(dir)).toBe("RUNS_DIR_IN_SYNCED_FOLDER");
   });
 
-  it.each([
-    "/Users/me/Library/Application Support/DropScope/runs",
-    "/home/me/.local/share/dropscope/runs",
-  ])("does not warn for %s", (dir) => {
-    expect(syncedRootWarning(dir)).toBeNull();
-  });
+  it.each(["/Users/me/Library/Application Support/DropScope/runs", "/home/me/.local/share/dropscope/runs"])(
+    "does not warn for %s",
+    (dir) => {
+      expect(syncedRootWarning(dir)).toBeNull();
+    },
+  );
 });
 
 describe("macOS placeholder checks", () => {
-  const stat = (output: string | Error) => (): string => { if (output instanceof Error) throw output; return output; };
+  const stat = (output: string | Error) => (): string => {
+    if (output instanceof Error) throw output;
+    return output;
+  };
 
   it("refuses a dataless file (cloud content not on this computer)", () => {
     const checks = makePosixChecks({ platform: "darwin", statFlags: stat(`${SF_DATALESS.toString(16).toUpperCase()}\n`) });
@@ -105,7 +134,12 @@ describe("macOS placeholder checks", () => {
   });
 
   it("refuses an iCloud stub by its name without asking the system", () => {
-    const checks = makePosixChecks({ platform: "darwin", statFlags: () => { throw new Error("not called"); } });
+    const checks = makePosixChecks({
+      platform: "darwin",
+      statFlags: () => {
+        throw new Error("not called");
+      },
+    });
     expect(checks.fileAttributes("/x/.trace.json.icloud")).toBe(FILE_ATTRIBUTE_OFFLINE);
   });
 
@@ -117,7 +151,12 @@ describe("macOS placeholder checks", () => {
   });
 
   it("reports no attributes on Linux, which has no placeholders", () => {
-    const checks = makePosixChecks({ platform: "linux", statFlags: () => { throw new Error("not called"); } });
+    const checks = makePosixChecks({
+      platform: "linux",
+      statFlags: () => {
+        throw new Error("not called");
+      },
+    });
     expect(checks.fileAttributes("/x/a")).toBeNull();
   });
 
@@ -159,7 +198,10 @@ describe.skipIf(windows)("owner-only permissions and link checks on POSIX", () =
     expect(ensureRunsDirectory(dir, checks)).toBe(dir);
     for (const mode of [0o750, 0o705, 0o770, 0o777]) {
       fs.chmodSync(dir, mode);
-      expect(codeOf(() => ensureRunsDirectory(dir, checks)), mode.toString(8)).toBe("E_PLATFORM:RUNS_DIR_NOT_OWNER_ONLY");
+      expect(
+        codeOf(() => ensureRunsDirectory(dir, checks)),
+        mode.toString(8),
+      ).toBe("E_PLATFORM:RUNS_DIR_NOT_OWNER_ONLY");
     }
   });
 
@@ -174,7 +216,11 @@ describe.skipIf(windows)("owner-only permissions and link checks on POSIX", () =
   it("writes imported run files with mode 0600", () => {
     const dir = path.join(root, "published");
     const span = {
-      traceId: "11111111111111111111111111111111", spanId: "0000000000000001", name: "s", startTimeUnixNano: "100", endTimeUnixNano: "200",
+      traceId: "11111111111111111111111111111111",
+      spanId: "0000000000000001",
+      name: "s",
+      startTimeUnixNano: "100",
+      endTimeUnixNano: "200",
       attributes: [{ key: "gen_ai.operation.name", value: { stringValue: "chat" } }],
     };
     const spans = new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans: [span] }] }] }));

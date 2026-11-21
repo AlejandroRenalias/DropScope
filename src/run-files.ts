@@ -72,24 +72,28 @@ export const windowsChecks: PlatformChecks = {
   fileAttributes(file) {
     const result = powershell(
       "$i = Get-Item -LiteralPath $env:DS_PATH -Force; " +
-      "$d = [System.IO.DriveInfo]::new([System.IO.Path]::GetPathRoot($i.FullName)); " +
-      "@{ attrs = [int]$i.Attributes; drive = $d.DriveType.ToString() } | ConvertTo-Json -Compress",
+        "$d = [System.IO.DriveInfo]::new([System.IO.Path]::GetPathRoot($i.FullName)); " +
+        "@{ attrs = [int]$i.Attributes; drive = $d.DriveType.ToString() } | ConvertTo-Json -Compress",
       { DS_PATH: file },
     ) as { attrs?: unknown; drive?: unknown };
     if (typeof result.attrs !== "number" || typeof result.drive !== "string") return fail("E_PLATFORM", "ATTRIBUTES_UNREADABLE");
-    if (result.drive === "Network" || result.drive === "Unknown" || result.drive === "NoRootDirectory") fail("E_PATH", "NETWORK_OR_UNKNOWN_DRIVE");
+    if (result.drive === "Network" || result.drive === "Unknown" || result.drive === "NoRootDirectory")
+      fail("E_PATH", "NETWORK_OR_UNKNOWN_DRIVE");
     return result.attrs;
   },
   prepareRunsDirectory(dir, created) {
     const info = powershell(
-      "@{ user = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value } | ConvertTo-Json -Compress", {},
+      "@{ user = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value } | ConvertTo-Json -Compress",
+      {},
     ) as { user?: unknown };
     if (typeof info.user !== "string" || !/^S-1-[0-9-]+$/.test(info.user)) return fail("E_PLATFORM", "USER_SID_UNKNOWN");
     if (created) {
       try {
-        execFileSync(systemExecutable("System32", "icacls.exe"),
+        execFileSync(
+          systemExecutable("System32", "icacls.exe"),
           [dir, "/inheritance:r", "/grant:r", `*${info.user}:(OI)(CI)F`, "*S-1-5-18:(OI)(CI)F"],
-          { windowsHide: true, stdio: "ignore", timeout: 20_000 });
+          { windowsHide: true, stdio: "ignore", timeout: 20_000 },
+        );
       } catch {
         return fail("E_PLATFORM", "ACL_NOT_SET");
       }
@@ -98,8 +102,8 @@ export const windowsChecks: PlatformChecks = {
       // .NET is used directly (not Get-Acl): it does not depend on the PowerShell security module, which
       // restricted environments may fail to load, and it reports SIDs without a name lookup.
       "$a = [System.IO.Directory]::GetAccessControl($env:DS_PATH); " +
-      "$r = $a.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]); " +
-      "@{ sids = @($r | ForEach-Object { $_.IdentityReference.Value }) } | ConvertTo-Json -Compress",
+        "$r = $a.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]); " +
+        "@{ sids = @($r | ForEach-Object { $_.IdentityReference.Value }) } | ConvertTo-Json -Compress",
       { DS_PATH: dir },
     );
     evaluateFolderAcl(acl, info.user);
@@ -175,7 +179,10 @@ function checkPathText(raw: string): void {
 function checkResolvedComponents(resolved: string): void {
   if (process.platform !== "win32") return;
   const root = path.parse(resolved).root;
-  const rest = resolved.slice(root.length).split(path.sep).filter((s) => s.length > 0);
+  const rest = resolved
+    .slice(root.length)
+    .split(path.sep)
+    .filter((s) => s.length > 0);
   for (const part of rest) {
     if (part.includes(":")) fail("E_PATH", "STREAM_OR_DRIVE_IN_PATH");
     if (RESERVED_NAME.test(part)) fail("E_PATH", "DEVICE_NAME");
@@ -203,7 +210,10 @@ export function safeResolve(raw: string, allowMissingTail = false): string {
   if (process.platform === "win32" && resolved.startsWith("\\\\")) fail("E_PATH", "UNC_OR_DEVICE_PATH");
   checkResolvedComponents(resolved);
   const root = path.parse(resolved).root;
-  const parts = resolved.slice(root.length).split(path.sep).filter((s) => s.length > 0);
+  const parts = resolved
+    .slice(root.length)
+    .split(path.sep)
+    .filter((s) => s.length > 0);
   let current = root;
   for (const part of parts) {
     current = path.join(current, part);
@@ -229,7 +239,12 @@ function canonicalLocation(file: string): string {
   } catch {
     return fail("E_PATH", "PATH_UNRESOLVABLE");
   }
-  return process.platform === "win32" ? real.replace(/^\\\\\?\\/, "").replace(/\//g, "\\").toLowerCase() : real;
+  return process.platform === "win32"
+    ? real
+        .replace(/^\\\\\?\\/, "")
+        .replace(/\//g, "\\")
+        .toLowerCase()
+    : real;
 }
 
 export function readInputFile(file: string, maxBytes: number, checks: PlatformChecks = defaultChecks()): Uint8Array {
@@ -255,7 +270,8 @@ export function readInputFile(file: string, maxBytes: number, checks: PlatformCh
   try {
     const stat = fs.fstatSync(fd, { bigint: true });
     if (!stat.isFile()) return fail("E_FILE_KIND", "NOT_A_REGULAR_FILE");
-    if ((stat.ino !== 0n || before.ino !== 0n) && (stat.ino !== before.ino || stat.dev !== before.dev)) fail("E_PATH", "FILE_CHANGED_DURING_OPEN");
+    if ((stat.ino !== 0n || before.ino !== 0n) && (stat.ino !== before.ino || stat.dev !== before.dev))
+      fail("E_PATH", "FILE_CHANGED_DURING_OPEN");
     if (canonicalLocation(resolved) !== location) fail("E_PATH", "PATH_CHANGED_DURING_OPEN");
     const chunks: Buffer[] = [];
     let total = 0;
@@ -290,7 +306,8 @@ export function defaultRunsDirectory(): string {
 
 // ADR-027: warn if the runs folder is under a cloud-synced root, because run files would then be uploaded.
 // macOS keeps iCloud under "Mobile Documents" and File Provider apps (Dropbox, OneDrive, Google Drive) under "CloudStorage".
-const SYNCED_SEGMENT = /^(onedrive(?: - .*)?|onedrive-.*|dropbox(?: .*)?|google drive|googledrive|googledrive-.*|icloud drive|iclouddrive|mobile documents|com~apple~clouddocs|cloudstorage|box|box sync|mega|pcloud drive|nextcloud|owncloud|sync)$/i;
+const SYNCED_SEGMENT =
+  /^(onedrive(?: - .*)?|onedrive-.*|dropbox(?: .*)?|google drive|googledrive|googledrive-.*|icloud drive|iclouddrive|mobile documents|com~apple~clouddocs|cloudstorage|box|box sync|mega|pcloud drive|nextcloud|owncloud|sync)$/i;
 export function syncedRootWarning(dir: string): string | null {
   const resolved = path.resolve(dir);
   const lower = resolved.toLowerCase();

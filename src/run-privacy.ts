@@ -3,10 +3,18 @@
 import type { TaggedValue } from "./run-events.js";
 
 export type Check = (value: TaggedValue) => boolean;
-const str = (pattern: RegExp): Check => (v) => v.t === "s" && pattern.test(v.v);
-const uint = (max?: bigint): Check => (v) =>
-  v.t === "i" && /^[0-9]{1,20}$/.test(v.v) && (max === undefined || BigInt(v.v) <= max);
-const strArray = (pattern: RegExp): Check => (v) => v.t === "a" && v.v.every((e) => e.t === "s" && pattern.test(e.v));
+const str =
+  (pattern: RegExp): Check =>
+  (v) =>
+    v.t === "s" && pattern.test(v.v);
+const uint =
+  (max?: bigint): Check =>
+  (v) =>
+    v.t === "i" && /^[0-9]{1,20}$/.test(v.v) && (max === undefined || BigInt(v.v) <= max);
+const strArray =
+  (pattern: RegExp): Check =>
+  (v) =>
+    v.t === "a" && v.v.every((e) => e.t === "s" && pattern.test(e.v));
 
 export const ALLOWLIST = new Map<string, Check>([
   ["gen_ai.operation.name", str(/^[a-z_]{1,64}$/)],
@@ -31,10 +39,12 @@ export const SCOPE_VERSION = /^[0-9A-Za-z.+-]{1,64}$/;
 export const SCHEMA_URL = /^https:\/\/opentelemetry\.io\/schemas\/[0-9.]{1,32}$/;
 
 export const KNOWN_CONTENT_KEYS = new Set([
-  "gen_ai.input.messages", "gen_ai.output.messages", "gen_ai.system_instructions",
-  "gen_ai.tool.call.arguments", "gen_ai.tool.call.result",
+  "gen_ai.input.messages",
+  "gen_ai.output.messages",
+  "gen_ai.system_instructions",
+  "gen_ai.tool.call.arguments",
+  "gen_ai.tool.call.result",
 ]);
-
 
 // The label of a step is derived only from structural data (spec 6.4): its kind, its operation name if it
 // passes its pattern, and its model if it passes its pattern. The reducer recomputes it on read, so a label

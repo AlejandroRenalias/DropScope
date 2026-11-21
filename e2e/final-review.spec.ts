@@ -26,7 +26,10 @@ test.beforeEach(async ({ page }) => {
     const original = File.prototype.arrayBuffer;
     File.prototype.arrayBuffer = async function (this: File) {
       const isHeld = this.name.startsWith("hold-");
-      if (isHeld) await new Promise<void>((resolve) => { held.push(resolve); });
+      if (isHeld)
+        await new Promise<void>((resolve) => {
+          held.push(resolve);
+        });
       const bytes = await original.call(this);
       // Counted just before the page's own code continues with the bytes, so a test knows the read really finished.
       if (isHeld) w.__finished += 1;
@@ -52,19 +55,39 @@ async function release(page: Page, index: number) {
   const before = await page.evaluate(() => (window as unknown as { __finished: number }).__finished);
   await page.evaluate((i) => (window as unknown as { __held: Array<() => void> }).__held[i](), index);
   await page.waitForFunction((n) => (window as unknown as { __finished: number }).__finished >= n, before + 1);
-  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 50)))));
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 50)))),
+  );
 }
 
 const MARKER = "UNIQUE-PRIVATE-MARKER-7f3a91";
 function runFile(tool: string, result: string, trace: string): Buffer {
-  const doc = { resourceSpans: [{ resource: { attributes: [] }, scopeSpans: [{ scope: { name: "t" }, spans: [{
-    traceId: trace.repeat(32), spanId: "00000000000000e1", name: "x", startTimeUnixNano: "1000000000", endTimeUnixNano: "2000000000",
-    attributes: [
-      { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
-      { key: "gen_ai.tool.name", value: { stringValue: tool } },
-      { key: "gen_ai.tool.call.result", value: { stringValue: result } },
+  const doc = {
+    resourceSpans: [
+      {
+        resource: { attributes: [] },
+        scopeSpans: [
+          {
+            scope: { name: "t" },
+            spans: [
+              {
+                traceId: trace.repeat(32),
+                spanId: "00000000000000e1",
+                name: "x",
+                startTimeUnixNano: "1000000000",
+                endTimeUnixNano: "2000000000",
+                attributes: [
+                  { key: "gen_ai.operation.name", value: { stringValue: "execute_tool" } },
+                  { key: "gen_ai.tool.name", value: { stringValue: tool } },
+                  { key: "gen_ai.tool.call.result", value: { stringValue: result } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
     ],
-  }] }] }] };
+  };
   return Buffer.from(serializeRunLog(importTraceBytes({ spans: new TextEncoder().encode(JSON.stringify(doc)), contentMode: "FULL" })));
 }
 const file = (name: string, buffer: Buffer, mimeType = "application/x-ndjson") => ({ name, mimeType, buffer });
@@ -250,8 +273,8 @@ test.describe("final review: uploaded content is not kept by the browser", () =>
     "a cached response": '(async () => { await (await caches.open("control")).put("/control", new Response(MARKER)); })()',
     "window.name": "(window.name = MARKER)",
     "history.state": '(history.replaceState({ held: MARKER }, ""))',
-    "localStorage": '(localStorage.setItem("control", MARKER))',
-    "sessionStorage": '(sessionStorage.setItem("control", MARKER))',
+    localStorage: '(localStorage.setItem("control", MARKER))',
+    sessionStorage: '(sessionStorage.setItem("control", MARKER))',
   };
   for (const [place, code] of Object.entries(hideIn)) {
     test(`the scan can see a marker hidden in ${place} (positive control)`, async ({ page }) => {
@@ -265,12 +288,18 @@ test.describe("final review: uploaded content is not kept by the browser", () =>
     page.on("console", (m) => messages.push(m.text()));
     page.on("pageerror", (e) => messages.push(e.message));
     const replay = await openRunReplay(page);
-    await page.locator(".run-source-card .file-button input").setInputFiles(file("marker.runlog.jsonl", runFile("marker-tool", MARKER, "7")));
+    await page
+      .locator(".run-source-card .file-button input")
+      .setInputFiles(file("marker.runlog.jsonl", runFile("marker-tool", MARKER, "7")));
     await expect(page.locator(".run-source-card")).toContainText("Run file marker.runlog.jsonl");
-    await replay.getByRole("region", { name: "Compare with another run" }).locator(".cc-file-button input")
+    await replay
+      .getByRole("region", { name: "Compare with another run" })
+      .locator(".cc-file-button input")
       .setInputFiles(file("marker-b.runlog.jsonl", runFile("marker-tool", MARKER, "8")));
     const claims = replay.getByRole("region", { name: "Claim check" });
-    const claimsFile = JSON.stringify({ claims: [{ id: "markerclaim", text: "the marker was recorded", tool: "marker-tool", mustContain: [MARKER] }] });
+    const claimsFile = JSON.stringify({
+      claims: [{ id: "markerclaim", text: "the marker was recorded", tool: "marker-tool", mustContain: [MARKER] }],
+    });
     await claims.locator(".cc-file-button input").setInputFiles(file("claims.json", Buffer.from(claimsFile), "application/json"));
     // A valid claim that the uploaded run supports: the claim path really read the private text.
     await expect(claims.locator(".cc-summary")).toContainText("1 supported");

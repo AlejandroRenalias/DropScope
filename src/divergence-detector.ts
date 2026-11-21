@@ -33,12 +33,15 @@ export interface DivergenceDetectorInput {
 }
 
 const types: DivergenceRecord["type"][] = [
-  "ELIGIBILITY_DIVERGENCE", "TOP_CANDIDATE_DIVERGENCE", "RANK_POSITION_DIVERGENCE",
-  "CONFIDENCE_DIVERGENCE", "MISSING_EVIDENCE_DIVERGENCE",
+  "ELIGIBILITY_DIVERGENCE",
+  "TOP_CANDIDATE_DIVERGENCE",
+  "RANK_POSITION_DIVERGENCE",
+  "CONFIDENCE_DIVERGENCE",
+  "MISSING_EVIDENCE_DIVERGENCE",
 ];
-const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
+const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const lexical = (ids: Iterable<string>) => [...new Set(ids)].sort(compare);
-const taskKey = (task: string | { researchKey: string }) => typeof task === "string" ? task : task.researchKey;
+const taskKey = (task: string | { researchKey: string }) => (typeof task === "string" ? task : task.researchKey);
 
 /** Compare commander output with an already-frozen blind review. No events, gaps, or tribunal data are read. */
 export function detectDivergences(input: DivergenceDetectorInput): DivergenceRecord[] {
@@ -46,7 +49,12 @@ export function detectDivergences(input: DivergenceDetectorInput): DivergenceRec
   const commanderById = new Map(commander.candidateAssessments.map((item) => [item.candidateId, item]));
   const reviewerById = new Map(review.candidateAssessments.map((item) => [item.anonymizedCandidateId, item]));
   const descriptors: DivergenceDescriptor[] = [];
-  const add = (type: DivergenceDescriptor["type"], candidateIds: Iterable<string>, blocking: boolean, researchKey: string | null = null) => {
+  const add = (
+    type: DivergenceDescriptor["type"],
+    candidateIds: Iterable<string>,
+    blocking: boolean,
+    researchKey: string | null = null,
+  ) => {
     descriptors.push({ type, candidateIds: lexical(candidateIds), blocking, researchKey });
   };
 
@@ -93,7 +101,12 @@ export function detectDivergences(input: DivergenceDetectorInput): DivergenceRec
 
   const order = new Map(types.map((type, index) => [type, index]));
   return descriptors
-    .sort((a, b) => (order.get(a.type) ?? 0) - (order.get(b.type) ?? 0) || compare(a.candidateIds.join("\0"), b.candidateIds.join("\0")) || compare(a.researchKey ?? "", b.researchKey ?? ""))
+    .sort(
+      (a, b) =>
+        (order.get(a.type) ?? 0) - (order.get(b.type) ?? 0) ||
+        compare(a.candidateIds.join("\0"), b.candidateIds.join("\0")) ||
+        compare(a.researchKey ?? "", b.researchKey ?? ""),
+    )
     .map((descriptor) => ({ divergenceId: divergenceIdFor(descriptor), ...descriptor, status: "OPEN", resolutionNote: null }));
 }
 

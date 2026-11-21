@@ -1,13 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
-  emptyPolicy, formatMicro, formatPico, parseBudgetPolicy, replayBudget, type BudgetPolicy, type LimitId,
+  emptyPolicy,
+  formatMicro,
+  formatPico,
+  parseBudgetPolicy,
+  replayBudget,
+  type BudgetPolicy,
+  type LimitId,
 } from "../src/budget-replay.js";
 import type { RunEvent } from "../src/run-events.js";
 import { importTraceBytes } from "../src/run-import.js";
 import { createReplay } from "../src/run-reducer.js";
 
 // ---- building runs through the real importer ----
-type Step = { op?: "chat" | "execute_tool" | "invoke_agent"; start: number; end: number | null; input?: number | null; output?: number | null; parent?: number };
+type Step = {
+  op?: "chat" | "execute_tool" | "invoke_agent";
+  start: number;
+  end: number | null;
+  input?: number | null;
+  output?: number | null;
+  parent?: number;
+};
 const T = "1".repeat(32);
 const BASE = 1_700_000_000_000_000_000n;
 const ns = (seconds: number): string => (BASE + BigInt(Math.round(seconds * 1e9))).toString();
@@ -15,12 +28,18 @@ const id = (n: number) => (n + 1).toString(16).padStart(16, "0");
 
 function runOf(steps: Step[]): RunEvent[] {
   const spans = steps.map((s, i) => ({
-    traceId: T, spanId: id(i), ...(s.parent !== undefined ? { parentSpanId: id(s.parent) } : {}), name: `s${i}`,
-    startTimeUnixNano: ns(s.start), ...(s.end === null ? {} : { endTimeUnixNano: ns(s.end) }),
+    traceId: T,
+    spanId: id(i),
+    ...(s.parent !== undefined ? { parentSpanId: id(s.parent) } : {}),
+    name: `s${i}`,
+    startTimeUnixNano: ns(s.start),
+    ...(s.end === null ? {} : { endTimeUnixNano: ns(s.end) }),
     attributes: [
       ...(s.op ? [{ key: "gen_ai.operation.name", value: { stringValue: s.op } }] : []),
       ...(s.input === undefined || s.input === null ? [] : [{ key: "gen_ai.usage.input_tokens", value: { intValue: String(s.input) } }]),
-      ...(s.output === undefined || s.output === null ? [] : [{ key: "gen_ai.usage.output_tokens", value: { intValue: String(s.output) } }]),
+      ...(s.output === undefined || s.output === null
+        ? []
+        : [{ key: "gen_ai.usage.output_tokens", value: { intValue: String(s.output) } }]),
     ],
   }));
   const bytes = new TextEncoder().encode(JSON.stringify({ resourceSpans: [{ scopeSpans: [{ spans }] }] }));
@@ -32,21 +51,26 @@ const policyOf = (input: Parameters<typeof parseBudgetPolicy>[0]): BudgetPolicy 
   return parsed.policy;
 };
 const seqOf = (events: RunEvent[], type: string, nth: number, stepId?: string) =>
-  events.filter((e) => e.type === type && (stepId === undefined || (e.payload as { stepId?: string }).stepId === stepId))[nth].sequenceNumber;
+  events.filter((e) => e.type === type && (stepId === undefined || (e.payload as { stepId?: string }).stepId === stepId))[nth]
+    .sequenceNumber;
 
 // A hand-checkable run: three sequential model calls with 100/50, 200/100 and 400/200 tokens, one tool call.
-const simple = () => runOf([
-  { op: "chat", start: 0, end: 1, input: 100, output: 50 },
-  { op: "execute_tool", start: 1, end: 2 },
-  { op: "chat", start: 2, end: 4, input: 200, output: 100 },
-  { op: "chat", start: 4, end: 7, input: 400, output: 200 },
-]);
+const simple = () =>
+  runOf([
+    { op: "chat", start: 0, end: 1, input: 100, output: 50 },
+    { op: "execute_tool", start: 1, end: 2 },
+    { op: "chat", start: 2, end: 4, input: 200, output: 100 },
+    { op: "chat", start: 4, end: 7, input: 400, output: 200 },
+  ]);
 
 describe("budget replay: hand-checked cases", () => {
   const events = simple();
 
   it("reports no breach when the run stays inside every limit", () => {
-    const r = replayBudget(events, policyOf({ maxTotalTokens: "1050", maxModelCalls: "3", maxToolCalls: "1", maxSteps: "4", maxSeconds: "7" }));
+    const r = replayBudget(
+      events,
+      policyOf({ maxTotalTokens: "1050", maxModelCalls: "3", maxToolCalls: "1", maxSteps: "4", maxSeconds: "7" }),
+    );
     expect(r.first).toBeNull();
     expect(r.breaches).toEqual([]);
     expect(r.remainder).toBeNull();
@@ -146,7 +170,10 @@ describe("budget replay: hand-checked cases", () => {
   });
 
   it("does not charge tool or agent steps and handles a run with no usage at all", () => {
-    const none = runOf([{ op: "execute_tool", start: 0, end: 1 }, { start: 1, end: 2 }]);
+    const none = runOf([
+      { op: "execute_tool", start: 0, end: 1 },
+      { start: 1, end: 2 },
+    ]);
     const r = replayBudget(none, policyOf({ maxTotalTokens: "0", maxToolCalls: "1" }));
     expect(r.breaches).toEqual([]);
     expect(r.recorded).toMatchObject({ totalTokens: 0n, toolCalls: 1, steps: 2 });
@@ -170,13 +197,18 @@ describe("budget replay: unusual times", () => {
     const copy = JSON.parse(JSON.stringify(events)) as Array<{ type: string; sequenceNumber: number; payload: { eventCount?: number } }>;
     const ends = copy.map((e, i) => (e.type === "StepEnded" ? i : -1)).filter((i) => i >= 0);
     [copy[ends[0]], copy[ends[1]]] = [copy[ends[1]], copy[ends[0]]];
-    copy.forEach((e, i) => { e.sequenceNumber = i + 1; });
+    copy.forEach((e, i) => {
+      e.sequenceNumber = i + 1;
+    });
     copy[copy.length - 1].payload.eventCount = copy.length;
     return copy as unknown as RunEvent[];
   };
 
   it("elapsed time never goes down, even when events are listed out of time order", () => {
-    const base = runOf([{ op: "chat", start: 0, end: 10 }, { op: "chat", start: 1, end: 2 }]);
+    const base = runOf([
+      { op: "chat", start: 0, end: 10 },
+      { op: "chat", start: 1, end: 2 },
+    ]);
     const events = swapEnds(base); // ends are now listed 10 s then 2 s
     expect(() => createReplay(events)).not.toThrow(); // the reducer accepts this history
     const r = replayBudget(events, policyOf({ maxSeconds: "5" }));
@@ -193,7 +225,11 @@ describe("budget replay: unusual times", () => {
   });
 
   it("counts step ends the importer had to estimate", () => {
-    const events = runOf([{ op: "chat", start: 0, end: null }, { op: "chat", start: 0, end: 10 }, { op: "chat", start: 20, end: 19 }]);
+    const events = runOf([
+      { op: "chat", start: 0, end: null },
+      { op: "chat", start: 0, end: 10 },
+      { op: "chat", start: 20, end: 19 },
+    ]);
     const r = replayBudget(events, policyOf({ maxSeconds: "5" }));
     expect(r.estimatedEnds).toBe(2); // one missing end, one end before its start
     expect(replayBudget(simple(), policyOf({ maxSeconds: "5" })).estimatedEnds).toBe(0);
@@ -240,9 +276,19 @@ describe("budget replay: cost", () => {
 
 describe("budget policy parsing", () => {
   it("accepts whole numbers with separators, decimals, and a default currency", () => {
-    const { policy, errors } = parseBudgetPolicy({ maxTotalTokens: "1,000,000", maxSeconds: "2.5", maxCost: "0.50", inputPrice: "3", outputPrice: "15" });
+    const { policy, errors } = parseBudgetPolicy({
+      maxTotalTokens: "1,000,000",
+      maxSeconds: "2.5",
+      maxCost: "0.50",
+      inputPrice: "3",
+      outputPrice: "15",
+    });
     expect(errors).toEqual([]);
-    expect(policy).toMatchObject({ maxTotalTokens: 1_000_000n, maxDurationNs: 2_500_000_000n, cost: { maxMicro: 500_000n, inputPriceMicro: 3_000_000n, outputPriceMicro: 15_000_000n, currency: "USD" } });
+    expect(policy).toMatchObject({
+      maxTotalTokens: 1_000_000n,
+      maxDurationNs: 2_500_000_000n,
+      cost: { maxMicro: 500_000n, inputPriceMicro: 3_000_000n, outputPriceMicro: 15_000_000n, currency: "USD" },
+    });
     expect(parseBudgetPolicy({ maxCost: "1", inputPrice: "1", outputPrice: "1", currency: "eur" }).policy?.cost?.currency).toBe("EUR");
   });
 
@@ -275,7 +321,8 @@ describe("budget policy parsing", () => {
 function mulberry32(seed: number): () => number {
   let a = seed;
   return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -285,39 +332,62 @@ function mulberry32(seed: number): () => number {
 /** Recomputes everything from scratch at every event. Slow, simple, and written separately from the module. */
 function oracle(events: RunEvent[], policy: BudgetPolicy) {
   const starts = events.filter((e) => e.type === "StepStarted");
-  const origin = starts.map((e) => BigInt((e.payload as { startNs: string }).startNs)).reduce((m, v) => (v < m ? v : m), BigInt((starts[0].payload as { startNs: string }).startNs));
+  const origin = starts
+    .map((e) => BigInt((e.payload as { startNs: string }).startNs))
+    .reduce((m, v) => (v < m ? v : m), BigInt((starts[0].payload as { startNs: string }).startNs));
   const found: Array<{ limit: LimitId; breachEvent: number; stopBefore: number }> = [];
   const upTo = (p: number) => events.slice(0, p);
   const tokens = (p: number) => {
-    let i = 0n; let o = 0n;
-    for (const e of upTo(p)) if (e.type === "UsageRecorded") { i += BigInt(e.payload.inputTokens ?? "0"); o += BigInt(e.payload.outputTokens ?? "0"); }
+    let i = 0n;
+    let o = 0n;
+    for (const e of upTo(p))
+      if (e.type === "UsageRecorded") {
+        i += BigInt(e.payload.inputTokens ?? "0");
+        o += BigInt(e.payload.outputTokens ?? "0");
+      }
     return { i, o };
   };
-  const started = (p: number, kind?: string) => upTo(p).filter((e) => e.type === "StepStarted" && (kind === undefined || e.payload.kind === kind)).length;
+  const started = (p: number, kind?: string) =>
+    upTo(p).filter((e) => e.type === "StepStarted" && (kind === undefined || e.payload.kind === kind)).length;
   const tokenChecks: Array<[LimitId, bigint | null, (i: bigint, o: bigint) => bigint]> = [
-    ["totalTokens", policy.maxTotalTokens, (i, o) => i + o], ["inputTokens", policy.maxInputTokens, (i) => i], ["outputTokens", policy.maxOutputTokens, (_i, o) => o],
+    ["totalTokens", policy.maxTotalTokens, (i, o) => i + o],
+    ["inputTokens", policy.maxInputTokens, (i) => i],
+    ["outputTokens", policy.maxOutputTokens, (_i, o) => o],
   ];
   for (const [limit, max, f] of tokenChecks) {
     if (max === null) continue;
     for (let p = 1; p <= events.length; p += 1) {
       if (events[p - 1].type !== "UsageRecorded") continue;
       const { i, o } = tokens(p);
-      if (f(i, o) > max) { found.push({ limit, breachEvent: p, stopBefore: p + 1 }); break; }
+      if (f(i, o) > max) {
+        found.push({ limit, breachEvent: p, stopBefore: p + 1 });
+        break;
+      }
     }
   }
   if (policy.cost !== null) {
     for (let p = 1; p <= events.length; p += 1) {
       if (events[p - 1].type !== "UsageRecorded") continue;
       const { i, o } = tokens(p);
-      if (i * policy.cost.inputPriceMicro + o * policy.cost.outputPriceMicro > policy.cost.maxMicro * 1_000_000n) { found.push({ limit: "cost", breachEvent: p, stopBefore: p + 1 }); break; }
+      if (i * policy.cost.inputPriceMicro + o * policy.cost.outputPriceMicro > policy.cost.maxMicro * 1_000_000n) {
+        found.push({ limit: "cost", breachEvent: p, stopBefore: p + 1 });
+        break;
+      }
     }
   }
-  const countChecks: Array<[LimitId, bigint | null, string | undefined]> = [["modelCalls", policy.maxModelCalls, "LLM_CALL"], ["toolCalls", policy.maxToolCalls, "TOOL_CALL"], ["steps", policy.maxSteps, undefined]];
+  const countChecks: Array<[LimitId, bigint | null, string | undefined]> = [
+    ["modelCalls", policy.maxModelCalls, "LLM_CALL"],
+    ["toolCalls", policy.maxToolCalls, "TOOL_CALL"],
+    ["steps", policy.maxSteps, undefined],
+  ];
   for (const [limit, max, kind] of countChecks) {
     if (max === null) continue;
     for (let p = 1; p <= events.length; p += 1) {
       if (events[p - 1].type !== "StepStarted") continue;
-      if (BigInt(started(p, kind)) > max) { found.push({ limit, breachEvent: p, stopBefore: p }); break; }
+      if (BigInt(started(p, kind)) > max) {
+        found.push({ limit, breachEvent: p, stopBefore: p });
+        break;
+      }
     }
   }
   if (policy.maxDurationNs !== null) {
@@ -326,21 +396,31 @@ function oracle(events: RunEvent[], policy: BudgetPolicy) {
       let t: bigint | null = null;
       if (e.type === "StepStarted") t = BigInt(e.payload.startNs) - origin;
       if (e.type === "StepEnded") t = BigInt(e.payload.endEffectiveNs) - origin;
-      if (t !== null && t > policy.maxDurationNs) { found.push({ limit: "duration", breachEvent: p, stopBefore: p }); break; }
+      if (t !== null && t > policy.maxDurationNs) {
+        found.push({ limit: "duration", breachEvent: p, stopBefore: p });
+        break;
+      }
     }
   }
   found.sort((a, b) => a.stopBefore - b.stopBefore || a.breachEvent - b.breachEvent || (a.limit < b.limit ? -1 : 1));
   let remainder: { notStarted: string[]; inFlight: string[] } | null = null;
   if (found.length > 0) {
     const cut = found[0].stopBefore;
-    const startSeq = new Map<string, number>(); const endSeq = new Map<string, number>();
+    const startSeq = new Map<string, number>();
+    const endSeq = new Map<string, number>();
     for (const e of events) {
       if (e.type === "StepStarted") startSeq.set(e.payload.stepId, e.sequenceNumber);
       if (e.type === "StepEnded") endSeq.set(e.payload.stepId, e.sequenceNumber);
     }
     remainder = {
-      notStarted: [...startSeq].filter(([, s]) => s >= cut).map(([k]) => k).sort(),
-      inFlight: [...startSeq].filter(([k, s]) => s < cut && (endSeq.get(k) as number) >= cut).map(([k]) => k).sort(),
+      notStarted: [...startSeq]
+        .filter(([, s]) => s >= cut)
+        .map(([k]) => k)
+        .sort(),
+      inFlight: [...startSeq]
+        .filter(([k, s]) => s < cut && (endSeq.get(k) as number) >= cut)
+        .map(([k]) => k)
+        .sort(),
     };
   }
   return { found, remainder };
@@ -353,7 +433,13 @@ function randomRun(rand: () => number): Step[] {
     const start = Math.floor(rand() * 20 * 4) / 4;
     const op = (["chat", "chat", "execute_tool", "invoke_agent", undefined] as const)[Math.floor(rand() * 5)];
     const tokens = (): number | null => (rand() < 0.15 ? null : Math.floor(rand() * 900));
-    steps.push({ op, start, end: start + Math.floor(rand() * 12 * 4) / 4, input: op === "chat" ? tokens() : undefined, output: op === "chat" ? tokens() : undefined });
+    steps.push({
+      op,
+      start,
+      end: start + Math.floor(rand() * 12 * 4) / 4,
+      input: op === "chat" ? tokens() : undefined,
+      output: op === "chat" ? tokens() : undefined,
+    });
   }
   return steps;
 }
@@ -367,19 +453,41 @@ describe("budget replay: agrees with the independent oracle on random runs and r
       const replay = createReplay(events);
       const full = replayBudget(events, emptyPolicy());
       const total = full.recorded;
-      const pick = (max: bigint): string | undefined => (rand() < 0.5 ? undefined : String(max === 0n ? 0n : BigInt(Math.floor(rand() * Number(max + 2n))) - (rand() < 0.3 ? 1n : 0n) < 0n ? 0n : BigInt(Math.floor(rand() * Number(max + 2n)))));
+      const pick = (max: bigint): string | undefined =>
+        rand() < 0.5
+          ? undefined
+          : String(
+              max === 0n
+                ? 0n
+                : BigInt(Math.floor(rand() * Number(max + 2n))) - (rand() < 0.3 ? 1n : 0n) < 0n
+                  ? 0n
+                  : BigInt(Math.floor(rand() * Number(max + 2n))),
+            );
       const input: Parameters<typeof parseBudgetPolicy>[0] = {
-        maxTotalTokens: pick(total.totalTokens), maxInputTokens: pick(total.inputTokens), maxOutputTokens: pick(total.outputTokens),
-        maxModelCalls: pick(BigInt(total.modelCalls)), maxToolCalls: pick(BigInt(total.toolCalls)), maxSteps: pick(BigInt(total.steps)),
+        maxTotalTokens: pick(total.totalTokens),
+        maxInputTokens: pick(total.inputTokens),
+        maxOutputTokens: pick(total.outputTokens),
+        maxModelCalls: pick(BigInt(total.modelCalls)),
+        maxToolCalls: pick(BigInt(total.toolCalls)),
+        maxSteps: pick(BigInt(total.steps)),
         maxSeconds: rand() < 0.5 ? undefined : String(Math.floor(rand() * 30 * 4) / 4),
-        ...(rand() < 0.3 ? { maxCost: String(Math.floor(rand() * 5)), inputPrice: String(Math.floor(rand() * 4)), outputPrice: String(Math.floor(rand() * 20)) } : {}),
+        ...(rand() < 0.3
+          ? {
+              maxCost: String(Math.floor(rand() * 5)),
+              inputPrice: String(Math.floor(rand() * 4)),
+              outputPrice: String(Math.floor(rand() * 20)),
+            }
+          : {}),
       };
       const parsed = parseBudgetPolicy(input);
       if (!parsed.policy) continue;
       const got = replayBudget(events, parsed.policy);
       const want = oracle(events, parsed.policy);
 
-      expect(got.breaches.map((b) => ({ limit: b.limit, breachEvent: b.breachEvent, stopBefore: b.stopBefore })), `case ${c}`).toEqual(want.found);
+      expect(
+        got.breaches.map((b) => ({ limit: b.limit, breachEvent: b.breachEvent, stopBefore: b.stopBefore })),
+        `case ${c}`,
+      ).toEqual(want.found);
       if (want.remainder) {
         withBreach += 1;
         expect(got.remainder?.notStarted.map((s) => s.stepId).sort(), `case ${c} notStarted`).toEqual(want.remainder.notStarted);
@@ -398,13 +506,17 @@ describe("budget replay: agrees with the independent oracle on random runs and r
         expect(t.steps).toBe(state.stepsByKind.LLM_CALL + state.stepsByKind.TOOL_CALL + state.stepsByKind.AGENT + state.stepsByKind.OTHER);
       }
       // Totals never decrease as the position moves forward.
-      let lastTotal = -1n; let lastElapsed = -1n; let lastCalls = -1;
+      let lastTotal = -1n;
+      let lastElapsed = -1n;
+      let lastCalls = -1;
       for (let p = 1; p <= events.length; p += 1) {
         const t = got.totalsAt(p);
         expect(t.totalTokens >= lastTotal, `case ${c} tokens @${p}`).toBe(true);
         expect(t.elapsedNs >= lastElapsed, `case ${c} elapsed @${p}`).toBe(true);
         expect(t.steps >= lastCalls, `case ${c} steps @${p}`).toBe(true);
-        lastTotal = t.totalTokens; lastElapsed = t.elapsedNs; lastCalls = t.steps;
+        lastTotal = t.totalTokens;
+        lastElapsed = t.elapsedNs;
+        lastCalls = t.steps;
       }
     }
     expect(withBreach).toBeGreaterThan(60); // the random budgets really do exercise breaches
@@ -416,7 +528,7 @@ describe("budget replay: agrees with the independent oracle on random runs and r
       const events = runOf(randomRun(rand));
       const total = replayBudget(events, emptyPolicy()).recorded.totalTokens;
       let previousStop = Number.MAX_SAFE_INTEGER;
-      for (let limit = total + 1n; limit >= 0n; limit -= (total / 8n + 1n)) {
+      for (let limit = total + 1n; limit >= 0n; limit -= total / 8n + 1n) {
         const r = replayBudget(events, policyOf({ maxTotalTokens: String(limit) }));
         const stop = r.first?.stopBefore ?? Number.MAX_SAFE_INTEGER;
         expect(stop <= previousStop).toBe(true);
@@ -432,7 +544,10 @@ describe("budget replay: scale", () => {
     const steps: Step[] = Array.from({ length: 10_000 }, (_, i) => ({ op: "chat" as const, start: i, end: i + 1, input: 10, output: 5 }));
     const events = runOf(steps);
     const started = performance.now();
-    const r = replayBudget(events, policyOf({ maxTotalTokens: "100000", maxModelCalls: "9000", maxSeconds: "9500", maxCost: "1", inputPrice: "3", outputPrice: "15" }));
+    const r = replayBudget(
+      events,
+      policyOf({ maxTotalTokens: "100000", maxModelCalls: "9000", maxSeconds: "9500", maxCost: "1", inputPrice: "3", outputPrice: "15" }),
+    );
     for (let p = 1; p <= events.length; p += 997) r.totalsAt(p);
     expect(performance.now() - started).toBeLessThan(5000);
     expect(r.first?.limit).toBeDefined();

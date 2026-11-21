@@ -31,9 +31,9 @@ const seededDelay = (seed: number, taskId: string, attemptNumber: number, baseDu
 };
 const seededOutcome = (seed: number, taskId: string, attemptNumber: number) => {
   const base = seed * 17 + [...taskId].reduce((total, character) => total + character.charCodeAt(0), 0);
-  return ((attemptNumber === 1 && (base + 1) % 5 === 0) || (attemptNumber === 2 && base % 7 === 0)
-    ? "FAILED_TRANSIENT"
-    : "COMPLETED") as "COMPLETED" | "FAILED_TRANSIENT";
+  return ((attemptNumber === 1 && (base + 1) % 5 === 0) || (attemptNumber === 2 && base % 7 === 0) ? "FAILED_TRANSIENT" : "COMPLETED") as
+    | "COMPLETED"
+    | "FAILED_TRANSIENT";
 };
 export const deriveAttemptDecision = (seed: number, taskId: string, attemptNumber: number, baseDurationMs: number) => ({
   simulatedDelayMs: seededDelay(seed, taskId, attemptNumber, baseDurationMs),
@@ -82,24 +82,52 @@ export async function runSimulatedSchedule(options: {
   const pauseForPilot = options[pilotPause] === true;
   const pauseForSourcePilot = options[sourcePilotPause] === true;
   const pauseForComparisonPilot = options[comparisonPilotPause] === true;
-  if ([pauseForPilot, pauseForSourcePilot, pauseForComparisonPilot].filter(Boolean).length > 1) throw new Error("Only one pilot pause may be selected.");
+  if ([pauseForPilot, pauseForSourcePilot, pauseForComparisonPilot].filter(Boolean).length > 1)
+    throw new Error("Only one pilot pause may be selected.");
   if (pauseForPilot) {
     const [task] = options.tasks;
-    if (options.tasks.length !== 1 || task?.taskId !== liveWorkerPilotTask.id || task.objective !== liveWorkerPilotTask.objective || task.cost !== liveWorkerPilotTask.cost || task.workerRole !== liveWorkerPilotTask.workerRole || options.missionSeed !== 1 || options.totalBudget !== 20 || !options.subscriptionRuntimeDeclaration) {
+    if (
+      options.tasks.length !== 1 ||
+      task?.taskId !== liveWorkerPilotTask.id ||
+      task.objective !== liveWorkerPilotTask.objective ||
+      task.cost !== liveWorkerPilotTask.cost ||
+      task.workerRole !== liveWorkerPilotTask.workerRole ||
+      options.missionSeed !== 1 ||
+      options.totalBudget !== 20 ||
+      !options.subscriptionRuntimeDeclaration
+    ) {
       throw new Error("Only the fixed live-worker pilot may pause after task start.");
     }
     if (options.recordedWorkerAssignment) throw new Error("A paused schedule cannot invoke a worker assignment.");
   }
   if (pauseForSourcePilot) {
     const [task] = options.tasks;
-    if (options.tasks.length !== 1 || task?.taskId !== googleTrendsPilotTask.id || task.objective !== googleTrendsPilotTask.objective || task.cost !== googleTrendsPilotTask.cost || task.workerRole !== googleTrendsPilotTask.workerRole || options.missionSeed !== 1 || options.totalBudget !== 20 || options.subscriptionRuntimeDeclaration) {
+    if (
+      options.tasks.length !== 1 ||
+      task?.taskId !== googleTrendsPilotTask.id ||
+      task.objective !== googleTrendsPilotTask.objective ||
+      task.cost !== googleTrendsPilotTask.cost ||
+      task.workerRole !== googleTrendsPilotTask.workerRole ||
+      options.missionSeed !== 1 ||
+      options.totalBudget !== 20 ||
+      options.subscriptionRuntimeDeclaration
+    ) {
       throw new Error("Only the fixed Google Trends pilot may pause after task start.");
     }
     if (options.recordedWorkerAssignment) throw new Error("A paused schedule cannot invoke a worker assignment.");
   }
   if (pauseForComparisonPilot) {
     const [task] = options.tasks;
-    if (options.tasks.length !== 1 || task?.taskId !== googleTrendsComparisonPilotTask.id || task.objective !== googleTrendsComparisonPilotTask.objective || task.cost !== googleTrendsComparisonPilotTask.cost || task.workerRole !== googleTrendsComparisonPilotTask.workerRole || options.missionSeed !== 1 || options.totalBudget !== 20 || options.subscriptionRuntimeDeclaration) {
+    if (
+      options.tasks.length !== 1 ||
+      task?.taskId !== googleTrendsComparisonPilotTask.id ||
+      task.objective !== googleTrendsComparisonPilotTask.objective ||
+      task.cost !== googleTrendsComparisonPilotTask.cost ||
+      task.workerRole !== googleTrendsComparisonPilotTask.workerRole ||
+      options.missionSeed !== 1 ||
+      options.totalBudget !== 20 ||
+      options.subscriptionRuntimeDeclaration
+    ) {
       throw new Error("Only the fixed Google Trends comparison pilot may pause after task start.");
     }
     if (options.recordedWorkerAssignment) throw new Error("A paused schedule cannot invoke a worker assignment.");
@@ -114,7 +142,15 @@ export async function runSimulatedSchedule(options: {
   let state = initialMissionState();
   const workerResultGate = new WorkerResultGate();
   const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {
-    const event = { schemaVersion: 1 as const, sequenceNumber: events.length + 1, missionId: options.missionId, eventId: `${options.missionId}-${events.length + 1}`, timestamp: new Date().toISOString(), type, payload } as MissionEvent;
+    const event = {
+      schemaVersion: 1 as const,
+      sequenceNumber: events.length + 1,
+      missionId: options.missionId,
+      eventId: `${options.missionId}-${events.length + 1}`,
+      timestamp: new Date().toISOString(),
+      type,
+      payload,
+    } as MissionEvent;
     events.push(event);
     state = reduce(state, event);
     if (store) await store.append(event);
@@ -155,7 +191,16 @@ export async function runSimulatedSchedule(options: {
     }
     for (const task of eligible) {
       const attemptId = `${task.taskId}:a1`;
-      await append("TaskScheduled", { taskId: task.taskId, attemptId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", researchKey: task.researchKey ?? task.taskId, workerRole: task.workerRole ?? "SIMULATED_WORKER", dependencies: task.dependencies ?? [] });
+      await append("TaskScheduled", {
+        taskId: task.taskId,
+        attemptId,
+        objective: task.objective,
+        cost: task.cost,
+        workClass: task.workClass ?? "MANDATORY",
+        researchKey: task.researchKey ?? task.taskId,
+        workerRole: task.workerRole ?? "SIMULATED_WORKER",
+        dependencies: task.dependencies ?? [],
+      });
     }
     for (const task of eligible) {
       const attemptId = `${task.taskId}:a1`;
@@ -164,15 +209,22 @@ export async function runSimulatedSchedule(options: {
       const attemptNumber = 1;
       const durationMs = seededDelay(options.missionSeed, task.taskId, attemptNumber, task.durationMs);
       await append("TaskStarted", { attemptId, simulatedDelayMs: durationMs });
-      if ((pauseForPilot && task.taskId === liveWorkerPilotTask.id) || (pauseForSourcePilot && task.taskId === googleTrendsPilotTask.id) || (pauseForComparisonPilot && task.taskId === googleTrendsComparisonPilotTask.id)) {
+      if (
+        (pauseForPilot && task.taskId === liveWorkerPilotTask.id) ||
+        (pauseForSourcePilot && task.taskId === googleTrendsPilotTask.id) ||
+        (pauseForComparisonPilot && task.taskId === googleTrendsComparisonPilotTask.id)
+      ) {
         paused = true;
         maxConcurrentAttempts = Math.max(maxConcurrentAttempts, 1);
         continue;
       }
-      running.set(task.taskId, wait(durationMs).then(() => {
-        intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
-        return { taskId: task.taskId, attemptNumber, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
-      }));
+      running.set(
+        task.taskId,
+        wait(durationMs).then(() => {
+          intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
+          return { taskId: task.taskId, attemptNumber, outcome: seededOutcome(options.missionSeed, task.taskId, attemptNumber) };
+        }),
+      );
       maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
     }
   };
@@ -217,12 +269,27 @@ export async function runSimulatedSchedule(options: {
           terminated = true;
           continue;
         }
-        await append("TaskScheduled", { taskId: task.taskId, attemptId: retryId, objective: task.objective, cost: task.cost, workClass: task.workClass ?? "MANDATORY", researchKey: task.researchKey ?? task.taskId, workerRole: task.workerRole ?? "SIMULATED_WORKER", dependencies: task.dependencies ?? [] });
+        await append("TaskScheduled", {
+          taskId: task.taskId,
+          attemptId: retryId,
+          objective: task.objective,
+          cost: task.cost,
+          workClass: task.workClass ?? "MANDATORY",
+          researchKey: task.researchKey ?? task.taskId,
+          workerRole: task.workerRole ?? "SIMULATED_WORKER",
+          dependencies: task.dependencies ?? [],
+        });
         await append("BudgetReserved", { attemptId: retryId, cost: task.cost });
         const startedAt = Date.now();
         const durationMs = seededDelay(options.missionSeed, task.taskId, 2, task.durationMs);
         await append("TaskStarted", { attemptId: retryId, simulatedDelayMs: durationMs });
-        running.set(task.taskId, wait(durationMs).then(() => { intervals[task.taskId] = { startedAt, finishedAt: Date.now() }; return { taskId: task.taskId, attemptNumber: 2, outcome: seededOutcome(options.missionSeed, task.taskId, 2) }; }));
+        running.set(
+          task.taskId,
+          wait(durationMs).then(() => {
+            intervals[task.taskId] = { startedAt, finishedAt: Date.now() };
+            return { taskId: task.taskId, attemptNumber: 2, outcome: seededOutcome(options.missionSeed, task.taskId, 2) };
+          }),
+        );
         maxConcurrentAttempts = Math.max(maxConcurrentAttempts, running.size);
       } else {
         taskOutcomes[finished.taskId] = outcome;
@@ -247,7 +314,11 @@ import { type RecordedWorkerAdapter, WorkerResultGate } from "./worker-adapter.j
 import { googleTrendsComparisonPilotTask, googleTrendsPilotTask, liveWorkerPilotTask } from "./fixture-model.js";
 
 /** The only public way to prepare the fixed, non-executing live-worker pilot. */
-export function prepareLiveWorkerPilotSchedule(options: { missionId: string; historyPath?: string; eventStore?: JsonlEventStore }): Promise<ScheduleResult> {
+export function prepareLiveWorkerPilotSchedule(options: {
+  missionId: string;
+  historyPath?: string;
+  eventStore?: JsonlEventStore;
+}): Promise<ScheduleResult> {
   return runSimulatedSchedule({
     missionId: options.missionId,
     missionSeed: 1,
@@ -257,13 +328,28 @@ export function prepareLiveWorkerPilotSchedule(options: { missionId: string; his
     maxConcurrency: 1,
     completeMission: false,
     subscriptionRuntimeDeclaration: { executionEnabled: false, accessStatus: "NOT_CHECKED", usageStatus: "NOT_ITEMIZED" },
-    tasks: [{ taskId: liveWorkerPilotTask.id, objective: liveWorkerPilotTask.objective, cost: liveWorkerPilotTask.cost, durationMs: liveWorkerPilotTask.durationMs, workClass: liveWorkerPilotTask.workClass, researchKey: liveWorkerPilotTask.researchKey, dependencies: [...liveWorkerPilotTask.dependencies], workerRole: liveWorkerPilotTask.workerRole }],
+    tasks: [
+      {
+        taskId: liveWorkerPilotTask.id,
+        objective: liveWorkerPilotTask.objective,
+        cost: liveWorkerPilotTask.cost,
+        durationMs: liveWorkerPilotTask.durationMs,
+        workClass: liveWorkerPilotTask.workClass,
+        researchKey: liveWorkerPilotTask.researchKey,
+        dependencies: [...liveWorkerPilotTask.dependencies],
+        workerRole: liveWorkerPilotTask.workerRole,
+      },
+    ],
     [pilotPause]: true,
   });
 }
 
 /** The public-source pilot stops after durable task start, awaiting one user click. */
-export function prepareGoogleTrendsPilotSchedule(options: { missionId: string; historyPath?: string; eventStore?: JsonlEventStore }): Promise<ScheduleResult> {
+export function prepareGoogleTrendsPilotSchedule(options: {
+  missionId: string;
+  historyPath?: string;
+  eventStore?: JsonlEventStore;
+}): Promise<ScheduleResult> {
   return runSimulatedSchedule({
     missionId: options.missionId,
     missionSeed: 1,
@@ -272,13 +358,28 @@ export function prepareGoogleTrendsPilotSchedule(options: { missionId: string; h
     eventStore: options.eventStore,
     maxConcurrency: 1,
     completeMission: false,
-    tasks: [{ taskId: googleTrendsPilotTask.id, objective: googleTrendsPilotTask.objective, cost: googleTrendsPilotTask.cost, durationMs: googleTrendsPilotTask.durationMs, workClass: googleTrendsPilotTask.workClass, researchKey: googleTrendsPilotTask.researchKey, dependencies: [...googleTrendsPilotTask.dependencies], workerRole: googleTrendsPilotTask.workerRole }],
+    tasks: [
+      {
+        taskId: googleTrendsPilotTask.id,
+        objective: googleTrendsPilotTask.objective,
+        cost: googleTrendsPilotTask.cost,
+        durationMs: googleTrendsPilotTask.durationMs,
+        workClass: googleTrendsPilotTask.workClass,
+        researchKey: googleTrendsPilotTask.researchKey,
+        dependencies: [...googleTrendsPilotTask.dependencies],
+        workerRole: googleTrendsPilotTask.workerRole,
+      },
+    ],
     [sourcePilotPause]: true,
   });
 }
 
 /** The manual-import pilot stops after durable task start, awaiting one local CSV selection. */
-export function prepareGoogleTrendsComparisonPilotSchedule(options: { missionId: string; historyPath?: string; eventStore?: JsonlEventStore }): Promise<ScheduleResult> {
+export function prepareGoogleTrendsComparisonPilotSchedule(options: {
+  missionId: string;
+  historyPath?: string;
+  eventStore?: JsonlEventStore;
+}): Promise<ScheduleResult> {
   return runSimulatedSchedule({
     missionId: options.missionId,
     missionSeed: 1,
@@ -287,7 +388,18 @@ export function prepareGoogleTrendsComparisonPilotSchedule(options: { missionId:
     eventStore: options.eventStore,
     maxConcurrency: 1,
     completeMission: false,
-    tasks: [{ taskId: googleTrendsComparisonPilotTask.id, objective: googleTrendsComparisonPilotTask.objective, cost: googleTrendsComparisonPilotTask.cost, durationMs: googleTrendsComparisonPilotTask.durationMs, workClass: googleTrendsComparisonPilotTask.workClass, researchKey: googleTrendsComparisonPilotTask.researchKey, dependencies: [...googleTrendsComparisonPilotTask.dependencies], workerRole: googleTrendsComparisonPilotTask.workerRole }],
+    tasks: [
+      {
+        taskId: googleTrendsComparisonPilotTask.id,
+        objective: googleTrendsComparisonPilotTask.objective,
+        cost: googleTrendsComparisonPilotTask.cost,
+        durationMs: googleTrendsComparisonPilotTask.durationMs,
+        workClass: googleTrendsComparisonPilotTask.workClass,
+        researchKey: googleTrendsComparisonPilotTask.researchKey,
+        dependencies: [...googleTrendsComparisonPilotTask.dependencies],
+        workerRole: googleTrendsComparisonPilotTask.workerRole,
+      },
+    ],
     [comparisonPilotPause]: true,
   });
 }

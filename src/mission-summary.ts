@@ -6,9 +6,7 @@ export function formatMissionSummary(state: MissionState, events: readonly Missi
   const unresolvedGaps = Object.entries(state.gaps)
     .filter(([, gap]) => gap.status === "OPEN" || gap.status === "REOPENED")
     .map(([gapId, gap]) => `${gapId} (${gap.status})`);
-  const history = events.length === 0
-    ? "  (none)"
-    : events.map((event) => `  ${event.sequenceNumber}: ${event.type}`).join("\n");
+  const history = events.length === 0 ? "  (none)" : events.map((event) => `  ${event.sequenceNumber}: ${event.type}`).join("\n");
 
   return [
     `Mission: ${state.status}`,

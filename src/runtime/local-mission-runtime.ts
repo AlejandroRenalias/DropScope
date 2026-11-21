@@ -4,30 +4,51 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
 
 import { JsonlEventStore } from "../event-store.js";
-import { googleTrendsComparisonPilotFixtureId, googleTrendsComparisonPilotTask, googleTrendsPilotFixtureId, googleTrendsPilotTask, liveWorkerPilotFixtureId, liveWorkerPilotTask, loadFixture } from "../fixture-model.js";
+import {
+  googleTrendsComparisonPilotFixtureId,
+  googleTrendsComparisonPilotTask,
+  googleTrendsPilotFixtureId,
+  googleTrendsPilotTask,
+  liveWorkerPilotFixtureId,
+  liveWorkerPilotTask,
+  loadFixture,
+} from "../fixture-model.js";
 import { runFixtureMission } from "../fixture-runner.js";
 import { missionEventSchema, type MissionEvent } from "../contracts.js";
 import { replay } from "../reducer.js";
 import { CodexAppServerPreflight, type SubscriptionRuntimePreflight } from "../subscription-runtime-preflight.js";
 import { SubscriptionLiveWorkerAuthorization, type SubscriptionLiveWorkerConfirmation } from "../subscription-live-worker-authorization.js";
-import { CodexSubscriptionLiveWorkerAdapter, SubscriptionLiveWorkerError, type SubscriptionLiveWorkerRunner } from "../subscription-live-worker-runner.js";
+import {
+  CodexSubscriptionLiveWorkerAdapter,
+  SubscriptionLiveWorkerError,
+  type SubscriptionLiveWorkerRunner,
+} from "../subscription-live-worker-runner.js";
 import { WorkerResultError, WorkerResultGate } from "../worker-adapter.js";
-import { FixedGoogleTrendsSource, GoogleTrendsSourceError, type GoogleTrendsCapture, type GoogleTrendsSource } from "../google-trends-source.js";
+import {
+  FixedGoogleTrendsSource,
+  GoogleTrendsSourceError,
+  type GoogleTrendsCapture,
+  type GoogleTrendsSource,
+} from "../google-trends-source.js";
 import { parseGoogleTrendsComparisonCsv } from "../google-trends-comparison-import.js";
 
 const fixtureIdSchema = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, "Fixture IDs must be lowercase kebab-case.");
 const missionIdSchema = fixtureIdSchema.max(120);
-const missionDtoSchema = z.object({
-  missionId: missionIdSchema,
-  fixtureId: fixtureIdSchema,
-  events: z.array(missionEventSchema),
-}).strict();
-export const subscriptionConfirmationDtoSchema = z.object({
-  missionId: missionIdSchema,
-  attemptId: z.string().min(1),
-  status: z.literal("CONFIRMED"),
-  expiresAtMs: z.number().int().nonnegative(),
-}).strict();
+const missionDtoSchema = z
+  .object({
+    missionId: missionIdSchema,
+    fixtureId: fixtureIdSchema,
+    events: z.array(missionEventSchema),
+  })
+  .strict();
+export const subscriptionConfirmationDtoSchema = z
+  .object({
+    missionId: missionIdSchema,
+    attemptId: z.string().min(1),
+    status: z.literal("CONFIRMED"),
+    expiresAtMs: z.number().int().nonnegative(),
+  })
+  .strict();
 
 export type MissionDto = z.infer<typeof missionDtoSchema>;
 export type SubscriptionConfirmationDto = z.infer<typeof subscriptionConfirmationDtoSchema>;
@@ -175,7 +196,8 @@ export class LocalMissionRuntime {
     const validMissionId = this.validateMissionId(missionId);
     if (this.executingMissionIds.has(validMissionId)) throw new Error("Subscription worker execution is already in progress.");
     const mission = await this.reload(validMissionId);
-    if (mission.fixtureId !== liveWorkerPilotFixtureId) throw new Error("Subscription worker confirmation is available only for the live-worker pilot.");
+    if (mission.fixtureId !== liveWorkerPilotFixtureId)
+      throw new Error("Subscription worker confirmation is available only for the live-worker pilot.");
     const state = replay(mission.events);
     if (!state.subscriptionRuntimeDeclaration || state.subscriptionRuntimeDeclaration.executionEnabled !== false) {
       throw new Error("A disabled subscription runtime declaration is required before confirmation.");
@@ -184,9 +206,17 @@ export class LocalMissionRuntime {
       throw new Error("Authenticated subscription preflight is required before confirmation.");
     }
     const attemptId = this.runningPilotAttemptId(state);
-    const confirmation: SubscriptionLiveWorkerConfirmation = this.subscriptionLiveWorkerAuthorization.confirm({ missionId: validMissionId, attemptId });
+    const confirmation: SubscriptionLiveWorkerConfirmation = this.subscriptionLiveWorkerAuthorization.confirm({
+      missionId: validMissionId,
+      attemptId,
+    });
     this.subscriptionWorkerCapabilities.set(validMissionId, confirmation.capability);
-    return subscriptionConfirmationDtoSchema.parse({ missionId: validMissionId, attemptId: confirmation.attemptId, status: "CONFIRMED", expiresAtMs: confirmation.expiresAtMs });
+    return subscriptionConfirmationDtoSchema.parse({
+      missionId: validMissionId,
+      attemptId: confirmation.attemptId,
+      status: "CONFIRMED",
+      expiresAtMs: confirmation.expiresAtMs,
+    });
   }
 
   /**
@@ -200,7 +230,8 @@ export class LocalMissionRuntime {
     this.executingMissionIds.add(validMissionId);
     try {
       const mission = await this.reload(validMissionId);
-      if (mission.fixtureId !== liveWorkerPilotFixtureId) throw new Error("Subscription worker execution is available only for the live-worker pilot.");
+      if (mission.fixtureId !== liveWorkerPilotFixtureId)
+        throw new Error("Subscription worker execution is available only for the live-worker pilot.");
       const state = replay(mission.events);
       if (!state.subscriptionRuntimeDeclaration || state.subscriptionRuntimeDeclaration.executionEnabled !== false) {
         throw new Error("A disabled subscription runtime declaration is required before execution.");
@@ -231,15 +262,21 @@ export class LocalMissionRuntime {
       let finding: string | undefined;
       let elapsedMs: number;
       try {
-        finding = (await new WorkerResultGate().run({ run: (workerRequest) => this.subscriptionLiveWorkerRunner.run(workerRequest, sandboxCwd) }, request)).finding;
+        finding = (
+          await new WorkerResultGate().run(
+            { run: (workerRequest) => this.subscriptionLiveWorkerRunner.run(workerRequest, sandboxCwd) },
+            request,
+          )
+        ).finding;
         outcome = "COMPLETED";
         elapsedMs = elapsedSince(startedAt);
       } catch (error: unknown) {
-        outcome = error instanceof SubscriptionLiveWorkerError
-          ? error.outcome
-          : error instanceof WorkerResultError
-            ? "INVALID_RESULT"
-            : "UNAVAILABLE";
+        outcome =
+          error instanceof SubscriptionLiveWorkerError
+            ? error.outcome
+            : error instanceof WorkerResultError
+              ? "INVALID_RESULT"
+              : "UNAVAILABLE";
         elapsedMs = error instanceof SubscriptionLiveWorkerError ? error.elapsedMs : elapsedSince(startedAt);
       }
 
@@ -281,36 +318,60 @@ export class LocalMissionRuntime {
     this.capturingGoogleTrendsMissionIds.add(validMissionId);
     try {
       const mission = await this.reload(validMissionId);
-      if (mission.fixtureId !== googleTrendsPilotFixtureId) throw new Error("Google Trends capture is available only for the Google Trends pilot.");
+      if (mission.fixtureId !== googleTrendsPilotFixtureId)
+        throw new Error("Google Trends capture is available only for the Google Trends pilot.");
       const state = replay(mission.events);
       const attemptId = this.googleTrendsPilotAttemptId(state);
       const persistedEvidence = state.googleTrendsEvidence[attemptId];
-      let capture: GoogleTrendsCapture | undefined = persistedEvidence && { sourceUrl: persistedEvidence.sourceUrl, geo: persistedEvidence.geo, attribution: persistedEvidence.attribution, items: persistedEvidence.items };
+      let capture: GoogleTrendsCapture | undefined = persistedEvidence && {
+        sourceUrl: persistedEvidence.sourceUrl,
+        geo: persistedEvidence.geo,
+        attribution: persistedEvidence.attribution,
+        items: persistedEvidence.items,
+      };
       let failure = state.googleTrendsCaptureFailures[attemptId]?.outcome;
       if (!capture && !failure) {
-        try { capture = await this.googleTrendsSource.capture(); }
-        catch (error) { failure = error instanceof GoogleTrendsSourceError ? error.outcome : "UNAVAILABLE"; }
+        try {
+          capture = await this.googleTrendsSource.capture();
+        } catch (error) {
+          failure = error instanceof GoogleTrendsSourceError ? error.outcome : "UNAVAILABLE";
+        }
       }
 
       const store = new JsonlEventStore(this.historyPath(validMissionId));
       const events = await store.readAll();
       const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {
         const sequenceNumber = events.length + 1;
-        const event = { schemaVersion: 1 as const, sequenceNumber, missionId: validMissionId, eventId: `${validMissionId}-${sequenceNumber}`, timestamp: new Date().toISOString(), type, payload } as MissionEvent;
+        const event = {
+          schemaVersion: 1 as const,
+          sequenceNumber,
+          missionId: validMissionId,
+          eventId: `${validMissionId}-${sequenceNumber}`,
+          timestamp: new Date().toISOString(),
+          type,
+          payload,
+        } as MissionEvent;
         replay([...events, event]);
         await store.append(event);
         events.push(event);
       };
       if (capture) {
-        if (!persistedEvidence) await append("GoogleTrendsEvidenceCaptured", { attemptId, ...capture, retrievedAt: new Date().toISOString() });
+        if (!persistedEvidence)
+          await append("GoogleTrendsEvidenceCaptured", { attemptId, ...capture, retrievedAt: new Date().toISOString() });
         const afterOutcome = replay(events);
-        if (afterOutcome.attempts[attemptId]?.status === "RUNNING") await append("FindingSubmitted", { attemptId, finding: `Google Trends US trending-now sample captured: ${capture.items.map((item) => `${item.query} (${item.traffic})`).join("; ")}.` });
+        if (afterOutcome.attempts[attemptId]?.status === "RUNNING")
+          await append("FindingSubmitted", {
+            attemptId,
+            finding: `Google Trends US trending-now sample captured: ${capture.items.map((item) => `${item.query} (${item.traffic})`).join("; ")}.`,
+          });
         if (replay(events).status === "RUNNING") await append("MissionCompleted", {});
       } else {
         if (!state.googleTrendsCaptureFailures[attemptId]) await append("GoogleTrendsCaptureFailed", { attemptId, outcome: failure! });
         const afterOutcome = replay(events);
-        if (afterOutcome.attempts[attemptId]?.status === "RUNNING") await append("TaskFailedPermanent", { attemptId, reason: `Google Trends capture ended with ${failure}.` });
-        if (replay(events).status === "RUNNING") await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: `Google Trends capture ended with ${failure}.` });
+        if (afterOutcome.attempts[attemptId]?.status === "RUNNING")
+          await append("TaskFailedPermanent", { attemptId, reason: `Google Trends capture ended with ${failure}.` });
+        if (replay(events).status === "RUNNING")
+          await append("MissionTerminated", { status: "FAILED_UNRECOVERABLE", reason: `Google Trends capture ended with ${failure}.` });
       }
       return this.readDto(validMissionId, mission.fixtureId);
     } finally {
@@ -321,11 +382,13 @@ export class LocalMissionRuntime {
   /** A user-selected local CSV import. This boundary never contacts Google or persists the raw file. */
   async importGoogleTrendsComparison(missionId: string, csv: string): Promise<MissionDto> {
     const validMissionId = this.validateMissionId(missionId);
-    if (this.importingGoogleTrendsComparisonMissionIds.has(validMissionId)) throw new Error("Google Trends comparison import is already in progress.");
+    if (this.importingGoogleTrendsComparisonMissionIds.has(validMissionId))
+      throw new Error("Google Trends comparison import is already in progress.");
     this.importingGoogleTrendsComparisonMissionIds.add(validMissionId);
     try {
       const mission = await this.reload(validMissionId);
-      if (mission.fixtureId !== googleTrendsComparisonPilotFixtureId) throw new Error("Google Trends comparison import is available only for the Google Trends comparison pilot.");
+      if (mission.fixtureId !== googleTrendsComparisonPilotFixtureId)
+        throw new Error("Google Trends comparison import is available only for the Google Trends comparison pilot.");
       const state = replay(mission.events);
       const attemptId = this.googleTrendsComparisonPilotAttemptId(state);
       const persistedEvidence = state.googleTrendsComparisonEvidence[attemptId];
@@ -333,7 +396,15 @@ export class LocalMissionRuntime {
       const events = await store.readAll();
       const append = async (type: MissionEvent["type"], payload: MissionEvent["payload"]) => {
         const sequenceNumber = events.length + 1;
-        const event = { schemaVersion: 1 as const, sequenceNumber, missionId: validMissionId, eventId: `${validMissionId}-${sequenceNumber}`, timestamp: new Date().toISOString(), type, payload } as MissionEvent;
+        const event = {
+          schemaVersion: 1 as const,
+          sequenceNumber,
+          missionId: validMissionId,
+          eventId: `${validMissionId}-${sequenceNumber}`,
+          timestamp: new Date().toISOString(),
+          type,
+          payload,
+        } as MissionEvent;
         replay([...events, event]);
         await store.append(event);
         events.push(event);
@@ -343,7 +414,8 @@ export class LocalMissionRuntime {
         await append("GoogleTrendsComparisonImported", { attemptId, ...comparison, importedAt: new Date().toISOString() });
       }
       const afterImport = replay(events);
-      if (afterImport.attempts[attemptId]?.status === "RUNNING") await append("FindingSubmitted", { attemptId, finding: "Google Trends US comparison import recorded as unscored context." });
+      if (afterImport.attempts[attemptId]?.status === "RUNNING")
+        await append("FindingSubmitted", { attemptId, finding: "Google Trends US comparison import recorded as unscored context." });
       if (replay(events).status === "RUNNING") await append("MissionCompleted", {});
       return this.readDto(validMissionId, mission.fixtureId);
     } finally {
@@ -354,9 +426,12 @@ export class LocalMissionRuntime {
   private runningPilotAttemptId(state: ReturnType<typeof replay>): string {
     const runningPilotAttempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
       const task = state.tasks[attempt.taskId];
-      return attemptId.length > 0 && attempt.status === "RUNNING" && attempt.taskId === liveWorkerPilotTask.id && task?.status === "RUNNING";
+      return (
+        attemptId.length > 0 && attempt.status === "RUNNING" && attempt.taskId === liveWorkerPilotTask.id && task?.status === "RUNNING"
+      );
     });
-    if (runningPilotAttempts.length !== 1) throw new Error("Exactly one running live-worker pilot attempt is required before confirmation.");
+    if (runningPilotAttempts.length !== 1)
+      throw new Error("Exactly one running live-worker pilot attempt is required before confirmation.");
     return runningPilotAttempts[0]![0];
   }
 
@@ -364,22 +439,25 @@ export class LocalMissionRuntime {
     const attempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
       const task = state.tasks[attempt.taskId];
       const authorization = state.authorizations[attempt.taskId];
-      return attemptId.length > 0
-        && ["RUNNING", "COMPLETED", "FAILED_PERMANENT"].includes(attempt.status)
-        && attempt.taskId === googleTrendsPilotTask.id
-        && attempt.workerRole === googleTrendsPilotTask.workerRole
-        && task?.status === attempt.status
-        && task.objective === googleTrendsPilotTask.objective
-        && task.cost === googleTrendsPilotTask.cost
-        && task.workClass === googleTrendsPilotTask.workClass
-        && task.researchKey === googleTrendsPilotTask.researchKey
-        && authorization?.objective === googleTrendsPilotTask.objective
-        && authorization.cost === googleTrendsPilotTask.cost
-        && authorization.workClass === googleTrendsPilotTask.workClass
-        && authorization.researchKey === googleTrendsPilotTask.researchKey
-        && authorization.dependencies.length === 0;
+      return (
+        attemptId.length > 0 &&
+        ["RUNNING", "COMPLETED", "FAILED_PERMANENT"].includes(attempt.status) &&
+        attempt.taskId === googleTrendsPilotTask.id &&
+        attempt.workerRole === googleTrendsPilotTask.workerRole &&
+        task?.status === attempt.status &&
+        task.objective === googleTrendsPilotTask.objective &&
+        task.cost === googleTrendsPilotTask.cost &&
+        task.workClass === googleTrendsPilotTask.workClass &&
+        task.researchKey === googleTrendsPilotTask.researchKey &&
+        authorization?.objective === googleTrendsPilotTask.objective &&
+        authorization.cost === googleTrendsPilotTask.cost &&
+        authorization.workClass === googleTrendsPilotTask.workClass &&
+        authorization.researchKey === googleTrendsPilotTask.researchKey &&
+        authorization.dependencies.length === 0
+      );
     });
-    if (attempts.length !== 1 || state.status !== "RUNNING") throw new Error("Exactly one resumable Google Trends pilot attempt is required before capture.");
+    if (attempts.length !== 1 || state.status !== "RUNNING")
+      throw new Error("Exactly one resumable Google Trends pilot attempt is required before capture.");
     return attempts[0]![0];
   }
 
@@ -387,22 +465,25 @@ export class LocalMissionRuntime {
     const attempts = Object.entries(state.attempts).filter(([attemptId, attempt]) => {
       const task = state.tasks[attempt.taskId];
       const authorization = state.authorizations[attempt.taskId];
-      return attemptId.length > 0
-        && ["RUNNING", "COMPLETED"].includes(attempt.status)
-        && attempt.taskId === googleTrendsComparisonPilotTask.id
-        && attempt.workerRole === googleTrendsComparisonPilotTask.workerRole
-        && task?.status === attempt.status
-        && task.objective === googleTrendsComparisonPilotTask.objective
-        && task.cost === googleTrendsComparisonPilotTask.cost
-        && task.workClass === googleTrendsComparisonPilotTask.workClass
-        && task.researchKey === googleTrendsComparisonPilotTask.researchKey
-        && authorization?.objective === googleTrendsComparisonPilotTask.objective
-        && authorization.cost === googleTrendsComparisonPilotTask.cost
-        && authorization.workClass === googleTrendsComparisonPilotTask.workClass
-        && authorization.researchKey === googleTrendsComparisonPilotTask.researchKey
-        && authorization.dependencies.length === 0;
+      return (
+        attemptId.length > 0 &&
+        ["RUNNING", "COMPLETED"].includes(attempt.status) &&
+        attempt.taskId === googleTrendsComparisonPilotTask.id &&
+        attempt.workerRole === googleTrendsComparisonPilotTask.workerRole &&
+        task?.status === attempt.status &&
+        task.objective === googleTrendsComparisonPilotTask.objective &&
+        task.cost === googleTrendsComparisonPilotTask.cost &&
+        task.workClass === googleTrendsComparisonPilotTask.workClass &&
+        task.researchKey === googleTrendsComparisonPilotTask.researchKey &&
+        authorization?.objective === googleTrendsComparisonPilotTask.objective &&
+        authorization.cost === googleTrendsComparisonPilotTask.cost &&
+        authorization.workClass === googleTrendsComparisonPilotTask.workClass &&
+        authorization.researchKey === googleTrendsComparisonPilotTask.researchKey &&
+        authorization.dependencies.length === 0
+      );
     });
-    if (attempts.length !== 1 || state.status !== "RUNNING") throw new Error("Exactly one resumable Google Trends comparison pilot attempt is required before import.");
+    if (attempts.length !== 1 || state.status !== "RUNNING")
+      throw new Error("Exactly one resumable Google Trends comparison pilot attempt is required before import.");
     return attempts[0]![0];
   }
 
@@ -478,7 +559,10 @@ export class LocalMissionRuntime {
   private async readReservation(missionId: string, reservationPath: string): Promise<string> {
     try {
       await assertNotLink(reservationPath);
-      const reservation = z.object({ fixtureId: fixtureIdSchema }).strict().parse(JSON.parse(await readFile(reservationPath, "utf8")));
+      const reservation = z
+        .object({ fixtureId: fixtureIdSchema })
+        .strict()
+        .parse(JSON.parse(await readFile(reservationPath, "utf8")));
       loadFixture(reservation.fixtureId);
       return reservation.fixtureId;
     } catch (error: unknown) {

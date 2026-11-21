@@ -20,26 +20,44 @@ export type ImportRequest = {
 export const MAX_IMPORT_BYTES = 64 * 1024 * 1024;
 
 export function importTraceBytes(request: ImportRequest): RunEvent[] {
-  if (request.spans.length + (request.logs?.length ?? 0) > MAX_IMPORT_BYTES) throw new ImportError("E_LIMIT", "import", null, "INPUT_TOTAL_BYTES");
+  if (request.spans.length + (request.logs?.length ?? 0) > MAX_IMPORT_BYTES)
+    throw new ImportError("E_LIMIT", "import", null, "INPUT_TOTAL_BYTES");
   const parsedSpans = parseStrictJsonCounted(request.spans, "parse-spans");
   const spansJson = parsedSpans.value;
-  const logsJson = request.logs === undefined ? undefined : parseStrictJsonCounted(request.logs, "parse-logs", {
-    ...DEFAULT_JSON_LIMITS, maxNodes: DEFAULT_JSON_LIMITS.maxNodes - parsedSpans.nodes,
-  }).value;
+  const logsJson =
+    request.logs === undefined
+      ? undefined
+      : parseStrictJsonCounted(request.logs, "parse-logs", {
+          ...DEFAULT_JSON_LIMITS,
+          maxNodes: DEFAULT_JSON_LIMITS.maxNodes - parsedSpans.nodes,
+        }).value;
   // One work budget for the whole import: the logs file gets what the spans file left.
   const budget = { remaining: DEFAULT_WORK_UNITS };
   const spans = parseTraceRequest(spansJson, "structure-spans", DEFAULT_STRUCTURE_LIMITS, budget);
   const logs = logsJson === undefined ? undefined : parseLogsRequest(logsJson, "structure-logs", DEFAULT_STRUCTURE_LIMITS, budget);
 
   const run = normalizeRun({
-    spans: spans.spans, spanContexts: spans.contexts,
-    logs: logs?.logs, logContexts: logs?.contexts, selectTrace: request.selectTrace,
+    spans: spans.spans,
+    spanContexts: spans.contexts,
+    logs: logs?.logs,
+    logContexts: logs?.contexts,
+    selectTrace: request.selectTrace,
   });
-  const inputs: EmitInput[] = [{
-    role: "spans", byteLength: request.spans.length, sha256: sha256Hex(request.spans), enumNamesAccepted: spans.stats.enumNamesAccepted,
-  }];
+  const inputs: EmitInput[] = [
+    {
+      role: "spans",
+      byteLength: request.spans.length,
+      sha256: sha256Hex(request.spans),
+      enumNamesAccepted: spans.stats.enumNamesAccepted,
+    },
+  ];
   if (request.logs !== undefined && logs !== undefined) {
-    inputs.push({ role: "logs", byteLength: request.logs.length, sha256: sha256Hex(request.logs), enumNamesAccepted: logs.stats.enumNamesAccepted });
+    inputs.push({
+      role: "logs",
+      byteLength: request.logs.length,
+      sha256: sha256Hex(request.logs),
+      enumNamesAccepted: logs.stats.enumNamesAccepted,
+    });
   }
   return emitRunEvents(run, {
     contentMode: request.contentMode ?? "HASH_ONLY",

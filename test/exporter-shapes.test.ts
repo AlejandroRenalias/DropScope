@@ -12,7 +12,9 @@ const run = (name: string) => reduceRun(importTraceBytes({ spans: new Uint8Array
 
 describe("synthetic exporter fixtures", () => {
   it.each(SHAPES.map((shape, index) => [shape.file, index] as const))("%s matches its generator", (file, index) => {
-    expect(readFileSync(fileUrl(file), "utf8"), "run: npx tsx test/fixtures/exporters/make-exporter-fixtures.ts").toBe(render(SHAPES[index], index));
+    expect(readFileSync(fileUrl(file), "utf8"), "run: npx tsx test/fixtures/exporters/make-exporter-fixtures.ts").toBe(
+      render(SHAPES[index], index),
+    );
   });
 });
 

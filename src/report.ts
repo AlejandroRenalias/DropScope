@@ -19,7 +19,11 @@ function assertUniqueIds(label: string, ids: string[]): void {
   if (new Set(ids).size !== ids.length) throw new Error(`${label} must contain unique candidate IDs.`);
 }
 
-function assertSameCandidateIds(evaluations: FixtureCandidateEvaluation[], riskDecisions: RiskGateDecision[], eligibilities: CandidateEligibility[]): void {
+function assertSameCandidateIds(
+  evaluations: FixtureCandidateEvaluation[],
+  riskDecisions: RiskGateDecision[],
+  eligibilities: CandidateEligibility[],
+): void {
   const evaluationIds = evaluations.map(({ candidateId }) => candidateId);
   const decisionIds = riskDecisions.map(({ candidateId }) => candidateId);
   const eligibilityIds = eligibilities.map(({ candidateId }) => candidateId);
@@ -27,8 +31,12 @@ function assertSameCandidateIds(evaluations: FixtureCandidateEvaluation[], riskD
   assertUniqueIds("Risk decisions", decisionIds);
   assertUniqueIds("Candidate eligibilities", eligibilityIds);
   const expected = new Set(evaluationIds);
-  for (const [label, ids] of [["Risk decisions", decisionIds], ["Candidate eligibilities", eligibilityIds]] as const) {
-    if (ids.length !== expected.size || ids.some((id) => !expected.has(id))) throw new Error(`${label} candidate IDs must match fixture evaluations.`);
+  for (const [label, ids] of [
+    ["Risk decisions", decisionIds],
+    ["Candidate eligibilities", eligibilityIds],
+  ] as const) {
+    if (ids.length !== expected.size || ids.some((id) => !expected.has(id)))
+      throw new Error(`${label} candidate IDs must match fixture evaluations.`);
   }
 }
 

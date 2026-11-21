@@ -45,8 +45,8 @@ export const virtualStaffingPlans = [
 ] as const satisfies readonly VirtualStaffingPlan[];
 
 export interface VirtualStaffingSummary {
-  fixtureId: typeof evaluationFixtureIds[number];
-  planId: typeof virtualStaffingPlans[number]["planId"];
+  fixtureId: (typeof evaluationFixtureIds)[number];
+  planId: (typeof virtualStaffingPlans)[number]["planId"];
   planLabel: string;
   virtualAgentCount: number;
   simulatedLatencyMs: number;
@@ -94,8 +94,14 @@ export function replayVirtualStaffingLatency(events: MissionEvent[], plan: Virtu
   for (const attempt of recordedAttempts(events)) {
     const eligibleAgents = plan.agents.filter((agent) => agent.supportedRoles.includes(attempt.workerRole));
     if (eligibleAgents.length === 0) throw new Error(`Virtual staffing plan ${plan.planId} has no agent for ${attempt.workerRole}.`);
-    const agent = [...eligibleAgents].sort((left, right) => (availability.get(left.agentId)! - availability.get(right.agentId)!) || left.agentId.localeCompare(right.agentId))[0]!;
-    const start = Math.max(taskFinishes.get(attempt.taskId) ?? 0, availability.get(agent.agentId)!, ...(attempt.dependencies.map((dependency) => taskFinishes.get(dependency) ?? 0)));
+    const agent = [...eligibleAgents].sort(
+      (left, right) => availability.get(left.agentId)! - availability.get(right.agentId)! || left.agentId.localeCompare(right.agentId),
+    )[0]!;
+    const start = Math.max(
+      taskFinishes.get(attempt.taskId) ?? 0,
+      availability.get(agent.agentId)!,
+      ...attempt.dependencies.map((dependency) => taskFinishes.get(dependency) ?? 0),
+    );
     const finish = start + attempt.simulatedDelayMs;
     availability.set(agent.agentId, finish);
     taskFinishes.set(attempt.taskId, finish);
@@ -108,7 +114,12 @@ export async function runVirtualStaffingExperiment(): Promise<VirtualStaffingSum
   const root = await mkdtemp(join(tmpdir(), "dropscope-staffing-evaluation-"));
   const summaries: VirtualStaffingSummary[] = [];
   for (const fixtureId of evaluationFixtureIds) {
-    const result = await runFixtureMission({ fixtureId, missionId: `${fixtureId}-staffing`, historyPath: join(root, `${fixtureId}.jsonl`), maxConcurrency: 3 });
+    const result = await runFixtureMission({
+      fixtureId,
+      missionId: `${fixtureId}-staffing`,
+      historyPath: join(root, `${fixtureId}.jsonl`),
+      maxConcurrency: 3,
+    });
     const review = result.events.find((event) => event.type === "BlindReviewCompleted");
     for (const plan of virtualStaffingPlans) {
       summaries.push({

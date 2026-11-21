@@ -30,7 +30,10 @@ export function layoutTasks(tasks: Task[]): Array<{ task: Task; level: number; x
   tasks.forEach((task) => levelOf(task, new Set()));
   const columns = Math.max(0, ...tasks.map((task) => levels.get(task.id) ?? 0)) + 1;
   const perLevel = new Map<number, Task[]>();
-  tasks.forEach((task) => { const level = levels.get(task.id) ?? 0; perLevel.set(level, [...(perLevel.get(level) ?? []), task]); });
+  tasks.forEach((task) => {
+    const level = levels.get(task.id) ?? 0;
+    perLevel.set(level, [...(perLevel.get(level) ?? []), task]);
+  });
   return tasks.map((task) => {
     const level = levels.get(task.id) ?? 0;
     const siblings = perLevel.get(level)!;
@@ -43,7 +46,12 @@ export function layoutTasks(tasks: Task[]): Array<{ task: Task; level: number; x
 }
 
 export function defaultSelection(tasks: Task[]): string | undefined {
-  return (tasks.find((task) => task.state === "BLOCKED") ?? tasks.find((task) => task.state === "WORKING") ?? [...tasks].reverse().find((task) => task.state === "COMPLETED") ?? tasks[0])?.id;
+  return (
+    tasks.find((task) => task.state === "BLOCKED") ??
+    tasks.find((task) => task.state === "WORKING") ??
+    [...tasks].reverse().find((task) => task.state === "COMPLETED") ??
+    tasks[0]
+  )?.id;
 }
 
 export function uniqueAgents(projection: OfficeProjection): OfficeProjection["agents"] {
@@ -57,16 +65,25 @@ export function describeChange(previous: OfficeProjection | null, next: OfficePr
   const before = new Map((previous?.tasks ?? []).map((task) => [task.id, task]));
   for (const task of next.tasks) {
     const old = before.get(task.id);
-    if (!old) { lines.push(`${nodeTitle(task)} authorized`); taskIds.add(task.id); }
-    else if (old.state !== task.state) { lines.push(`${nodeTitle(task)}: ${stateText[old.state]} → ${stateText[task.state]}`); taskIds.add(task.id); }
-    else if (!old.role && task.role) { lines.push(`${nodeTitle(task)} scheduled`); taskIds.add(task.id); }
+    if (!old) {
+      lines.push(`${nodeTitle(task)} authorized`);
+      taskIds.add(task.id);
+    } else if (old.state !== task.state) {
+      lines.push(`${nodeTitle(task)}: ${stateText[old.state]} → ${stateText[task.state]}`);
+      taskIds.add(task.id);
+    } else if (!old.role && task.role) {
+      lines.push(`${nodeTitle(task)} scheduled`);
+      taskIds.add(task.id);
+    }
   }
   if (previous) {
-    for (const key of ["reserved", "committed", "spent"] as const) if (previous.ledger[key] !== next.ledger[key]) lines.push(`Budget ${key}: ${previous.ledger[key]} → ${next.ledger[key]}`);
+    for (const key of ["reserved", "committed", "spent"] as const)
+      if (previous.ledger[key] !== next.ledger[key]) lines.push(`Budget ${key}: ${previous.ledger[key]} → ${next.ledger[key]}`);
     const was = uniqueAgents(previous).filter((agent) => agent.state === "WORKING").length;
     const now = uniqueAgents(next).filter((agent) => agent.state === "WORKING").length;
     if (was !== now) lines.push(`Researchers working: ${was} → ${now}`);
-    if (previous.mission.status !== next.mission.status) lines.push(`Mission status: ${previous.mission.status.toLowerCase()} → ${next.mission.status.toLowerCase()}`);
+    if (previous.mission.status !== next.mission.status)
+      lines.push(`Mission status: ${previous.mission.status.toLowerCase()} → ${next.mission.status.toLowerCase()}`);
   }
   return { lines, taskIds };
 }
@@ -76,21 +93,36 @@ export function humanizeType(type: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export interface ChainStep { sequence: number; type: string; summary: string; final: boolean }
+export interface ChainStep {
+  sequence: number;
+  type: string;
+  summary: string;
+  final: boolean;
+}
 
 /** The recorded events that belong to one worker attempt, in order, starting from its task authorization. */
 export function attemptChain(history: MissionEvent[], attemptId: string): ChainStep[] {
-  const scheduled = history.find((event) => event.type === "TaskScheduled" && (event.payload as { attemptId?: string }).attemptId === attemptId);
+  const scheduled = history.find(
+    (event) => event.type === "TaskScheduled" && (event.payload as { attemptId?: string }).attemptId === attemptId,
+  );
   const taskId = scheduled ? (scheduled.payload as { taskId?: string }).taskId : undefined;
   return history
     .filter((event) => {
       const payload = event.payload as Record<string, unknown>;
       return payload.attemptId === attemptId || (event.type === "TaskAuthorized" && taskId !== undefined && payload.taskId === taskId);
     })
-    .map((event) => ({ sequence: event.sequenceNumber, type: event.type, summary: summarizeResearchEvent(event), final: event.type === "FindingSubmitted" || event.type === "SubscriptionWorkerExecutionOutcomeRecorded" }));
+    .map((event) => ({
+      sequence: event.sequenceNumber,
+      type: event.type,
+      summary: summarizeResearchEvent(event),
+      final: event.type === "FindingSubmitted" || event.type === "SubscriptionWorkerExecutionOutcomeRecorded",
+    }));
 }
 
-export interface RevisionStep { label: string; state: "done" | "current" | "pending" }
+export interface RevisionStep {
+  label: string;
+  state: "done" | "current" | "pending";
+}
 
 /** Where a blind-review revision stands, derived from which revision events have been recorded. */
 export function revisionPath(history: MissionEvent[]): { requested: boolean; steps: RevisionStep[] } {
@@ -99,7 +131,10 @@ export function revisionPath(history: MissionEvent[]): { requested: boolean; ste
   const flags = [true, requested, seen("FocusedReauditCompleted"), seen("FocusedRereviewCompleted")];
   const labels = ["Blind review", "Revision requested", "Focused re-audit", "Focused re-review"];
   const firstOpen = flags.indexOf(false);
-  return { requested, steps: labels.map((label, index) => ({ label, state: flags[index] ? "done" : index === firstOpen ? "current" : "pending" })) };
+  return {
+    requested,
+    steps: labels.map((label, index) => ({ label, state: flags[index] ? "done" : index === firstOpen ? "current" : "pending" })),
+  };
 }
 
 /** Beam tilt in degrees for the tribunal scale: positive lowers the ruin side, negative the venture side. */

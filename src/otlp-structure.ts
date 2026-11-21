@@ -19,15 +19,22 @@ export type ParsedAttribute = { ordinal: number; key: string; value: TaggedValue
 // A resource is read once per resource group and shared (the same object) by every context under it, so a
 // large resource is never converted, hashed or scanned again for each scope.
 export type ParsedResource = {
-  attributes: ParsedAttribute[]; schemaUrl: string | null; droppedAttributesCount: number; unknownFields: TaggedValue | null;
+  attributes: ParsedAttribute[];
+  schemaUrl: string | null;
+  droppedAttributesCount: number;
+  unknownFields: TaggedValue | null;
   unknownCount: number;
 };
 
 export type ParsedContext = {
   resource: ParsedResource;
   scope: {
-    name: string | null; version: string | null; attributes: ParsedAttribute[]; schemaUrl: string | null;
-    droppedAttributesCount: number; unknownFields: TaggedValue | null;
+    name: string | null;
+    version: string | null;
+    attributes: ParsedAttribute[];
+    schemaUrl: string | null;
+    droppedAttributesCount: number;
+    unknownFields: TaggedValue | null;
   };
   // Unknown properties on the resource and scope objects (kept in their unknownFields).
   unknownCount: number;
@@ -118,11 +125,17 @@ const I64_MAX = (1n << 63n) - 1n;
 const U32_MAX = 4294967295n;
 
 const SPAN_KIND_NAMES: Record<string, number> = {
-  SPAN_KIND_UNSPECIFIED: 0, SPAN_KIND_INTERNAL: 1, SPAN_KIND_SERVER: 2,
-  SPAN_KIND_CLIENT: 3, SPAN_KIND_PRODUCER: 4, SPAN_KIND_CONSUMER: 5,
+  SPAN_KIND_UNSPECIFIED: 0,
+  SPAN_KIND_INTERNAL: 1,
+  SPAN_KIND_SERVER: 2,
+  SPAN_KIND_CLIENT: 3,
+  SPAN_KIND_PRODUCER: 4,
+  SPAN_KIND_CONSUMER: 5,
 };
 const STATUS_CODE_NAMES: Record<string, number> = {
-  STATUS_CODE_UNSET: 0, STATUS_CODE_OK: 1, STATUS_CODE_ERROR: 2,
+  STATUS_CODE_UNSET: 0,
+  STATUS_CODE_OK: 1,
+  STATUS_CODE_ERROR: 2,
 };
 
 const ANY_VALUE_ARMS = ["stringValue", "boolValue", "intValue", "doubleValue", "arrayValue", "kvlistValue", "bytesValue"] as const;
@@ -131,7 +144,11 @@ const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$
 class Structure {
   enumNamesAccepted = 0;
   envelopeUnknownCount = 0;
-  constructor(readonly stage: string, readonly limits: StructureLimits, readonly budget: WorkBudget) {}
+  constructor(
+    readonly stage: string,
+    readonly limits: StructureLimits,
+    readonly budget: WorkBudget,
+  ) {}
 
   fail(code: ConstructorParameters<typeof ImportError>[0]): never {
     throw new ImportError(code, this.stage);
@@ -234,8 +251,12 @@ class Structure {
   convert(root: JsonValue, mode: "any" | "raw"): TaggedValue {
     type Item = { key: string | null; value: JsonValue };
     type Frame = {
-      tag: "a" | "k"; items: Item[]; index: number; pendingKey: string | null;
-      outA: TaggedValue[]; outK: Array<[string, TaggedValue]>;
+      tag: "a" | "k";
+      items: Item[];
+      index: number;
+      pendingKey: string | null;
+      outA: TaggedValue[];
+      outK: Array<[string, TaggedValue]>;
     };
     const stack: Frame[] = [];
     let result: TaggedValue | undefined;
@@ -246,8 +267,7 @@ class Structure {
       else if (top.tag === "a") top.outA.push(value);
       else top.outK.push([top.pendingKey as string, value]);
     };
-    const frame = (tag: "a" | "k", items: Item[]): Frame =>
-      ({ tag, items, index: 0, pendingKey: null, outA: [], outK: [] });
+    const frame = (tag: "a" | "k", items: Item[]): Frame => ({ tag, items, index: 0, pendingKey: null, outA: [], outK: [] });
 
     const step = (value: JsonValue): TaggedValue | Frame => {
       if (mode === "raw") return this.rawStep(value, frame);
@@ -277,12 +297,23 @@ class Structure {
     return result as TaggedValue;
   }
 
-  private rawStep<F>(value: JsonValue, frame: (tag: "a" | "k", items: Array<{ key: string | null; value: JsonValue }>) => F): TaggedValue | F {
+  private rawStep<F>(
+    value: JsonValue,
+    frame: (tag: "a" | "k", items: Array<{ key: string | null; value: JsonValue }>) => F,
+  ): TaggedValue | F {
     if (value === null) return this.fail("E_ANYVALUE");
     if (typeof value === "boolean") return { t: "o", v: value };
     if (typeof value === "string") return { t: "s", v: value };
-    if (Array.isArray(value)) return frame("a", value.map((v) => ({ key: null, value: v })));
-    if (value instanceof Map) return frame("k", [...value].map(([key, v]) => ({ key, value: v })));
+    if (Array.isArray(value))
+      return frame(
+        "a",
+        value.map((v) => ({ key: null, value: v })),
+      );
+    if (value instanceof Map)
+      return frame(
+        "k",
+        [...value].map(([key, v]) => ({ key, value: v })),
+      );
     const lexeme = (value as JsonNumber).lexeme;
     if (/^-?[0-9]+$/.test(lexeme)) {
       if (lexeme.replace("-", "").length > 20) return this.fail("E_NUMBER");
@@ -295,7 +326,10 @@ class Structure {
     return { t: "d", v: n };
   }
 
-  private anyStep<F>(value: JsonValue, frame: (tag: "a" | "k", items: Array<{ key: string | null; value: JsonValue }>) => F): TaggedValue | F {
+  private anyStep<F>(
+    value: JsonValue,
+    frame: (tag: "a" | "k", items: Array<{ key: string | null; value: JsonValue }>) => F,
+  ): TaggedValue | F {
     if (!(value instanceof Map)) return this.fail("E_ANYVALUE");
     for (const key of value.keys()) {
       if (!(ANY_VALUE_ARMS as readonly string[]).includes(key)) this.fail("E_ANYVALUE");
@@ -328,15 +362,21 @@ class Structure {
         return { t: "b", v: inner };
       case "arrayValue": {
         const body = this.anyContainer(inner);
-        return frame("a", body.map((v) => ({ key: null, value: v })));
+        return frame(
+          "a",
+          body.map((v) => ({ key: null, value: v })),
+        );
       }
       default: {
         // kvlistValue
         const body = this.anyContainer(inner);
-        return frame("k", body.map((kv) => {
-          const { key, value: v } = this.keyValue(kv);
-          return { key, value: v };
-        }));
+        return frame(
+          "k",
+          body.map((kv) => {
+            const { key, value: v } = this.keyValue(kv);
+            return { key, value: v };
+          }),
+        );
       }
     }
   }
@@ -400,7 +440,15 @@ function readContext(s: Structure, resource: ParsedResource, scopeGroup: JsonObj
   };
 }
 
-function groups(s: Structure, request: JsonValue, outer: string, inner: string, leaf: string, onLeaf: (contextIndex: number, item: JsonValue) => void, contexts: ParsedContext[]): void {
+function groups(
+  s: Structure,
+  request: JsonValue,
+  outer: string,
+  inner: string,
+  leaf: string,
+  onLeaf: (contextIndex: number, item: JsonValue) => void,
+  contexts: ParsedContext[],
+): void {
   const root = s.object(request);
   if (!root) return s.fail("E_SYNTAX");
   s.countEnvelopeUnknown(root, [outer]);
@@ -427,21 +475,52 @@ function groups(s: Structure, request: JsonValue, outer: string, inner: string, 
 }
 
 const SPAN_KNOWN = [
-  "traceId", "spanId", "traceState", "parentSpanId", "flags", "name", "kind", "startTimeUnixNano", "endTimeUnixNano",
-  "attributes", "droppedAttributesCount", "events", "droppedEventsCount", "links", "droppedLinksCount", "status",
+  "traceId",
+  "spanId",
+  "traceState",
+  "parentSpanId",
+  "flags",
+  "name",
+  "kind",
+  "startTimeUnixNano",
+  "endTimeUnixNano",
+  "attributes",
+  "droppedAttributesCount",
+  "events",
+  "droppedEventsCount",
+  "links",
+  "droppedLinksCount",
+  "status",
 ] as const;
 const EVENT_KNOWN = ["timeUnixNano", "name", "attributes", "droppedAttributesCount"] as const;
 const LINK_KNOWN = ["traceId", "spanId", "traceState", "attributes", "droppedAttributesCount", "flags"] as const;
 const STATUS_KNOWN = ["code", "message"] as const;
 const LOG_KNOWN = [
-  "timeUnixNano", "observedTimeUnixNano", "severityNumber", "severityText", "body", "attributes",
-  "droppedAttributesCount", "flags", "traceId", "spanId", "eventName",
+  "timeUnixNano",
+  "observedTimeUnixNano",
+  "severityNumber",
+  "severityText",
+  "body",
+  "attributes",
+  "droppedAttributesCount",
+  "flags",
+  "traceId",
+  "spanId",
+  "eventName",
 ] as const;
 
 function attributesAsTagged(attributes: ParsedAttribute[]): TaggedValue {
   return {
     t: "a",
-    v: attributes.map((a): TaggedValue => ({ t: "k", v: [["key", { t: "s", v: a.key }], ["value", a.value]] })),
+    v: attributes.map(
+      (a): TaggedValue => ({
+        t: "k",
+        v: [
+          ["key", { t: "s", v: a.key }],
+          ["value", a.value],
+        ],
+      }),
+    ),
   };
 }
 
@@ -550,29 +629,49 @@ function readLog(s: Structure, contextIndex: number, raw: JsonValue): ParsedLogR
 }
 
 export function parseTraceRequest(
-  json: JsonValue, stage = "structure", limits: StructureLimits = DEFAULT_STRUCTURE_LIMITS,
+  json: JsonValue,
+  stage = "structure",
+  limits: StructureLimits = DEFAULT_STRUCTURE_LIMITS,
   budget: WorkBudget = { remaining: DEFAULT_WORK_UNITS },
 ): ParsedTraceInput {
   const s = new Structure(stage, limits, budget);
   const contexts: ParsedContext[] = [];
   const spans: ParsedSpan[] = [];
-  groups(s, json, "resourceSpans", "scopeSpans", "spans", (contextIndex, item) => {
-    if (spans.length >= limits.maxSpans) s.fail("E_LIMIT");
-    spans.push(readSpan(s, contextIndex, item));
-  }, contexts);
+  groups(
+    s,
+    json,
+    "resourceSpans",
+    "scopeSpans",
+    "spans",
+    (contextIndex, item) => {
+      if (spans.length >= limits.maxSpans) s.fail("E_LIMIT");
+      spans.push(readSpan(s, contextIndex, item));
+    },
+    contexts,
+  );
   return { contexts, spans, stats: { enumNamesAccepted: s.enumNamesAccepted, envelopeUnknownCount: s.envelopeUnknownCount } };
 }
 
 export function parseLogsRequest(
-  json: JsonValue, stage = "structure", limits: StructureLimits = DEFAULT_STRUCTURE_LIMITS,
+  json: JsonValue,
+  stage = "structure",
+  limits: StructureLimits = DEFAULT_STRUCTURE_LIMITS,
   budget: WorkBudget = { remaining: DEFAULT_WORK_UNITS },
 ): ParsedLogInput {
   const s = new Structure(stage, limits, budget);
   const contexts: ParsedContext[] = [];
   const logs: ParsedLogRecord[] = [];
-  groups(s, json, "resourceLogs", "scopeLogs", "logRecords", (contextIndex, item) => {
-    if (logs.length >= limits.maxLogRecords) s.fail("E_LIMIT");
-    logs.push(readLog(s, contextIndex, item));
-  }, contexts);
+  groups(
+    s,
+    json,
+    "resourceLogs",
+    "scopeLogs",
+    "logRecords",
+    (contextIndex, item) => {
+      if (logs.length >= limits.maxLogRecords) s.fail("E_LIMIT");
+      logs.push(readLog(s, contextIndex, item));
+    },
+    contexts,
+  );
   return { contexts, logs, stats: { enumNamesAccepted: s.enumNamesAccepted, envelopeUnknownCount: s.envelopeUnknownCount } };
 }

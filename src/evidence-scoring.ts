@@ -30,13 +30,21 @@ function compareRepresentative(left: Evidence, right: Evidence): number {
 export function selectEvidenceRepresentatives(evidence: Evidence[]): Evidence[] {
   const groups = new Map<string, Evidence[]>();
   for (const item of evidence) groups.set(item.independenceGroupId, [...(groups.get(item.independenceGroupId) ?? []), item]);
-  return [...groups.values()].map((group) => [...group].sort(compareRepresentative)[0]).sort((left, right) => left.evidenceId.localeCompare(right.evidenceId));
+  return [...groups.values()]
+    .map((group) => [...group].sort(compareRepresentative)[0])
+    .sort((left, right) => left.evidenceId.localeCompare(right.evidenceId));
 }
 
 export function scoreClaimEvidence(claim: Claim, evidence: Evidence[]): EvidenceScore {
   const relevantEvidence = evidence.filter((item) => item.candidateId === claim.candidateId && item.claimTopic === claim.claimTopic);
   const representatives = selectEvidenceRepresentatives(relevantEvidence);
-  const netStrength = Math.max(-10, Math.min(10, representatives.reduce((total, item) => total + weightedStrength(item), 0)));
+  const netStrength = Math.max(
+    -10,
+    Math.min(
+      10,
+      representatives.reduce((total, item) => total + weightedStrength(item), 0),
+    ),
+  );
   const hasUnknownSupport = representatives.some((item) => item.direction === "SUPPORTS" && item.reliabilityClass === "UNKNOWN");
 
   return {

@@ -1,0 +1,308 @@
+// Run diff: compares two recorded runs offline and finds where they first differ.
+//
+// Step ids are random per run, so steps are matched by what they are, in the order of the step tree, never by id.
+// "What they are" is a signature built from complete recorded values (kind, label, operation name, tool name and
+// agent name; the label carries the operation and the model name), not from the shortened title shown to people,
+// so names that differ only past the title's cut-off are still different. Matching uses the longest common sequence of signatures, so one inserted
+// or missing step does not make every later step look different. Matched steps are then compared on where they sit
+// (the step they are nested under, through the matching, not through ids), outcome (failed or not), the status
+// message, token counts and recorded content. Content is compared by fingerprint: a withheld value keeps
+// the SHA-256 of its canonical text, and a stored value can be fingerprinted the same way, so a run imported with
+// content and one imported without it can still be compared. Content that arrived through log records is kept
+// as an ordered list of whole records (everything one record carried), so a body and an attribute cannot move
+// from one record to another unnoticed.
+// Not compared: how long a step took (two honest runs never take exactly as long; the totals show duration),
+// step events, log record times and severities, log records that carry no content, attributes that are neither a
+// name used for matching (operation, model, tool, agent) nor recorded content, and content of log records that
+// belong to no step. The report says so.
+// No model call and no network. It reads only runs the reducer has already validated. It uses no Node modules, so the
+// browser (the run diff screen) can run it; fingerprints use sha256-pure.ts, pinned to Node's SHA-256 by a test.
+import { canonicalJson } from "./canonical-json.js";
+import { sha256HexPure } from "./sha256-pure.js";
+/** Runs with more steps than this are not compared (the answer would be too slow to be useful). */
+export const DIFF_LIMITS = { maxSteps: 5000, maxAlignCells: 4_000_000 };
+const fingerprintOf = (field) => {
+    if ("w" in field)
+        return `${field.w.n}:${field.w.h}`;
+    const text = canonicalJson(field.v);
+    return `${new TextEncoder().encode(text).length}:${sha256HexPure(text)}`;
+};
+/** Every value of an attribute name as one string, sorted so the order they were recorded in does not matter; a name recorded twice counts twice. */
+function attributeFingerprints(attributes, name) {
+    const all = [];
+    for (const a of attributes) {
+        const key = a.key;
+        if (key.v?.t === "s" && key.v.v === name)
+            all.push(fingerprintOf(a.value));
+    }
+    return all.length === 0 ? "-" : all.sort().join("+");
+}
+function attributeFingerprint(attributes, name) {
+    for (const a of attributes) {
+        const key = a.key;
+        if (key.v?.t === "s" && key.v.v === name)
+            return fingerprintOf(a.value);
+    }
+    return "-";
+}
+/**
+ * What each step is and what was recorded for it, from complete values. The signature uses the kind, label,
+ * operation name, tool name and agent name. Content is kept as a list per key in event order, so a key recorded
+ * twice is not collapsed to its last value. Content that arrived through log records counts for the step the log
+ * record belongs to, kept as one entry per record (in event order) holding everything that record carried;
+ * content of a log record with no step is not compared.
+ */
+function factsByStep(model) {
+    const facts = new Map();
+    const logStep = new Map();
+    const lists = new Map();
+    const bundles = new Map();
+    for (const event of model.events) {
+        if (event.type === "StepStarted") {
+            const p = event.payload;
+            const signature = JSON.stringify([
+                p.kind, p.label, p.operationName === null ? "-" : fingerprintOf(p.operationName),
+                attributeFingerprint(p.attributes, "gen_ai.tool.name"), attributeFingerprint(p.attributes, "gen_ai.agent.name"),
+            ]);
+            facts.set(p.stepId, { signature, tool: attributeFingerprints(p.attributes, "gen_ai.tool.name"), message: "", content: new Map(), logRecords: [] });
+        }
+        else if (event.type === "StepEnded") {
+            const f = facts.get(event.payload.stepId);
+            if (f)
+                f.message = fingerprintOf(event.payload.statusMessage);
+        }
+        else if (event.type === "LogRecorded" && event.payload.stepId !== null) {
+            logStep.set(event.payload.logOrdinal, event.payload.stepId);
+        }
+        else if (event.type === "ContentRecorded") {
+            const p = event.payload;
+            const fieldKey = p.fieldKey === undefined ? "" : fingerprintOf(p.fieldKey);
+            if (p.stepId === null) {
+                const logOrdinal = p.logOrdinal;
+                const owner = logStep.get(logOrdinal);
+                if (owner === undefined)
+                    continue;
+                const bundle = bundles.get(logOrdinal) ?? { stepId: owner, items: [] };
+                bundle.items.push(`${p.field}|${fieldKey}|${p.ordinal}=${fingerprintOf(p.value)}`);
+                bundles.set(logOrdinal, bundle);
+                continue;
+            }
+            const stepId = p.stepId;
+            const key = `${p.channel}|${p.field}|${fieldKey}|${p.ordinal}`;
+            const perStep = lists.get(stepId) ?? new Map();
+            const list = perStep.get(key) ?? [];
+            list.push(fingerprintOf(p.value));
+            perStep.set(key, list);
+            lists.set(stepId, perStep);
+        }
+    }
+    for (const bundle of bundles.values())
+        facts.get(bundle.stepId)?.logRecords.push(bundle.items.join(","));
+    for (const [stepId, perStep] of lists) {
+        const f = facts.get(stepId);
+        if (f)
+            for (const [key, list] of perStep)
+                f.content.set(key, list.join(","));
+    }
+    return facts;
+}
+const fieldNameOf = (key) => key.split("|")[1];
+function totalsOf(model) {
+    let modelCalls = 0;
+    let toolCalls = 0;
+    let failed = 0;
+    let missing = 0;
+    let input = 0n;
+    let output = 0n;
+    let first = null;
+    let last = null;
+    for (const step of model.steps) {
+        if (step.kind === "LLM_CALL")
+            modelCalls += 1;
+        if (step.kind === "TOOL_CALL")
+            toolCalls += 1;
+        if (step.failed)
+            failed += 1;
+        if (step.kind === "LLM_CALL" && (step.inputTokens === null || step.outputTokens === null))
+            missing += 1;
+        input += step.inputTokens === null ? 0n : BigInt(step.inputTokens);
+        output += step.outputTokens === null ? 0n : BigInt(step.outputTokens);
+        const start = BigInt(step.startNs);
+        const end = BigInt(step.endEffectiveNs);
+        if (first === null || start < first)
+            first = start;
+        if (last === null || end > last)
+            last = end;
+    }
+    return {
+        steps: model.steps.length, modelCalls, toolCalls, failedSteps: failed, inputTokens: input, outputTokens: output,
+        durationNs: first === null || last === null || last < first ? 0n : last - first, stepsMissingTokens: missing,
+    };
+}
+function compareSteps(a, b, fa, fb, sameParent) {
+    const changes = [];
+    if (!sameParent)
+        changes.push({ code: "PARENT", a: "", b: "", fields: [] });
+    if (a.failed !== b.failed)
+        changes.push({ code: "STATUS", a: a.failed ? "failed" : "ok", b: b.failed ? "failed" : "ok", fields: [] });
+    if (fa.message !== fb.message)
+        changes.push({ code: "STATUS_MESSAGE", a: "", b: "", fields: [] });
+    const tokens = (code, x, y) => {
+        if (x !== y)
+            changes.push({ code, a: x ?? "not reported", b: y ?? "not reported", fields: [] });
+    };
+    tokens("INPUT_TOKENS", a.inputTokens, b.inputTokens);
+    tokens("OUTPUT_TOKENS", a.outputTokens, b.outputTokens);
+    if (fa.content.size > 0 || fb.content.size > 0 || fa.logRecords.length > 0 || fb.logRecords.length > 0) {
+        const differing = new Set();
+        for (const [key, value] of fa.content)
+            if (fb.content.get(key) !== value)
+                differing.add(fieldNameOf(key));
+        for (const key of fb.content.keys())
+            if (!fa.content.has(key))
+                differing.add(fieldNameOf(key));
+        if (fa.logRecords.length !== fb.logRecords.length || fa.logRecords.some((record, k) => record !== fb.logRecords[k]))
+            differing.add("log records");
+        if (differing.size > 0)
+            changes.push({ code: "CONTENT", a: "", b: "", fields: [...differing].sort() });
+    }
+    return changes;
+}
+/** Longest common subsequence of two title lists, as aligned pairs and gaps, in order. Deterministic on ties. */
+function align(a, b) {
+    const n = a.length;
+    const m = b.length;
+    const width = m + 1;
+    const table = new Uint16Array((n + 1) * width);
+    for (let i = n - 1; i >= 0; i -= 1) {
+        for (let j = m - 1; j >= 0; j -= 1) {
+            table[i * width + j] = a[i] === b[j] ? table[(i + 1) * width + j + 1] + 1
+                : Math.max(table[(i + 1) * width + j], table[i * width + j + 1]);
+        }
+    }
+    const out = [];
+    let i = 0;
+    let j = 0;
+    while (i < n && j < m) {
+        if (a[i] === b[j]) {
+            out.push({ kind: "both", i, j });
+            i += 1;
+            j += 1;
+        }
+        else if (table[(i + 1) * width + j] >= table[i * width + j + 1]) {
+            out.push({ kind: "onlyA", i, j });
+            i += 1;
+        }
+        else {
+            out.push({ kind: "onlyB", i, j });
+            j += 1;
+        }
+    }
+    while (i < n) {
+        out.push({ kind: "onlyA", i, j });
+        i += 1;
+    }
+    while (j < m) {
+        out.push({ kind: "onlyB", i, j });
+        j += 1;
+    }
+    return out;
+}
+export function diffRuns(runA, runB) {
+    const totals = { a: totalsOf(runA), b: totalsOf(runB) };
+    if (runA.steps.length > DIFF_LIMITS.maxSteps || runB.steps.length > DIFF_LIMITS.maxSteps) {
+        return {
+            tooLarge: true, fullyAligned: false, items: [], firstIndex: -1, first: null, counts: { same: 0, changed: 0, onlyA: 0, onlyB: 0 },
+            totals, tools: [], contentComparable: false, unverifiedNesting: 0, identical: false,
+        };
+    }
+    const sa = runA.steps;
+    const sb = runB.steps;
+    const factsA = factsByStep(runA);
+    const factsB = factsByStep(runB);
+    const ta = sa.map((s) => factsA.get(s.stepId).signature);
+    const tb = sb.map((s) => factsB.get(s.stepId).signature);
+    // Trim what both runs share at the start and the end, then align only the middle.
+    let prefix = 0;
+    while (prefix < ta.length && prefix < tb.length && ta[prefix] === tb[prefix])
+        prefix += 1;
+    let suffix = 0;
+    while (suffix < ta.length - prefix && suffix < tb.length - prefix && ta[ta.length - 1 - suffix] === tb[tb.length - 1 - suffix])
+        suffix += 1;
+    const midA = ta.slice(prefix, ta.length - suffix);
+    const midB = tb.slice(prefix, tb.length - suffix);
+    const fullyAligned = (midA.length + 1) * (midB.length + 1) <= DIFF_LIMITS.maxAlignCells;
+    const pairs = [];
+    for (let k = 0; k < prefix; k += 1)
+        pairs.push({ kind: "both", i: k, j: k });
+    if (fullyAligned) {
+        for (const p of align(midA, midB))
+            pairs.push({ ...p, i: p.i + prefix, j: p.j + prefix });
+    }
+    else {
+        for (let k = 0; k < midA.length; k += 1)
+            pairs.push({ kind: "onlyA", i: prefix + k, j: prefix });
+        for (let k = 0; k < midB.length; k += 1)
+            pairs.push({ kind: "onlyB", i: prefix + midA.length, j: prefix + k });
+    }
+    for (let k = 0; k < suffix; k += 1)
+        pairs.push({ kind: "both", i: ta.length - suffix + k, j: tb.length - suffix + k });
+    // Where each step sits: the index of its parent step, or -1 for a top-level step. A parent is "the same" when
+    // it is matched to the other run's parent. (Ids are never compared.)
+    const indexA = new Map(sa.map((x, k) => [x.stepId, k]));
+    const indexB = new Map(sb.map((x, k) => [x.stepId, k]));
+    const parentOf = (step, index) => (step.parentStepId === null ? -1 : index.get(step.parentStepId) ?? -1);
+    const partner = new Map();
+    const partnerBack = new Map();
+    for (const p of pairs)
+        if (p.kind === "both") {
+            partner.set(p.i, p.j);
+            partnerBack.set(p.j, p.i);
+        }
+    let unverifiedNesting = 0;
+    const items = pairs.map((p) => {
+        if (p.kind === "onlyA")
+            return { status: "onlyA", a: sa[p.i], b: null, changes: [] };
+        if (p.kind === "onlyB")
+            return { status: "onlyB", a: null, b: sb[p.j], changes: [] };
+        const pa = parentOf(sa[p.i], indexA);
+        const pb = parentOf(sb[p.j], indexB);
+        // When the runs were too different to line up in full, some parents have no partner. The nesting is unknown
+        // only when both parents are real steps and neither has a partner. Every other case is proved: one step top-level
+        // and the other not, or one parent paired with a step that is not the other run's parent.
+        const unresolved = !fullyAligned && pa !== -1 && pb !== -1 && !partner.has(pa) && !partnerBack.has(pb);
+        if (unresolved)
+            unverifiedNesting += 1;
+        const sameParent = unresolved || (pa === -1 ? pb === -1 : partner.get(pa) === pb);
+        const changes = compareSteps(sa[p.i], sb[p.j], factsA.get(sa[p.i].stepId), factsB.get(sb[p.j].stepId), sameParent);
+        return { status: changes.length === 0 ? "same" : "changed", a: sa[p.i], b: sb[p.j], changes };
+    });
+    const counts = { same: 0, changed: 0, onlyA: 0, onlyB: 0 };
+    for (const item of items)
+        counts[item.status] += 1;
+    const firstIndex = items.findIndex((item) => item.status !== "same");
+    // Tool use is counted by the recorded tool name (its fingerprint), never by the display title: titles are cut
+    // short and change with the content mode, so they would merge different tools and split one tool in two.
+    const toolCounts = new Map();
+    const bump = (steps, facts, slot) => {
+        for (const s of steps) {
+            if (s.kind !== "TOOL_CALL")
+                continue;
+            const identity = facts.get(s.stepId).tool;
+            const key = identity === "-" ? `title:${s.title}` : `tool:${identity}`;
+            const entry = toolCounts.get(key) ?? { title: s.title, a: 0, b: 0 };
+            entry[slot] += 1;
+            toolCounts.set(key, entry);
+        }
+    };
+    bump(sa, factsA, "a");
+    bump(sb, factsB, "b");
+    const tools = [...toolCounts.values()].filter((e) => e.a !== e.b)
+        .map((e) => ({ tool: e.title, a: e.a, b: e.b })).sort((p, q) => (p.tool < q.tool ? -1 : p.tool > q.tool ? 1 : p.a - q.a || p.b - q.b));
+    const identical = firstIndex === -1;
+    return {
+        tooLarge: false, fullyAligned, items, firstIndex, first: firstIndex === -1 ? null : items[firstIndex], counts, totals, tools,
+        contentComparable: [...factsA.values(), ...factsB.values()].some((f) => f.content.size > 0 || f.logRecords.length > 0),
+        unverifiedNesting, identical,
+    };
+}

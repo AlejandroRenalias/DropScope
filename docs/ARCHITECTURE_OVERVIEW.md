@@ -68,7 +68,7 @@ DropScope does not promise profitable products or commercial outcomes. It is not
 ```powershell
 npm.cmd run typecheck
 npm.cmd test
-npm.cmd run build
+npm.cmd run build:web
 npm.cmd run test:e2e
 ```
 

@@ -24,7 +24,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
+      - run: npm run build:web
 
   e2e:
     # Browser tests on Linux. Picture comparisons are skipped: their baselines are recorded on Windows only.

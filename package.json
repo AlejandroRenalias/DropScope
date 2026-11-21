@@ -24,7 +24,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "dev": "vite",
-    "build": "vite build",
+    "build:web": "vite build",
     "test:e2e": "playwright test",
     "demo": "tsx src/cli.ts",
     "demo:recovery": "tsx src/recovery-demo.ts",

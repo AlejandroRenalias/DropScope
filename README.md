@@ -89,7 +89,7 @@ Before it turned to agent run forensics, DropScope was a replayable research-wor
 ```bash
 npm run typecheck   # types
 npm test            # unit tests
-npm run build       # production build
+npm run build:web   # production build of the web app
 npm run test:e2e    # browser tests (needs Chrome; the picture baselines are Windows only)
 ```
 

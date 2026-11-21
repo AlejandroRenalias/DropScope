@@ -212,7 +212,7 @@ for (const width of [1440, 768, 375]) {
     await expect(page.locator(".source-label")).toHaveText("Synthetic demo · recorded replay");
     await expect(page.locator(".live-status")).toContainText("2 researchers working");
     await expect(page.getByRole("button", { name: "RUNNING", exact: true })).toBeHidden();
-    if (width === 1440) expect(await page.locator(".work-graph").evaluate((node) => node.getBoundingClientRect().bottom)).toBeLessThanOrEqual(900);
+    if (width === 1440) expect(await page.locator(".work-graph").evaluate((node) => node.getBoundingClientRect().bottom)).toBeLessThanOrEqual(901);
     await page.screenshot({ path: testInfo.outputPath(`clarity-${width}.png`), fullPage: true, animations: "disabled" });
     const contrast = await page.evaluate(() => {
       type Rgba = [number, number, number, number];

@@ -4,6 +4,7 @@
 // - The file is opened once; its identity is compared with the checked path; bytes are counted as they
 //   arrive, whatever size the file system reports.
 // - Where the platform cannot answer a check, the import fails closed (E_PLATFORM).
+// - Windows, Linux and macOS are supported; each has its own PlatformChecks (see below).
 //
 // Known limit: Node cannot read Windows file attributes from an open handle, so the placeholder check is
 // made on the path just before the open. A file swapped in between would be caught by the identity check
@@ -105,24 +106,58 @@ export const windowsChecks: PlatformChecks = {
   },
 };
 
-// ---- POSIX best-effort checks. NOT used by default: there is no way to detect cloud placeholders or to
-// prove the local-file boundary, so the importer refuses to run on other platforms (spec 11.1: fail closed
-// where the platform cannot provide a check). They exist for tests and for an explicit, informed opt-in. ----
-export const posixChecks: PlatformChecks = {
-  name: "posix",
-  fileAttributes: () => null,
-  prepareRunsDirectory(dir, created) {
-    if (created) fs.chmodSync(dir, 0o700);
-    const stat = fs.lstatSync(dir);
-    const uid = typeof process.getuid === "function" ? process.getuid() : stat.uid;
-    if (!stat.isDirectory() || (stat.mode & 0o077) !== 0 || stat.uid !== uid) fail("E_PLATFORM", "RUNS_DIR_NOT_OWNER_ONLY");
-  },
+// ---- POSIX implementation (Linux and macOS) ----
+// - The runs folder is created with mode 0700 and later accepted only if it is a directory owned by the
+//   current user with no group or other access. Run files are created with mode 0600.
+// - Links are refused by the shared path checks (any symbolic link in any component, O_NOFOLLOW on the open).
+// - macOS: a file whose content lives only in iCloud or another File Provider is "dataless" (flag 0x40000000
+//   in the file's BSD flags) and opening it would download it, so it is refused, as is an iCloud stub named
+//   ".name.icloud". Linux has no equivalent placeholder, so it reports no attributes.
+export const SF_DATALESS = 0x40000000;
+const STUB_NAME = /^\..+\.icloud$/i;
+
+export type PosixOptions = {
+  platform: string;
+  // Runs `stat -f %Xf <file>` on macOS and returns its output. Replaceable for tests.
+  statFlags: (file: string) => string;
 };
 
-// Version 1 supports Windows only. Elsewhere the importer fails closed instead of guessing.
+const macStatFlags = (file: string): string =>
+  execFileSync("/usr/bin/stat", ["-f", "%Xf", file], { encoding: "utf8", timeout: 20_000, stdio: ["ignore", "pipe", "ignore"] });
+
+export function makePosixChecks(options: Partial<PosixOptions> = {}): PlatformChecks {
+  const platform = options.platform ?? process.platform;
+  const statFlags = options.statFlags ?? macStatFlags;
+  return {
+    name: platform === "darwin" ? "darwin" : "posix",
+    fileAttributes(file) {
+      if (platform !== "darwin") return null;
+      if (STUB_NAME.test(path.basename(file))) return FILE_ATTRIBUTE_OFFLINE;
+      let text: string;
+      try {
+        text = statFlags(file).trim();
+      } catch {
+        return fail("E_PLATFORM", "ATTRIBUTES_UNREADABLE");
+      }
+      if (!/^[0-9a-f]{1,8}$/i.test(text)) return fail("E_PLATFORM", "ATTRIBUTES_UNREADABLE");
+      return (parseInt(text, 16) & SF_DATALESS) !== 0 ? FILE_ATTRIBUTE_OFFLINE : 0;
+    },
+    prepareRunsDirectory(dir, created) {
+      if (created) fs.chmodSync(dir, 0o700);
+      const stat = fs.lstatSync(dir);
+      const uid = typeof process.getuid === "function" ? process.getuid() : stat.uid;
+      if (!stat.isDirectory() || (stat.mode & 0o077) !== 0 || stat.uid !== uid) fail("E_PLATFORM", "RUNS_DIR_NOT_OWNER_ONLY");
+    },
+  };
+}
+
+export const posixChecks: PlatformChecks = makePosixChecks();
+
+// Windows, Linux and macOS are supported. Elsewhere the importer fails closed instead of guessing.
 export function defaultChecks(): PlatformChecks {
-  if (process.platform !== "win32") return fail("E_PLATFORM", "UNSUPPORTED_PLATFORM");
-  return windowsChecks;
+  if (process.platform === "win32") return windowsChecks;
+  if (process.platform === "linux" || process.platform === "darwin") return makePosixChecks({ platform: process.platform });
+  return fail("E_PLATFORM", "UNSUPPORTED_PLATFORM");
 }
 
 // ---- path rules ----
@@ -227,17 +262,22 @@ export function readInputFile(file: string, maxBytes: number, checks: PlatformCh
 }
 
 // ---- the runs directory ----
+// Windows: %LOCALAPPDATA%/DropScope/runs. macOS: ~/Library/Application Support/DropScope/runs.
+// Linux and others: $XDG_DATA_HOME/dropscope/runs (only an absolute value counts), else ~/.local/share/dropscope/runs.
 export function defaultRunsDirectory(): string {
   if (process.platform === "win32") {
     const base = process.env.LOCALAPPDATA;
     if (!base) return fail("E_PLATFORM", "LOCALAPPDATA_UNSET");
     return path.join(base, "DropScope", "runs");
   }
-  return path.join(process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share"), "dropscope", "runs");
+  if (process.platform === "darwin") return path.join(os.homedir(), "Library", "Application Support", "DropScope", "runs");
+  const xdg = process.env.XDG_DATA_HOME;
+  return path.join(xdg && path.isAbsolute(xdg) ? xdg : path.join(os.homedir(), ".local", "share"), "dropscope", "runs");
 }
 
 // ADR-027: warn if the runs folder is under a cloud-synced root, because run files would then be uploaded.
-const SYNCED_SEGMENT = /^(onedrive(?: - .*)?|onedrive-.*|dropbox(?: .*)?|google drive|googledrive|icloud drive|iclouddrive|box|box sync|mega|pcloud drive|sync)$/i;
+// macOS keeps iCloud under "Mobile Documents" and File Provider apps (Dropbox, OneDrive, Google Drive) under "CloudStorage".
+const SYNCED_SEGMENT = /^(onedrive(?: - .*)?|onedrive-.*|dropbox(?: .*)?|google drive|googledrive|googledrive-.*|icloud drive|iclouddrive|mobile documents|com~apple~clouddocs|cloudstorage|box|box sync|mega|pcloud drive|nextcloud|owncloud|sync)$/i;
 export function syncedRootWarning(dir: string): string | null {
   const resolved = path.resolve(dir);
   const lower = resolved.toLowerCase();
@@ -252,7 +292,7 @@ export function syncedRootWarning(dir: string): string | null {
 export function ensureRunsDirectory(dir: string, checks: PlatformChecks = defaultChecks()): string {
   const resolved = safeResolve(dir, true);
   const existed = fs.existsSync(resolved);
-  if (!existed) fs.mkdirSync(resolved, { recursive: true });
+  if (!existed) fs.mkdirSync(resolved, { recursive: true, mode: 0o700 });
   // A freshly made tree must not contain links either.
   safeResolve(resolved);
   const stat = fs.lstatSync(resolved);

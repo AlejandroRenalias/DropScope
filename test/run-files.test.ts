@@ -117,13 +117,8 @@ describe("readInputFile", () => {
 });
 
 describe("ensureRunsDirectory", () => {
-  // Version 1 supports Windows only, so defaultChecks() refuses elsewhere (tested below). These tests exercise the
-  // directory logic with the platform's own checks, which on other systems are the explicit POSIX ones.
+  // These tests exercise the directory logic with the platform's own checks.
   const platformChecks = windows ? windowsChecks : posixChecks;
-
-  it.skipIf(windows)("refuses to run by default on a platform other than Windows", () => {
-    expect(codeOf(() => defaultChecks())).toBe("E_PLATFORM:UNSUPPORTED_PLATFORM");
-  });
 
   it("creates a directory, accepts it again, and rejects a file in its place", () => {
     const dir = path.join(root, "a", "b", "runs");

@@ -6,7 +6,7 @@ Nothing it does makes a model call or a network request. Every answer is compute
 
 ![Animation of the Replay screen: the timeline slider moves from event 1 to event 22, where a failed refund shows as a red bar, the "Step failed" panel explains the failure, and comparing with the demo variant highlights the first difference between the two runs.](docs/images/replay-demo.gif)
 
-> **Status.** Windows only for now: the import and file commands refuse other systems. Every run shown in this repository is invented demo data. Real traces are kept out until a real access boundary exists (see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). There is no release, package or hosted service yet.
+> **Status.** Runs on Windows, Linux and macOS (the Linux and macOS file checks are newer and less tested). The browser screen needs no particular system. Every run shown in this repository is invented demo data. Real traces are kept out until a real access boundary exists (see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). There is no release, package or hosted service yet.
 
 ## A small example
 
@@ -66,8 +66,17 @@ The command prints where the run file was saved. See the [run event contract](do
 
 ## Where files go, and what runs on your computer
 
-- Run files are saved to `%LOCALAPPDATA%\DropScope\runs`, outside the repository. The importer creates that folder with access for your account and for the Windows SYSTEM account (Administrators are also accepted when it checks the folder later), and it stops if it cannot check that. Permissions are set only when the folder is first created.
-- To do that on Windows, the commands call built-in Windows tools: PowerShell (to read file properties, once per file read, by every command) and `icacls` (to set folder permissions, by `import` when it creates the folder). Nothing else is started and no command makes a network connection of its own. Network paths (`\\server\share`) are refused before the file system is touched; a file on a mapped network drive letter is refused only after Windows has looked at it.
+- Run files are saved outside the repository, in a folder only your account can use:
+
+  | System | Default folder |
+  | --- | --- |
+  | Windows | `%LOCALAPPDATA%\DropScope\runs` |
+  | macOS | `~/Library/Application Support/DropScope/runs` |
+  | Linux | `$XDG_DATA_HOME/dropscope/runs`, or `~/.local/share/dropscope/runs` |
+
+  The importer creates the folder with owner-only access (Windows: your account and SYSTEM; macOS and Linux: mode 0700, files 0600) and stops if it cannot check that. Permissions are set only when the folder is first created. It warns when the folder lies under a synced location such as OneDrive, Dropbox or iCloud.
+- Input files must be plain local files: symbolic links are refused, and so are cloud placeholders (files that are not stored on this computer yet). Windows also refuses network paths.
+- To check files on Windows, the commands call built-in Windows tools: PowerShell (to read file properties, once per file read) and `icacls` (to set folder permissions when `import` creates the folder). On macOS they call `stat` to read file flags. Nothing else is started and no command makes a network connection of its own.
 - The browser screen reads a run file with a file picker, inside the browser. Nothing is uploaded.
 - Please keep real agent traces out until the boundary in [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md) exists. A tool-level rule that blocks reads of the runs folder is only a precaution: it can be bypassed, so it cannot be a real boundary on its own.
 
@@ -81,7 +90,7 @@ Before it turned to agent run forensics, DropScope was a replayable research-wor
 npm run typecheck   # types
 npm test            # unit tests
 npm run build       # production build
-npm run test:e2e    # browser tests (needs Chrome; Windows picture baselines)
+npm run test:e2e    # browser tests (needs Chrome; the picture baselines are Windows only)
 ```
 
 ## Where to read more

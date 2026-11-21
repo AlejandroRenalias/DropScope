@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Phase 5.1 with the user's approval. This decision adds no external research capability.
+Accepted. This decision adds no external research capability.
 
 ## Decision
 

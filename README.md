@@ -58,7 +58,7 @@ On Windows PowerShell, `npm.cmd` works in place of `npm` if script policies get 
 - Run files are saved to `%LOCALAPPDATA%\DropScope\runs`, outside the repository. The importer creates that folder with access for your account and for the Windows SYSTEM account (Administrators are also accepted when it checks the folder later), and it stops if it cannot check that. Permissions are set only when the folder is first created.
 - To do that on Windows, the commands call built-in Windows tools: PowerShell (to read file properties, once per file read, by every command) and `icacls` (to set folder permissions, by `import` when it creates the folder). Nothing else is started and no command makes a network connection of its own. Network paths (`\\server\share`) are refused before the file system is touched; a file on a mapped network drive letter is refused only after Windows has looked at it.
 - The browser screen reads a run file with a file picker, inside the browser. Nothing is uploaded.
-- Please keep real agent traces out until the boundary in [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md) exists. The repository's Claude Code settings deny reading the runs folder, but that is only a precaution: it can be bypassed and it does not cover other tools, so it cannot be a real boundary on its own.
+- Please keep real agent traces out until the boundary in [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md) exists. A tool-level rule that blocks reads of the runs folder is only a precaution: it can be bypassed, so it cannot be a real boundary on its own.
 
 ## The original mission replay
 
@@ -73,12 +73,9 @@ npm run build       # production build
 npm run test:e2e    # browser tests (needs Chrome; Windows picture baselines)
 ```
 
-Risky changes in this project (saved files, budget arithmetic, state rebuilding, anything reading untrusted input) are reviewed by an independent reviewer before they are merged. The review reports and the build log are in [docs/development](docs/development): start with [PROGRESS.md](docs/development/PROGRESS.md).
-
 ## Where to read more
 
 - [Guided tour](docs/GUIDED_TOUR.md): ten minutes with the demos.
-- [Proposal for agent run forensics](docs/development/PROPOSAL_AGENT_RUN_FORENSICS.md) and the [roadmap](docs/development/ROADMAP.md): what it is for and how it was planned.
 - [Run event contract](docs/schemas/run-event-contract-v1.md) and [ADR-027](docs/adr/ADR-027-run-event-contract-and-trace-import-boundary.md): how a run file is built and checked.
 - [Limitations and responsible use](docs/LIMITATIONS_AND_RESPONSIBLE_USE.md).
 

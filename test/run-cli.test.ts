@@ -6,7 +6,7 @@ import { escapeForTerminal, runCli } from "../src/run-cli.js";
 import type { PlatformChecks } from "../src/run-files.js";
 
 const fake: PlatformChecks = { name: "fake", fileAttributes: () => 0, prepareRunsDirectory: () => {} };
-const spikeDir = new URL("../docs/development/spike-2026-10-13/traces/", import.meta.url);
+const otlpDir = new URL("./fixtures/otlp/", import.meta.url);
 let root: string;
 let runs: string;
 let counter = 0;
@@ -14,7 +14,7 @@ let counter = 0;
 beforeAll(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "dropscope-cli-"));
   // Copy the real traces out of the repository so the test does not depend on where the repository lives.
-  for (const name of ["trace-a.json", "trace-d.json", "trace-d.logs.json"]) fs.copyFileSync(new URL(name, spikeDir), path.join(root, name));
+  for (const name of ["trace-a.json", "trace-d.json", "trace-d.logs.json"]) fs.copyFileSync(new URL(name, otlpDir), path.join(root, name));
 });
 afterAll(() => { fs.rmSync(root, { recursive: true, force: true }); });
 

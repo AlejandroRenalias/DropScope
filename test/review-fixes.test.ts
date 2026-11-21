@@ -1,4 +1,4 @@
-// Regression tests for the findings of the independent review of commit 110e4bc (Codex gpt-6.1-sol).
+// Regression tests for the findings of an independent code review.
 // Each test fails on the reviewed code and passes now.
 import fs from "node:fs";
 import os from "node:os";
@@ -422,8 +422,8 @@ describe("round 2, finding 1: a shared resource is not expanded once per scope",
 });
 
 describe("round 2, finding 2: output accounting counts complete persisted lines", () => {
-  const spikeDir = new URL("../docs/development/spike-2026-10-13/traces/", import.meta.url);
-  const read = (name: string) => new Uint8Array(readFileSync(new URL(name, spikeDir)));
+  const otlpDir = new URL("./fixtures/otlp/", import.meta.url);
+  const read = (name: string) => new Uint8Array(readFileSync(new URL(name, otlpDir)));
   const shapes: Array<[string, () => Parameters<typeof importTraceBytes>[0]]> = [
     ["spike trace a", () => ({ spans: read("trace-a.json") })],
     ["spike trace d with logs", () => ({ spans: read("trace-d.json"), logs: read("trace-d.logs.json") })],

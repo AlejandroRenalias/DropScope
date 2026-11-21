@@ -2,16 +2,15 @@
 
 **Status:** Frozen review baseline, pre-implementation  
 **Date:** 2026-08-28  
-**Supersedes:** `DROPSCOPE_FINAL_PROJECT_PLAN.md`  
 **Next implementation artifact:** A failing test for Milestone 1A.0  
 
 ## 1. Executive summary
 
 DropScope is a local, multi-agent dropshipping research laboratory presented as a friendly illustrated research office. A commander agent receives a mission, decomposes it into bounded tasks, coordinates specialist agents, moderates disagreements, controls usage, and responds to an independent review process.
 
-The first product goal is to help a beginner learn markets, identify customer problems, observe trend and advertising-saturation signals, expose failure modes, and decide what deserves further investigation. DropScope does not promise “winning products,” predict commercial success, or take business actions.
+The first product goal is to help a newcomer learn markets, identify customer problems, observe trend and advertising-saturation signals, expose failure modes, and decide what deserves further investigation. DropScope does not promise “winning products,” predict commercial success, or take business actions.
 
-The first engineering goal is to learn agent orchestration. Milestone 1A therefore uses deterministic simulated agents and synthetic evidence. It proves scheduling, concurrency, budgets, evidence handling, review, recovery, and replay before real models or live web research are introduced.
+The first engineering goal is to explore agent orchestration. Milestone 1A therefore uses deterministic simulated agents and synthetic evidence. It proves scheduling, concurrency, budgets, evidence handling, review, recovery, and replay before real models or live web research are introduced.
 
 This baseline freezes the following load-bearing decisions:
 
@@ -61,15 +60,13 @@ It does not determine:
 - Produce a professional report and a complete mission replay.
 - Run locally before any hosted runtime is considered.
 
-### 3.2 Learning goals
+### 3.2 Engineering goals
 
-- Learn the difference between a model, an agent, and an orchestration engine.
-- Learn deterministic control around nondeterministic workers.
-- Learn dependency graphs and real concurrency.
-- Learn state reduction, event history, and crash recovery.
-- Learn cost and usage controls.
-- Learn evidence provenance and independent review.
-- Learn Git, tests, databases, APIs, and local web development through a working project.
+- Deterministic control around nondeterministic workers.
+- Dependency graphs and real concurrency.
+- State reduction, event history, and crash recovery.
+- Cost and usage controls.
+- Evidence provenance and independent review.
 
 ### 3.3 Non-goals
 
@@ -540,7 +537,7 @@ Focused tests cover maximum revisions reached and a declined budget increase. Th
 
 Fixture D is authored only after A, B, C, engine behavior, thresholds, commander policy, and reviewer rubric are frozen. It is not used during design or tuning.
 
-If D requires policy or orchestration changes, generalization was weaker than the original suite suggested. The result, including failure, remains a public learning artifact.
+If D requires policy or orchestration changes, generalization was weaker than the original suite suggested. The result, including failure, is published.
 
 ## 21. Technical architecture
 
@@ -576,9 +573,9 @@ The orchestration engine imports no UI or model-provider code.
 - Playwright for interface acceptance tests
 - JSONL as authoritative mission history
 - Optional SQLite projections for 1B queries
-- Codex SDK adapter explored in Milestone 2
+- A local worker adapter explored in Milestone 2
 
-No generated code may merge without a test the user wrote or can independently verify failing before the change and passing afterward.
+No change merges without a test that fails before the change and passes afterward.
 
 ## 22. Milestone 1A vertical slices
 
@@ -733,13 +730,7 @@ Synthetic fixtures validate orchestration behavior, not commerce predictions. La
 
 DropScope evaluates evidence handling and investigation priority. It must not be trusted as a reason to spend money without separate customer research, supplier samples, compliance review, and controlled validation.
 
-## 27. Development process using agents
-
-Development may use a primary coding agent as implementation commander and bounded subagents for independent tasks such as contract review, fixture design, scheduler tests, or interface work. Parallel implementation is permitted only when ownership and dependencies are clear. All work is integrated through the shared acceptance suite and an independent review pass.
-
-The user participates at milestone demonstrations and any decision that changes scope, permissions, cost, public behavior, or frozen policies.
-
-## 28. Baseline artifacts
+## 27. Baseline artifacts
 
 Architecture Baseline v1 consists of:
 
@@ -751,10 +742,7 @@ Architecture Baseline v1 consists of:
 - [`../state-machines.md`](../state-machines.md)
 - [`../adr/ADR-009-typescript-primary-language.md`](../adr/ADR-009-typescript-primary-language.md)
 - [`../adr/ADR-010-charge-interrupted-attempts.md`](../adr/ADR-010-charge-interrupted-attempts.md)
-- [`FREEZE_CHECKLIST.md`](FREEZE_CHECKLIST.md)
 
-## 29. Freeze rule
+## 28. Freeze rule
 
-The architecture is frozen when the baseline checklist passes. Future changes to load-bearing semantics require a superseding ADR. Fixture outcomes may not be used to tune thresholds or reviewer weights.
-
-After freeze, review stops. The next artifact is a failing test for 1A.0, followed by the smallest implementation that makes it pass.
+Future changes to load-bearing semantics require a superseding ADR. Fixture outcomes may not be used to tune thresholds or reviewer weights.

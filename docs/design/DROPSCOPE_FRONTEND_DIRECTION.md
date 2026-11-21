@@ -1,6 +1,6 @@
 # DropScope Frontend Direction
 
-Status: approved by the owner on 2026-10-13. This replaces the earlier illustrated pixel-office direction (see git history for the retired version). It governs presentation only; product architecture, policies and the engine are unchanged.
+Status: current direction (2026-10-13). It replaces the earlier illustrated pixel-office direction. It governs presentation only; product architecture, policies and the engine are unchanged.
 
 ## 1. Direction
 
@@ -77,6 +77,6 @@ The other five screens (Agent Desk, Tribunal Room, Review Office, Final Report, 
 
 ## 7. Process
 
-- Visual snapshots are regenerated only after the image diffs are reviewed with the owner.
+- Visual snapshots are regenerated only after the image diffs are reviewed.
 - No product-policy, engine or contract changes.
 - Anything not specified here follows the principles above.

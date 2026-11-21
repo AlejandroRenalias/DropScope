@@ -110,7 +110,7 @@ describe("privacy: HASH_ONLY keeps no content", () => {
   });
 
   it("classifies the real spike trace with content, leaving no prompt text in the output", () => {
-    const file = readFileSync(new URL("../docs/development/spike-2026-10-13/traces/trace-a.json", import.meta.url));
+    const file = readFileSync(new URL("./fixtures/otlp/trace-a.json", import.meta.url));
     const original = JSON.parse(file.toString("utf8")) as { resourceSpans: Array<{ scopeSpans: Array<{ spans: Array<{ attributes: Array<{ key: string; value: { stringValue?: string } }> }> }> }> };
     const texts: string[] = [];
     for (const r of original.resourceSpans) for (const s of r.scopeSpans) for (const sp of s.spans) for (const a of sp.attributes ?? []) {
@@ -255,7 +255,7 @@ describe("worst-case inputs", () => {
 });
 
 describe("real spike traces end to end", () => {
-  const dir = new URL("../docs/development/spike-2026-10-13/traces/", import.meta.url);
+  const dir = new URL("./fixtures/otlp/", import.meta.url);
   const read = (name: string) => new Uint8Array(readFileSync(new URL(name, dir)));
 
   it.each([["trace-a.json", undefined], ["trace-b.json", undefined], ["trace-c.json", undefined], ["trace-d.json", "trace-d.logs.json"]])(

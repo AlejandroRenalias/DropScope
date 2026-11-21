@@ -101,7 +101,7 @@ describe("valid histories", () => {
 });
 
 describe("real spike traces: totals match the stub server's own tally", () => {
-  const dir = new URL("../docs/development/spike-2026-10-13/traces/", import.meta.url);
+  const dir = new URL("./fixtures/otlp/", import.meta.url);
   it.each(["trace-a", "trace-b", "trace-c", "trace-d"])("%s", (name) => {
     const truth = JSON.parse(readFileSync(new URL(`${name}.json.truth`, dir), "utf8")) as { promptTokens: number; completionTokens: number };
     const events = importTraceBytes({ spans: new Uint8Array(readFileSync(new URL(`${name}.json`, dir))) });

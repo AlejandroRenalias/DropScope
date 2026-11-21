@@ -1,6 +1,6 @@
 # ADR-027: Run-event contract and trace import boundary
 
-**Status:** Accepted by the user on 2026-10-13 (revision 3). Implementation may proceed; the implementation (importer, reducer, persistence) needs independent review under `AGENTS.md`. No further review of the ADR text is planned.  
+**Status:** Accepted, 2026-10-13 (revision 3).  
 **Date:** 2026-10-13  
 **Extends:** the frozen architecture baseline v1 (section 18 event persistence, section 21 runtime boundaries) with a second event family. It differs from baseline section 18 and `docs/schemas/contracts.md` only where listed under "Deliberate differences". It supersedes no ADR.  
 **Companion spec:** [`docs/schemas/run-event-contract-v1.md`](../schemas/run-event-contract-v1.md) holds the normative details (grammar, ordering algorithm, payload tables, privacy classification, limits, file rules). This ADR holds the decisions and the rules that must always hold. If they ever disagree, this ADR wins and the spec is corrected.
@@ -9,7 +9,7 @@ ADR-026 is reserved for the product-direction decision and is not drafted. This 
 
 ## Context
 
-The mission contract (`MissionEvent`) is a closed, mission-specific union reduced by a pure reducer. Records of agent runs produced elsewhere (for example OpenTelemetry GenAI traces) are not missions. An exploratory spike (unreviewed evidence in `docs/development/spike-2026-10-13/`, not product code) imported four synthetic OTLP/JSON traces. Two independent reviews of earlier revisions rejected them for underspecification (ordering, privacy, input handling, persistence, identity). Revision 3 fixes the defects found and moves detail into the spec so that it can later become tested code.
+The mission contract (`MissionEvent`) is a closed, mission-specific union reduced by a pure reducer. Records of agent runs produced elsewhere (for example OpenTelemetry GenAI traces) are not missions. An exploratory spike imported four synthetic OTLP/JSON traces (now kept as test fixtures in `test/fixtures/otlp/`). Earlier revisions of this ADR were found underspecified (ordering, privacy, input handling, persistence, identity). Revision 3 fixes those defects and moves detail into the spec so that it can become tested code.
 
 ## Decisions
 
@@ -40,7 +40,7 @@ Budget policy, claim verification and run comparison (each needs its own contrac
 
 ## Consequences
 
-A second event family and reducer to maintain, kept separate so mission behavior cannot regress. New code is confined to run-event schemas, an importer, a reducer, a CLI entry and tests, with the spec becoming schemas and golden tests. The upstream conventions are in Development status and may change; the adapter pins a version and records it. The implementation is review-required under `AGENTS.md` (persistence, state transitions, security-sensitive input handling, architecture), and the agent-permission change in decision 9 needs its own review and approval.
+A second event family and reducer to maintain, kept separate so mission behavior cannot regress. New code is confined to run-event schemas, an importer, a reducer, a CLI entry and tests, with the spec becoming schemas and golden tests. The upstream conventions are in Development status and may change; the adapter pins a version and records it. The implementation touches persistence, state transitions and security-sensitive input handling, so it needs careful review.
 
 ## Open questions
 

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 
 // The visual baseline of the run replay screen. Kept in its own file so the baseline can be reviewed and
-// approved before it is committed; never regenerate it just to get a green run (see CLAUDE.md).
+// approved before it is committed; never regenerate it just to get a green run.
 let viteServer: ViteDevServer;
 
 test.beforeAll(async () => {

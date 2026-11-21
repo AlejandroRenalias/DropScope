@@ -18,4 +18,3 @@ service-account*.json
 *.key
 *.p12
 *.pfx
-.claude/settings.local.json

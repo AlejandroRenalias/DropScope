@@ -5,7 +5,7 @@
 
 ## Context
 
-DropScope needs one set of contracts across a local CLI, orchestration engine, runtime adapters, tests, and a later browser interface. The user is learning through agent-assisted implementation and does not currently read a programming language fluently.
+DropScope needs one set of contracts across a local CLI, orchestration engine, runtime adapters, tests, and a later browser interface.
 
 The engine also needs genuine asynchronous scheduling and runtime validation of simulated and later model-generated messages.
 
@@ -21,21 +21,19 @@ Use Zod at every external or persistence boundary because TypeScript types do no
 - Suitable asynchronous programming model
 - Strong editor and coding-agent support
 - Direct fit with the planned local web interface
-- Direct path to a future Codex SDK adapter
-- Deliberate opportunity to learn typed contracts through a real project
+- Direct path to a future local worker adapter
+- Typed contracts that document the system's behavior
 
 ## Tradeoffs
 
-- The user will initially rely heavily on coding-agent assistance.
-- Reviewing generated implementation detail is harder without language fluency.
 - TypeScript can create false confidence if runtime input is not validated.
-- The first walking skeleton may take longer than a language already familiar to the user.
+- The first walking skeleton may take longer than in a language the maintainers already use daily.
 
 ## Required mitigation
 
-No generated code may merge without a test the user wrote or can independently verify failing before the change and passing afterward.
+No change merges without a test that fails before the change and passes afterward.
 
-The learning unit is therefore observable behavior and a testable contract, not approval of code the user cannot yet read confidently. Explanations should connect each code change to the contract, event, state transition, or acceptance criterion it implements.
+The unit of review is observable behavior and a testable contract. Each change should connect to the contract, event, state transition, or acceptance criterion it implements.
 
 ## Consequences
 

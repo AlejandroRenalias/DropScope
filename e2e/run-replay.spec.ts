@@ -309,6 +309,24 @@ test("keeps the scrub bar in view while scrolling, and the jump list leads to ea
 test("keeps the product name and the legacy link in the top bar at 390 px", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(".brand-name")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Mission simulator (legacy)" })).toBeVisible();
+  const legacy = page.getByRole("link", { name: "Legacy simulator" });
+  await expect(legacy).toBeVisible();
+  const [brand, link] = await Promise.all([page.locator(".brand").boundingBox(), legacy.boundingBox()]);
+  expect(brand && link && link.x >= brand.x + brand.width + 8).toBe(true);
+  expect(link && link.height < 44).toBe(true);
   expect(await noOverflow(page)).toBe(true);
 });
+
+for (const width of [1440, 1280, 768, 390]) {
+  test(`the budget marker legend sits below the tick numbers at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const replay = await openRunReplay(page);
+    const legend = replay.locator(".rr-breach-legend");
+    await expect(legend).toBeVisible();
+    const numbers = await replay.locator(".rr-ticks .tick .num").evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().bottom));
+    expect(numbers.length).toBeGreaterThan(0);
+    const legendTop = (await legend.boundingBox())!.y;
+    expect(legendTop).toBeGreaterThanOrEqual(Math.max(...numbers));
+    expect(await noOverflow(page)).toBe(true);
+  });
+}

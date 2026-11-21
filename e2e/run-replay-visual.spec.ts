@@ -25,6 +25,8 @@ test("captures the run replay surface", async ({ page }) => {
   await replay.getByLabel("Timeline position").fill("22");
   await expect(replay.getByRole("heading", { name: "Step failed" })).toBeVisible();
   await expect(replay).toHaveScreenshot("run-replay.png", { animations: "disabled" });
+  // The timeline with the budget marker legend: the legend must not touch the tick numbers.
+  await expect(replay.locator("#rr-timeline")).toHaveScreenshot("timeline-legend.png", { animations: "disabled" });
 });
 
 test("captures the budget replay panel with a result", async ({ page }) => {

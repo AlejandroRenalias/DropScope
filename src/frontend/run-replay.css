@@ -230,13 +230,21 @@
   .runs-app { --pin-top: 57px; }
   .runs-app .topbar .brand .brand-name { display: inline; font-size: 17px; }
   .runs-app .topbar .runs-nav { display: none; }
+  .legacy-link { white-space: nowrap; }
+  .runs-app .legacy-link .long { display: none; }
+  .runs-app .legacy-link .short { display: inline; }
   .runs-app .topbar-spacer { display: block; flex: 1; }
   .rr-dock { grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; padding: 8px 14px; }
   .rr-dock .replay-position { grid-row: 1; }
   .rr-dock .scrubber { grid-column: 2; grid-row: 1; }
   .rr-dock-title { grid-column: 1 / -1; grid-row: 2; font-size: 13px; }
+  .rr-ticks { margin-bottom: 0; }
   .rr-jump { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
   .rr-jump a, .rr-jump span { flex: none; }
 }
-.rr-breach-legend { margin: 28px 0 0; }
+/* The tick numbers hang below the ticks; reserve their row so the legend never overlaps them. */
+.rr-ticks { margin-bottom: 30px; }
+.rr-breach-legend { margin: 0 0 4px; }
 .run-replay .quiet-button, .run-replay .cc-file-button, .run-source-card .quiet-button { min-height: 38px; padding: 7px 14px; font-size: 14px; }
+
+.legacy-link .short { display: none; }

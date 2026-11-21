@@ -1,12 +1,12 @@
 # DropScope
 
-DropScope is a local, offline tool for looking back at a recorded AI agent run. You give it a trace that an agent run left behind, and it can show you what the run had recorded at any step, whether a spending limit would have stopped it, whether a claim is backed by what the run captured, and where two runs first differ.
+Replay a recorded AI agent run, offline. DropScope shows what the run had recorded at any step, whether a spending limit would have stopped it, whether a claim is backed by the recording, and where two runs first differ.
 
-None of these features makes a model call or a network request. Everything is computed from a file on your computer, in the same way every time, so someone else can check your answer.
+Nothing it does makes a model call or a network request. Every answer is computed from a file on your computer, the same way every time, so someone else can check it. It is not a tracing dashboard such as Langfuse or Arize Phoenix: it answers questions about a run that has already finished.
 
 ![Animation of the Replay screen: the timeline slider moves from event 1 to event 22, where a failed refund shows as a red bar, the "Step failed" panel explains the failure, and comparing with the demo variant highlights the first difference between the two runs.](docs/images/replay-demo.gif)
 
-> **Status.** DropScope runs on Windows only for now (every command refuses other systems). Every run shown in this repository is invented demo data. Real traces are deliberately kept out until a real access boundary exists: see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md). There is no release, package or hosted service.
+> **Status.** Windows only for now: the import and file commands refuse other systems. Every run shown in this repository is invented demo data. Real traces are kept out until a real access boundary exists (see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). There is no release, package or hosted service yet.
 
 ## A small example
 
@@ -32,18 +32,18 @@ With DropScope you can ask:
 
 The screens are on the **Replay** page: open it, then choose **Imported agent run**.
 
-## Try it 
+## Try it
 
-You need Node.js 24 and npm. From the repository root:
+You need Node.js 24 and npm.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the address Vite prints (normally `http://localhost:5173`), choose **Mission Replay** in the top bar, then **Imported agent run**. A demo run loads at once. For a step-by-step walkthrough with exact buttons and commands, see the [guided tour](docs/GUIDED_TOUR.md).
+Open the address Vite prints (normally `http://localhost:5173`), choose **Mission Replay** in the top bar, then **Imported agent run**. A demo run loads at once. The [guided tour](docs/GUIDED_TOUR.md) walks through each screen with exact buttons and commands.
 
-You can also use the command line on the demo files that come with the repository:
+The same checks work from the command line on the demo files in the repository:
 
 ```bash
 npm run forensics -- state src/frontend/assets/demo-run.runlog.jsonl --at 24
@@ -52,6 +52,17 @@ npm run forensics -- diff src/frontend/assets/demo-run-full.runlog.jsonl src/fro
 ```
 
 On Windows PowerShell, `npm.cmd` works in place of `npm` if script policies get in the way.
+
+## Use your own trace
+
+DropScope reads OTLP/JSON files that follow the OpenTelemetry GenAI conventions. Import one, then run any check on the saved run file:
+
+```bash
+npm run forensics -- import my-trace.json            # content is replaced by sizes and fingerprints
+npm run forensics -- import my-trace.json --full     # keep content, needed for claim checks
+```
+
+The command prints where the run file was saved. See the [run event contract](docs/schemas/run-event-contract-v1.md) for what is kept and what is dropped. Read the note below on real traces first.
 
 ## Where files go, and what runs on your computer
 

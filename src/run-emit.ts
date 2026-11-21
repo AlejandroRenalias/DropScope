@@ -15,7 +15,21 @@ import type { ImportNoteDraft, NormalLog, NormalSpan, NormalizedRun } from "./tr
 import type { ParsedAttribute, ParsedContext } from "./otlp-structure.js";
 import { ImportError } from "./run-import-error.js";
 import { MAX_OUTPUT_EVENTS, MAX_RUN_LOG_BYTES } from "./run-limits.js";
-import { ALLOWLIST, KNOWN_CONTENT_KEYS, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
+import {
+  ALL_USAGE_KEYS,
+  ALLOWLIST,
+  KIND_SOURCE_KEYS,
+  KNOWN_CONTENT_KEYS,
+  MODEL_KEYS,
+  SCHEMA_URL,
+  SCOPE_NAME,
+  SCOPE_VERSION,
+  USAGE_INPUT_KEYS,
+  USAGE_OUTPUT_KEYS,
+  deriveLabel,
+  kindFromValue,
+  type KindSourceKey,
+} from "./run-privacy.js";
 import {
   runEventListSchema,
   RUN_EVENT_SCHEMA_VERSION,
@@ -26,7 +40,7 @@ import {
   type TaggedValue,
 } from "./run-events.js";
 
-export const IMPORTER = { id: "dropscope-otlp-json", version: "4" } as const;
+export const IMPORTER = { id: "dropscope-otlp-json", version: "5" } as const;
 export const DEFAULT_CONVENTION_VERSION = "1.37.0";
 export const LIMITS_VERSION = "1-provisional";
 export { MAX_OUTPUT_EVENTS, MAX_RUN_LOG_BYTES };
@@ -47,15 +61,30 @@ export type EmitOptions = {
   conventionVersion?: string;
 };
 
-const KIND_OF_OPERATION = new Map<string, StepKind>([
-  ["chat", "LLM_CALL"],
-  ["text_completion", "LLM_CALL"],
-  ["generate_content", "LLM_CALL"],
-  ["embeddings", "LLM_CALL"],
-  ["execute_tool", "TOOL_CALL"],
-  ["invoke_agent", "AGENT"],
-  ["create_agent", "AGENT"],
-]);
+// Contract v1.1, section 5: the kind of a step. The standard operation name decides when it is present, even when it is not
+// a name the importer maps (the step is then OTHER, with a note). Without an operation name, the first other known key
+// that is present and maps to a kind decides. The key that decided is recorded in the step.
+function kindOfSpan(attrs: ParsedAttribute[]): { kind: StepKind; source: KindSourceKey | null; unrecognized: boolean } {
+  const operation = attr(attrs, "gen_ai.operation.name");
+  if (operation !== undefined) {
+    const mapped = operation.t === "s" ? kindFromValue("gen_ai.operation.name", operation.v) : null;
+    return mapped === null
+      ? { kind: "OTHER", source: null, unrecognized: true }
+      : { kind: mapped, source: "gen_ai.operation.name", unrecognized: false };
+  }
+  for (const key of KIND_SOURCE_KEYS.slice(1)) {
+    const value = attr(attrs, key);
+    const mapped = value !== undefined && value.t === "s" ? kindFromValue(key, value.v) : null;
+    if (mapped !== null && mapped !== "OTHER") return { kind: mapped, source: key, unrecognized: false };
+  }
+  return { kind: "OTHER", source: null, unrecognized: false };
+}
+
+// The first key of the list that is present decides the metric, even when its value is unusable.
+function usageOf(attrs: ParsedAttribute[], keys: readonly string[]) {
+  const key = keys.find((k) => attrs.some((a) => a.key === k));
+  return key === undefined ? { key: null, value: null, unusable: false } : { key, ...usageValue(attrs, key) };
+}
 
 // ---- secret and personal-data scanner (spec 6.6): bounded patterns, counts only ----
 const SCANNERS: Array<[string, RegExp]> = [
@@ -254,7 +283,7 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
           value: em.field(a.value, false),
         });
     }
-    const usageAttrs = log.attributes.filter((a) => a.key === "gen_ai.usage.input_tokens" || a.key === "gen_ai.usage.output_tokens").length;
+    const usageAttrs = log.attributes.filter((a) => ALL_USAGE_KEYS.has(a.key)).length;
     if (usageAttrs > 0) addNote("USAGE_NOT_SUMMED", log.stepId, { count: usageAttrs, scope: "log" });
     if (log.unknownCount > 0) addNote("UNKNOWN_FIELD", null, { logOrdinal: ordinal, count: log.unknownCount });
     if (log.stepId === null) addNote("ORPHAN_LOG_RECORD", null, { logOrdinal: ordinal });
@@ -307,14 +336,12 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
   const steps = new Map<string, StepBundle>();
   for (const span of run.spans) {
     const operation = attr(span.attributes, "gen_ai.operation.name");
-    const operationText = operation !== undefined && operation.t === "s" ? operation.v : null;
-    const kind: StepKind = operationText !== null ? (KIND_OF_OPERATION.get(operationText) ?? "OTHER") : "OTHER";
-    if (operation !== undefined && !(operationText !== null && KIND_OF_OPERATION.has(operationText)))
-      addNote("UNRECOGNIZED_OPERATION", span.spanId);
+    const { kind, source: kindSource, unrecognized } = kindOfSpan(span.attributes);
+    if (unrecognized) addNote("UNRECOGNIZED_OPERATION", span.spanId);
     if (span.unknownCount > 0) addNote("UNKNOWN_FIELD", span.spanId, { count: span.unknownCount });
 
     // Label from structural data only (spec 6.4).
-    const model = attr(span.attributes, "gen_ai.request.model") ?? attr(span.attributes, "gen_ai.response.model");
+    const model = MODEL_KEYS.map((key) => attr(span.attributes, key)).find((value) => value !== undefined);
     const label = deriveLabel(kind, operation, model);
 
     // Split attributes: content names and other gen_ai.* leave the attribute list (spec 5).
@@ -356,6 +383,7 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
         parentStepId: span.parentStepId,
         contextId: span.contextId,
         kind,
+        kindSource,
         operationName: operation === undefined ? null : em.field(operation, ALLOWLIST.get("gen_ai.operation.name")?.(operation) === true),
         name: em.field(tagStr(span.name), false),
         label,
@@ -387,17 +415,24 @@ export function emitRunEvents(run: NormalizedRun, options: EmitOptions): RunEven
 
     // Usage (spec 8.1): LLM_CALL spans only.
     const tail: Draft[] = [];
-    const usageAttrCount = span.attributes.filter(
-      (a) => a.key === "gen_ai.usage.input_tokens" || a.key === "gen_ai.usage.output_tokens",
-    ).length;
+    const usageAttrCount = span.attributes.filter((a) => ALL_USAGE_KEYS.has(a.key)).length;
     if (kind === "LLM_CALL") {
-      const input = usageValue(span.attributes, "gen_ai.usage.input_tokens");
-      const output = usageValue(span.attributes, "gen_ai.usage.output_tokens");
+      const input = usageOf(span.attributes, USAGE_INPUT_KEYS);
+      const output = usageOf(span.attributes, USAGE_OUTPUT_KEYS);
       const unusable = Number(input.unusable) + Number(output.unusable);
       if (unusable > 0) addNote("UNUSABLE_USAGE", span.spanId, { count: unusable });
       if (input.value !== null || output.value !== null) {
         tail.push(
-          make({ type: "UsageRecorded", payload: { stepId: span.spanId, inputTokens: input.value, outputTokens: output.value } } as Draft),
+          make({
+            type: "UsageRecorded",
+            payload: {
+              stepId: span.spanId,
+              inputTokens: input.value,
+              outputTokens: output.value,
+              inputSource: input.value === null ? null : input.key,
+              outputSource: output.value === null ? null : output.key,
+            },
+          } as Draft),
         );
       }
     } else if (usageAttrCount > 0) {

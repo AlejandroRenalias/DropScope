@@ -9,7 +9,10 @@ const BASE64_PADDED = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]
 
 // Version 1 was a draft shape that was never released (it lacked unknownFields and dropped counts on
 // contexts, span events and logs, and had free-form note details). It is not supported.
-export const RUN_EVENT_SCHEMA_VERSION = 2;
+// Version 2 is the contract of 2026-10-13. Version 3 (contract v1.1) adds where a step's kind and a usage metric came from.
+// A reader accepts both, the importer writes 3, and one file never mixes them.
+export const RUN_EVENT_SCHEMA_VERSION = 3;
+export const SUPPORTED_SCHEMA_VERSIONS: readonly number[] = [2, 3];
 
 // Section 3.1: tagged values. Recursive, so the type is written by hand.
 export type TaggedValue =
@@ -194,7 +197,7 @@ const secretCountDetail = z
   .refine((d) => Object.values(d).some((n) => n !== undefined && n > 0), { message: "needs one counted class" });
 
 const eventBase = {
-  schemaVersion: z.literal(RUN_EVENT_SCHEMA_VERSION),
+  schemaVersion: z.union([z.literal(2), z.literal(3)]),
   sequenceNumber: z.number().int().positive(),
   runId: traceIdSchema,
 };
@@ -227,12 +230,24 @@ const runStartedPayload = z
   })
   .strict();
 
+// Version 3: which attribute decided the kind of a step (null means kind OTHER) and which attribute each token count was read from.
+const kindSourceSchema = z.enum([
+  "gen_ai.operation.name",
+  "openinference.span.kind",
+  "traceloop.span.kind",
+  "langsmith.span.kind",
+  "llm.request.type",
+]);
+const inputSourceSchema = z.enum(["gen_ai.usage.input_tokens", "gen_ai.usage.prompt_tokens", "llm.token_count.prompt"]);
+const outputSourceSchema = z.enum(["gen_ai.usage.output_tokens", "gen_ai.usage.completion_tokens", "llm.token_count.completion"]);
+
 const stepStartedPayload = z
   .object({
     stepId: spanIdSchema,
     parentStepId: spanIdSchema.nullable(),
     contextId: contextIdSchema,
     kind: stepKindSchema,
+    kindSource: kindSourceSchema.nullable().optional(),
     operationName: fieldSchema.nullable(),
     name: fieldSchema,
     label: z.string(),
@@ -276,6 +291,8 @@ const usageRecordedPayload = z
     stepId: spanIdSchema,
     inputTokens: decimalCount.nullable(),
     outputTokens: decimalCount.nullable(),
+    inputSource: inputSourceSchema.nullable().optional(),
+    outputSource: outputSourceSchema.nullable().optional(),
   })
   .strict()
   .refine((p) => p.inputTokens !== null || p.outputTokens !== null, {

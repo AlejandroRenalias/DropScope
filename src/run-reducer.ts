@@ -4,8 +4,19 @@
 // was edited by hand cannot smuggle content past the importer's guarantees.
 //
 // "State" here is only what the recording shows. It makes no claim about the model's hidden context.
-import { RUN_EVENT_SCHEMA_VERSION, runEventSchema, type Field, type RunEvent, type StepKind } from "./run-events.js";
-import { ALLOWLIST, SCHEMA_URL, SCOPE_NAME, SCOPE_VERSION, deriveLabel } from "./run-privacy.js";
+import { SUPPORTED_SCHEMA_VERSIONS, runEventSchema, type Field, type RunEvent, type StepKind } from "./run-events.js";
+import {
+  ALLOWLIST,
+  MODEL_KEYS,
+  SCHEMA_URL,
+  SCOPE_NAME,
+  SCOPE_VERSION,
+  USAGE_INPUT_KEYS,
+  USAGE_OUTPUT_KEYS,
+  deriveLabel,
+  kindFromValue,
+  type KindSourceKey,
+} from "./run-privacy.js";
 import { ImportError } from "./run-import-error.js";
 import { MAX_OUTPUT_EVENTS } from "./run-limits.js";
 
@@ -119,8 +130,36 @@ function checkLabel(event: Extract<RunEvent, { type: "StepStarted" }>): void {
     const found = p.attributes.find((a) => verbatimString(a.key) === key);
     return found === undefined ? null : { value: "v" in found.value ? found.value.v : undefined };
   };
-  const model = (modelOf("gen_ai.request.model") ?? modelOf("gen_ai.response.model"))?.value;
+  const model = MODEL_KEYS.map(modelOf).find((found) => found !== null)?.value;
   if (p.label !== deriveLabel(p.kind, operation, model)) fail("LABEL_NOT_DERIVED", event);
+}
+
+// Version 3 records where a step's kind came from. The recorded source must be backed by what the step shows, so a
+// hand-edited file cannot claim a mapping its attributes do not support. Kind OTHER has no source.
+function checkKindSource(event: Extract<RunEvent, { type: "StepStarted" }>): void {
+  const p = event.payload;
+  const source = p.kindSource;
+  if (source === undefined) return fail("KIND_SOURCE_MISSING", event);
+  if (source === null) {
+    if (p.kind !== "OTHER") fail("KIND_WITHOUT_SOURCE", event);
+    return;
+  }
+  let value: string | null = null;
+  if (source === "gen_ai.operation.name") value = p.operationName !== null ? verbatimString(p.operationName) : null;
+  else {
+    const found = p.attributes.find((a) => verbatimString(a.key) === source);
+    value = found !== undefined && "v" in found.value && found.value.v.t === "s" ? found.value.v.v : null;
+  }
+  if (value === null || kindFromValue(source as KindSourceKey, value) !== p.kind) fail("KIND_SOURCE_MISMATCH", event);
+}
+
+function checkUsageSources(event: Extract<RunEvent, { type: "UsageRecorded" }>): void {
+  const p = event.payload;
+  if (p.inputSource === undefined || p.outputSource === undefined) return fail("USAGE_SOURCE_MISSING", event);
+  const ok = (value: string | null, source: string | null, keys: readonly string[]) =>
+    value === null ? source === null : source !== null && keys.includes(source);
+  if (!ok(p.inputTokens, p.inputSource, USAGE_INPUT_KEYS) || !ok(p.outputTokens, p.outputSource, USAGE_OUTPUT_KEYS))
+    fail("USAGE_SOURCE_MISMATCH", event);
 }
 
 // In a FULL run every value is verbatim: a withheld form anywhere means the mode was changed after the fact.
@@ -146,7 +185,7 @@ export function validateRunHistory(input: unknown): RunEvent[] {
   for (const raw of input) {
     // A well-formed event of another version gets its own reason: it is not damaged, just unsupported.
     const version = typeof raw === "object" && raw !== null ? (raw as { schemaVersion?: unknown }).schemaVersion : undefined;
-    if (typeof version === "number" && version !== RUN_EVENT_SCHEMA_VERSION) return fail("UNSUPPORTED_SCHEMA_VERSION", undefined);
+    if (typeof version === "number" && !SUPPORTED_SCHEMA_VERSIONS.includes(version)) return fail("UNSUPPORTED_SCHEMA_VERSION", undefined);
     const parsed = runEventSchema.safeParse(raw);
     if (!parsed.success) return fail("EVENT_SCHEMA", undefined);
     events.push(parsed.data);
@@ -154,6 +193,8 @@ export function validateRunHistory(input: unknown): RunEvent[] {
 
   const first = events[0];
   if (first.type !== "RunStarted") return fail("FIRST_NOT_RUN_STARTED", first);
+  // A file is written by one version of the importer: it never mixes schema versions.
+  const schemaVersion = first.schemaVersion;
   const hashOnly = first.payload.contentMode === "HASH_ONLY";
   const runId = first.runId;
   if (first.payload.traceId !== runId) fail("RUN_ID_MISMATCH", first);
@@ -173,6 +214,7 @@ export function validateRunHistory(input: unknown): RunEvent[] {
   events.forEach((event, index) => {
     if (event.sequenceNumber !== index + 1) fail("SEQUENCE_BREAK", event);
     if (event.runId !== runId) fail("RUN_ID_MISMATCH", event);
+    if (event.schemaVersion !== schemaVersion) fail("MIXED_SCHEMA_VERSIONS", event);
     if (ended) fail("EVENT_AFTER_RUN_ENDED", event);
     if (event.type !== "RunStarted" && event.type !== "ImportNote" && event.type !== "RunEnded" && sawNote) fail("EVENT_AFTER_NOTE", event);
     if (hashOnly) checkHashOnly(event, contextIds);
@@ -185,7 +227,16 @@ export function validateRunHistory(input: unknown): RunEvent[] {
         contextIds.add(context.contextId);
       }
     }
-    if (event.type === "StepStarted") checkLabel(event);
+    if (event.type === "StepStarted") {
+      checkLabel(event);
+      if (schemaVersion === 2 && event.payload.kindSource !== undefined) fail("KIND_SOURCE_NOT_IN_VERSION_2", event);
+      if (schemaVersion >= 3) checkKindSource(event);
+    }
+    if (event.type === "UsageRecorded") {
+      if (schemaVersion === 2 && (event.payload.inputSource !== undefined || event.payload.outputSource !== undefined))
+        fail("USAGE_SOURCE_NOT_IN_VERSION_2", event);
+      if (schemaVersion >= 3) checkUsageSources(event);
+    }
 
     switch (event.type) {
       case "RunStarted":

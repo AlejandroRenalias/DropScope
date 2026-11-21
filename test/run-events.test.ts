@@ -67,7 +67,7 @@ describe("run events", () => {
   it("rejects an unknown event type, version and extra payload keys", () => {
     expect(runEventSchema.safeParse({ ...stepEnded, type: "Nope" }).success).toBe(false);
     expect(runEventSchema.safeParse({ ...stepEnded, schemaVersion: 1 }).success).toBe(false);
-    expect(runEventSchema.safeParse({ ...stepEnded, schemaVersion: 3 }).success).toBe(false);
+    expect(runEventSchema.safeParse({ ...stepEnded, schemaVersion: 4 }).success).toBe(false);
     expect(runEventSchema.safeParse({ ...stepEnded, payload: { ...stepEnded.payload, extra: 1 } }).success).toBe(false);
   });
 

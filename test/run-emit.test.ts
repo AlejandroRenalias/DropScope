@@ -81,7 +81,13 @@ describe("event stream shape", () => {
       ["AGENT", "AGENT invoke_agent"],
       ["LLM_CALL", "LLM_CALL chat m-1"],
     ]);
-    expect(ofType(events, "UsageRecorded")[0].payload).toEqual({ stepId: id(2), inputTokens: "7", outputTokens: "3" });
+    expect(ofType(events, "UsageRecorded")[0].payload).toEqual({
+      stepId: id(2),
+      inputTokens: "7",
+      outputTokens: "3",
+      inputSource: "gen_ai.usage.input_tokens",
+      outputSource: "gen_ai.usage.output_tokens",
+    });
   });
 });
 

@@ -311,7 +311,7 @@ describe("admission: every broken history is rejected", () => {
     [
       "a future version",
       (e) => {
-        e[1].schemaVersion = 3;
+        e[1].schemaVersion = 4;
         return e;
       },
       "E_INVALID_LOG:UNSUPPORTED_SCHEMA_VERSION",

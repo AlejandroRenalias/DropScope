@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { importTraceBytes } from "../src/run-import.js";
 import { serializeRunLog } from "../src/run-store.js";
+import { chooseRun, openTool } from "./fixtures/replay.js";
 
 let viteServer: ViteDevServer;
 
@@ -35,8 +36,8 @@ test("opens on the built-in demo run and keeps the legacy simulator one link awa
   await page.setViewportSize({ width: 1440, height: 900 });
   const replay = await openRunReplay(page);
   await expect(replay).toContainText("Event 42 / 42");
-  await expect(replay).toContainText("Imported run · recorded replay");
-  await expect(replay).toContainText("Content is withheld");
+  await expect(replay).toContainText("Recorded replay");
+  await expect(replay).toContainText("Content withheld");
   await expect(page.locator(".run-source-card")).toContainText("Showing the built-in synthetic demo run.");
   // The mission's rails do not belong next to a run.
   await expect(page.getByRole("complementary", { name: "Mission status" })).toBeHidden();
@@ -99,6 +100,7 @@ test("jumps to a step or a note from the lists", async ({ page }) => {
   const replay = await openRunReplay(page);
   await replay.getByRole("button", { name: /Go to the start of Agent: qa-reviewer/ }).click();
   await expect(replay.getByRole("heading", { name: "Agent started" })).toBeVisible();
+  await openTool(page, "Importer notes");
   await replay
     .getByRole("region", { name: "Importer notes" })
     .getByRole("button", { name: /Go to event \d+/ })
@@ -115,10 +117,10 @@ test("opens a run file the import command saved, in the browser", async ({ page 
     .locator(".file-button input")
     .setInputFiles({ name: "stored.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(full) });
   await expect(page.locator(".run-source-card")).toContainText("Run file stored.runlog.jsonl.");
-  await expect(replay).toContainText("Content is stored as written");
+  await expect(replay).toContainText("Content stored");
   await replay.getByLabel("Timeline position").fill("3");
   await expect(replay).toContainText("Customer asks for a refund for order 1042");
-  await page.getByRole("button", { name: "Back to the demo run" }).click();
+  await chooseRun(page, "Built-in demo run");
   await expect(page.locator(".run-source-card")).toContainText("Showing the built-in synthetic demo run.");
 });
 
@@ -190,13 +192,7 @@ test("can be used with the keyboard alone", async ({ page }) => {
   }
   expect(labels.length).toBeGreaterThan(30);
   expect(ids).toContain("rr-position");
-  for (const wanted of [
-    /^Open a run file/,
-    /^Try an example \(4,000 tokens\)/,
-    /^Compare with the demo variant/,
-    /^Go to the start of Agent/,
-    /^Inspect event [0-9]+:/,
-  ]) {
+  for (const wanted of [/^Open a run file/, /^Play the run/, /^Events/, /^Go to the start of Agent/, /^Inspect event [0-9]+:/]) {
     expect(
       labels.some((label) => wanted.test(label)),
       `reaches ${wanted}`,
@@ -218,10 +214,25 @@ test("can be used with the keyboard alone", async ({ page }) => {
     .focus();
   await page.keyboard.press("Enter");
   await expect(replay.getByRole("heading", { name: "Tool call started" })).toBeVisible();
-  await replay.getByRole("button", { name: /Try an example \(4,000 tokens\)/ }).focus();
+  // The tools sit in tabs: the arrow keys choose a tab, and Tab then reaches the controls inside it.
+  const tabTo = async (wanted: RegExp) => {
+    for (let i = 0; i < 20; i++) {
+      await page.keyboard.press("Tab");
+      if (wanted.test((await focusedName())?.label ?? "")) return;
+    }
+    throw new Error(`Tab never reached ${wanted}`);
+  };
+  await replay.getByRole("tab", { name: /^Events/ }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(replay.getByRole("tab", { name: /^Budget replay/ })).toHaveAttribute("aria-selected", "true");
+  await tabTo(/^Try an example \(4,000 tokens\)/);
   await page.keyboard.press("Space");
   await expect(replay.locator(".bp-result")).toContainText("would have stopped this run at event 31 of 42");
-  await replay.getByRole("button", { name: "Compare with the demo variant" }).focus();
+  await replay.getByRole("tab", { name: /^Budget replay/ }).focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(replay.getByRole("tab", { name: "Compare runs" })).toHaveAttribute("aria-selected", "true");
+  await tabTo(/^Compare with the demo variant/);
   await page.keyboard.press("Enter");
   const fold = replay
     .getByRole("region", { name: "Compare with another run" })
@@ -300,6 +311,9 @@ for (const width of [1440, 768, 375]) {
     await page.setViewportSize({ width, height: 900 });
     const replay = await openRunReplay(page);
     await replay.getByLabel("Timeline position").fill("22");
+    // On a tablet the inspector is a drawer.
+    const drawer = replay.getByRole("button", { name: "Inspector" });
+    if (await drawer.isVisible()) await drawer.click();
     await expect(replay.getByRole("heading", { name: "Step failed" })).toBeVisible();
     expect(await noOverflow(page)).toBe(true);
   });
@@ -309,6 +323,7 @@ test.describe("budget replay", () => {
   test("says plainly that it is a what-if, opens with a ready example, and shows nothing once the limits are cleared", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const replay = await openRunReplay(page);
+    await openTool(page, "Budget replay");
     const panel = replay.getByRole("region", { name: "Budget replay" });
     await expect(panel).toContainText("Counterfactual");
     await expect(panel).toContainText("DropScope never controls an agent");
@@ -325,6 +340,7 @@ test.describe("budget replay", () => {
   test("re-applies a token limit: names the event, marks the timeline, jumps there, and follows the scrubber", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const replay = await openRunReplay(page);
+    await openTool(page, "Budget replay");
     const panel = replay.getByRole("region", { name: "Budget replay" });
     await panel.getByRole("button", { name: /Try an example/ }).click();
     await expect(panel.getByRole("textbox", { name: "Total tokens" })).toHaveValue("4000");
@@ -352,6 +368,7 @@ test.describe("budget replay", () => {
   test("handles several limits, a time limit and a cost limit with your own prices", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const replay = await openRunReplay(page);
+    await openTool(page, "Budget replay");
     const panel = replay.getByRole("region", { name: "Budget replay" });
     await panel.getByRole("textbox", { name: "Model calls" }).fill("2");
     await panel.getByRole("textbox", { name: "Time limit (seconds)" }).fill("5");
@@ -373,6 +390,7 @@ test.describe("budget replay", () => {
   test("reports a run that fits, and explains bad input without guessing", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const replay = await openRunReplay(page);
+    await openTool(page, "Budget replay");
     const panel = replay.getByRole("region", { name: "Budget replay" });
     const tokens = panel.getByRole("textbox", { name: "Total tokens" });
     await tokens.fill("1,000,000");
@@ -423,6 +441,7 @@ test.describe("budget replay", () => {
     await page
       .locator(".file-button input")
       .setInputFiles({ name: "missing-usage.runlog.jsonl", mimeType: "text/plain", buffer: Buffer.from(file) });
+    await openTool(page, "Budget replay");
     const panel = replay.getByRole("region", { name: "Budget replay" });
     await panel.getByRole("textbox", { name: "Total tokens" }).fill("500");
     await expect(panel.locator(".bp-result")).toContainText("1,000 tokens, over your limit of 500 tokens");
@@ -434,6 +453,7 @@ test.describe("budget replay", () => {
     test(`has no horizontal overflow at ${width}px with a result showing`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       const replay = await openRunReplay(page);
+      await openTool(page, "Budget replay");
       const panel = replay.getByRole("region", { name: "Budget replay" });
       await panel.getByRole("button", { name: /Try an example/ }).click();
       await expect(panel.locator(".bp-result")).toContainText("would have stopped");
@@ -443,19 +463,22 @@ test.describe("budget replay", () => {
   }
 });
 
-test("keeps the scrub bar in view while scrolling, and the jump list leads to each section", async ({ page }) => {
+test("the tool tabs and the Compare button lead to each tool while the scrub bar stays in view", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const replay = await openRunReplay(page);
-  await page.addStyleTag({ content: ".topbar { position: sticky !important; }" });
-  const nav = replay.getByRole("navigation", { name: "On this page" });
-  await nav.getByRole("link", { name: "Compare runs" }).click();
-  await expect(replay.getByRole("region", { name: "Compare with another run" })).toBeInViewport();
   const slider = replay.getByLabel("Timeline position");
+  await openTool(page, "Compare runs");
+  await expect(replay.getByRole("region", { name: "Compare with another run" })).toBeInViewport();
   await expect(slider).toBeInViewport();
-  await replay.getByRole("link", { name: "Chronology" }).click();
+  await openTool(page, "Events");
   await expect(replay.getByRole("region", { name: "Event chronology" })).toBeInViewport();
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  await expect(replay.getByRole("region", { name: "Compare with another run" })).toBeInViewport();
+  await expect(replay.getByRole("tab", { name: "Compare runs" })).toBeFocused();
+  await openTool(page, "Importer notes");
+  await expect(replay.getByRole("region", { name: "Importer notes" })).toBeInViewport();
   await expect(slider).toBeInViewport();
-  await expect(replay.locator(".rr-dock")).toContainText("Event 42 / 42");
+  await expect(replay.locator(".replay-position")).toContainText("Event 42 / 42");
 });
 
 test("keeps the product name and the legacy link in the top bar at 390 px", async ({ page }) => {
@@ -470,15 +493,18 @@ test("keeps the product name and the legacy link in the top bar at 390 px", asyn
 });
 
 for (const width of [1440, 1280, 768, 390]) {
-  test(`the budget marker legend sits below the tick numbers at ${width}px`, async ({ page }) => {
+  test(`the budget marker legend never touches the tick numbers at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const replay = await openRunReplay(page);
     const legend = replay.locator(".rr-breach-legend");
     await expect(legend).toBeVisible();
-    const numbers = await replay.locator(".rr-ticks .tick .num").evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().bottom));
+    const numbers = await replay
+      .locator(".rr-ticks .tick .num")
+      .evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width, h: r.height })));
     expect(numbers.length).toBeGreaterThan(0);
-    const legendTop = (await legend.boundingBox())!.y;
-    expect(legendTop).toBeGreaterThanOrEqual(Math.max(...numbers));
+    const box = (await legend.boundingBox())!;
+    const overlaps = numbers.filter((n) => n.x < box.x + box.width && box.x < n.x + n.w && n.y < box.y + box.height && box.y < n.y + n.h);
+    expect(overlaps).toEqual([]);
     expect(await noOverflow(page)).toBe(true);
   });
 }

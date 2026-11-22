@@ -54,7 +54,9 @@ export function RunWaterfall({
   const [trackRef, trackWidth] = useWidth<HTMLDivElement>();
   const listRef = useRef<HTMLOListElement>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
-  const { step: tickStep, ticks } = useMemo(() => timeTicks(axis.spanNs, 6), [axis]);
+  // About one label per 80 pixels of the axis, so a phone gets fewer labels than a desktop.
+  const maxTicks = trackWidth > 0 ? Math.max(2, Math.min(6, Math.floor(trackWidth / 80))) : 6;
+  const { step: tickStep, ticks } = useMemo(() => timeTicks(axis.spanNs, maxTicks), [axis, maxTicks]);
   const span = axis.spanNs > 0 ? axis.spanNs : 1;
   const cursor = axis.timeAt[position] / span;
   const cursorX = snap(cursor, trackWidth);

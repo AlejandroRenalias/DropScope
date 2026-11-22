@@ -595,7 +595,12 @@ html[data-ds-theme] .ds-popover.rt-PopoverContent { padding: 14px; border: 1px s
   .ds-tl-spacer { display: none; }
   .rr-breach-legend { order: 4; }
   .ds-cats { order: 5; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; }
-  .ds-panes, .ds-center { display: block; }
+  .ds-panes { display: flex; flex-direction: column; }
+  .ds-center { display: contents; }
+  .rr-waterfall { order: 1; }
+  .rr-inspector { order: 2; }
+  .rr-dock-panel { order: 3; }
+  .ds-strip { height: 74px; }
   .rr-waterfall { --name-col: 52%; --pad-l: 10px; --pad-r: 44px; }
   .ds-wf-body { max-height: 70vh; }
   .rr-inspector { border-left: 0; border-top: 1px solid var(--ds-border); }

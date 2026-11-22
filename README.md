@@ -4,7 +4,12 @@ Replay a recorded AI agent run, offline. DropScope shows what the run had record
 
 Nothing it does makes a model call or a network request. Every answer is computed from a file on your computer, the same way every time, so someone else can check it. It is not a tracing dashboard such as Langfuse or Arize Phoenix: it answers questions about a run that has already finished.
 
-![Animation of the Replay screen: the timeline slider moves from event 1 to event 22, where a failed refund shows as a red bar, the "Step failed" panel explains the failure, and comparing with the demo variant highlights the first difference between the two runs.](docs/images/replay-demo.gif)
+![Animation of the run replay: the scrubber moves from event 1 to event 22 while the trace fills in step by step; the first refund attempt fails and shows as a red bar, the inspector explains the failure, and comparing with the demo variant marks the first difference between the two runs.](docs/images/replay-demo.gif)
+
+<p>
+  <img src="docs/images/replay-light.png" width="49%" alt="The run replay in the light theme at event 22: the event strip and scrubber at the top, the trace waterfall with the failed refund in red, and the inspector on the right saying Step failed.">
+  <img src="docs/images/replay-dark.png" width="49%" alt="The same screen in the dark theme.">
+</p>
 
 > **Status.** Runs on Windows, Linux and macOS (the Linux and macOS file checks are newer and less tested). The browser screen needs no particular system. Every run shown in this repository is invented demo data. Real traces are kept out until a real access boundary exists (see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). There is no release, package or hosted service yet.
 

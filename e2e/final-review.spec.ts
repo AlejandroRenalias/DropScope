@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { importTraceBytes } from "../src/run-import.js";
 import { serializeRunLog } from "../src/run-store.js";
+import { chooseRun, openTool } from "./fixtures/replay.js";
 
 let viteServer: ViteDevServer;
 
@@ -111,7 +112,7 @@ test.describe("final review: an older read never overwrites a newer choice", () 
     await openRunReplay(page);
     await page.locator(".run-source-card .file-button input").setInputFiles(file("hold-late.runlog.jsonl", runFile("alpha", "one", "5")));
     await waitHeld(page, 1);
-    await page.getByRole("button", { name: "Demo run with content stored" }).click();
+    await chooseRun(page, "Demo run with content stored");
     await release(page, 0);
     await expect(page.locator(".run-source-card")).toContainText("Demo run with content stored.");
     await expect(page.locator(".run-source-card")).not.toContainText("hold-late");
@@ -130,6 +131,7 @@ test.describe("final review: an older read never overwrites a newer choice", () 
 
   test("comparison panel: a held valid file, then another file", async ({ page }) => {
     const replay = await openRunReplay(page);
+    await openTool(page, "Compare runs");
     const panel = replay.getByRole("region", { name: "Compare with another run" });
     const input = panel.locator(".cc-file-button input");
     await input.setInputFiles(file("hold-b1.runlog.jsonl", runFile("alpha", "one", "5")));
@@ -142,6 +144,7 @@ test.describe("final review: an older read never overwrites a newer choice", () 
 
   test("comparison panel: a held valid file, then a demo run B", async ({ page }) => {
     const replay = await openRunReplay(page);
+    await openTool(page, "Compare runs");
     const panel = replay.getByRole("region", { name: "Compare with another run" });
     await panel.locator(".cc-file-button input").setInputFiles(file("hold-b1.runlog.jsonl", runFile("alpha", "one", "5")));
     await waitHeld(page, 1);
@@ -152,6 +155,7 @@ test.describe("final review: an older read never overwrites a newer choice", () 
 
   test("comparison panel: a held broken file shows no error after a newer good file", async ({ page }) => {
     const replay = await openRunReplay(page);
+    await openTool(page, "Compare runs");
     const panel = replay.getByRole("region", { name: "Compare with another run" });
     const input = panel.locator(".cc-file-button input");
     await input.setInputFiles(file("hold-bad.runlog.jsonl", BAD_RUN));
@@ -166,6 +170,7 @@ test.describe("final review: an older read never overwrites a newer choice", () 
 
   test("claims panel: a held claims file never replaces text typed or filled afterwards", async ({ page }) => {
     const replay = await openRunReplay(page);
+    await openTool(page, "Claim check");
     const panel = claimsBox(replay);
     const held = JSON.stringify({ claims: [{ id: "heldclaim", text: "t", tool: "lookup_order", mustContain: ["x"] }] });
     await panel.locator(".cc-file-button input").setInputFiles(file("hold-claims.json", Buffer.from(held), "application/json"));
@@ -179,6 +184,7 @@ test.describe("final review: an older read never overwrites a newer choice", () 
 
   test("claims panel: a held claims file never replaces text typed afterwards", async ({ page }) => {
     const replay = await openRunReplay(page);
+    await openTool(page, "Claim check");
     const panel = claimsBox(replay);
     const held = JSON.stringify({ claims: [{ id: "heldclaim", text: "t", tool: "lookup_order", mustContain: ["x"] }] });
     await panel.locator(".cc-file-button input").setInputFiles(file("hold-claims.json", Buffer.from(held), "application/json"));
@@ -190,6 +196,7 @@ test.describe("final review: an older read never overwrites a newer choice", () 
 
   test("claims panel: a held file that is not valid text shows no error after a newer action", async ({ page }) => {
     const replay = await openRunReplay(page);
+    await openTool(page, "Claim check");
     const panel = claimsBox(replay);
     await panel.locator(".cc-file-button input").setInputFiles(file("hold-bad.json", BAD_UTF8, "application/json"));
     await waitHeld(page, 1);
@@ -292,10 +299,12 @@ test.describe("final review: uploaded content is not kept by the browser", () =>
       .locator(".run-source-card .file-button input")
       .setInputFiles(file("marker.runlog.jsonl", runFile("marker-tool", MARKER, "7")));
     await expect(page.locator(".run-source-card")).toContainText("Run file marker.runlog.jsonl");
+    await openTool(page, "Compare runs");
     await replay
       .getByRole("region", { name: "Compare with another run" })
       .locator(".cc-file-button input")
       .setInputFiles(file("marker-b.runlog.jsonl", runFile("marker-tool", MARKER, "8")));
+    await openTool(page, "Claim check");
     const claims = replay.getByRole("region", { name: "Claim check" });
     const claimsFile = JSON.stringify({
       claims: [{ id: "markerclaim", text: "the marker was recorded", tool: "marker-tool", mustContain: [MARKER] }],
@@ -306,7 +315,7 @@ test.describe("final review: uploaded content is not kept by the browser", () =>
     const before = await storedText(page);
     expect(before).not.toContain(MARKER);
     expect(before).not.toContain("marker-tool");
-    await page.getByRole("button", { name: "Back to the demo run" }).click();
+    await chooseRun(page, "Built-in demo run");
     await page.reload();
     const after = await storedText(page);
     expect(after).not.toContain(MARKER);

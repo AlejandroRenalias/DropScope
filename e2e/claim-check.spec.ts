@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { importTraceBytes } from "../src/run-import.js";
 import { serializeRunLog } from "../src/run-store.js";
+import { chooseRun, openTool } from "./fixtures/replay.js";
 
 let viteServer: ViteDevServer;
 
@@ -23,12 +24,13 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function openRunReplay(page: Page) {
+  await openTool(page, "Claim check");
   return page.getByRole("region", { name: "Agent run replay" });
 }
 
 const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 const useStoredDemo = async (page: Page) => {
-  await page.getByRole("button", { name: "Demo run with content stored" }).click();
+  await chooseRun(page, "Demo run with content stored");
   await expect(page.locator(".run-source-card")).toContainText("Demo run with content stored.");
 };
 

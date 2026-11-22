@@ -3,6 +3,7 @@ import { expectPicture } from "./fixtures/picture.js";
 import { createServer, type ViteDevServer } from "vite";
 import { importTraceBytes } from "../src/run-import.js";
 import { serializeRunLog } from "../src/run-store.js";
+import { openTool } from "./fixtures/replay.js";
 
 let viteServer: ViteDevServer;
 
@@ -24,6 +25,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function openRunReplay(page: Page) {
+  await openTool(page, "Compare runs");
   return page.getByRole("region", { name: "Agent run replay" });
 }
 
@@ -181,8 +183,9 @@ test.describe("run diff", () => {
   });
 
   test("looks the same as its approved picture", async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.setViewportSize({ width: 1440, height: 1300 });
     const replay = await openRunReplay(page);
+    await page.getByRole("button", { name: "Enlarge the tools panel" }).click();
     const panel = replay.getByRole("region", { name: "Compare with another run" });
     await panel.getByRole("button", { name: "Compare with the demo variant" }).click();
     await expect(panel.locator(".rd-totals")).toBeVisible();
@@ -190,8 +193,9 @@ test.describe("run diff", () => {
   });
 
   test("looks the same with steps that exist in only one run", async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.setViewportSize({ width: 1440, height: 1900 });
     const replay = await openRunReplay(page);
+    await page.getByRole("button", { name: "Enlarge the tools panel" }).click();
     const panel = replay.getByRole("region", { name: "Compare with another run" });
     const trace = {
       resourceSpans: [

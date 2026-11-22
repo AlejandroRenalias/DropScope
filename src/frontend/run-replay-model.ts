@@ -464,3 +464,97 @@ export function categoryOf(event: RunEvent): RunEventCategory | "run" {
 }
 
 export type { RunState };
+
+/**
+ * The shared time axis of the waterfall. Offsets are nanoseconds after the earliest step start, as plain numbers
+ * (a run would have to last more than 100 days to lose precision). `timeAt[n]` is the recorded time reached at
+ * event n: the latest step start or end seen up to that event, so it never goes back.
+ */
+export type TimeAxis = { startNs: bigint; spanNs: number; timeAt: Float64Array };
+
+export function buildTimeAxis(model: RunModel): TimeAxis {
+  const steps = model.steps;
+  let first = steps.length > 0 ? BigInt(steps[0].startNs) : 0n;
+  let last = first;
+  for (const step of steps) {
+    const start = BigInt(step.startNs);
+    const end = BigInt(step.endEffectiveNs);
+    if (start < first) first = start;
+    if (end > last) last = end;
+  }
+  const spanNs = Number(last - first);
+  const timeAt = new Float64Array(model.events.length + 1);
+  let t = 0;
+  model.events.forEach((event, index) => {
+    if (event.type === "StepStarted") t = Math.max(t, Number(BigInt(event.payload.startNs) - first));
+    else if (event.type === "StepEnded") t = Math.max(t, Number(BigInt(event.payload.endEffectiveNs) - first));
+    else if (event.type === "RunEnded") t = spanNs;
+    timeAt[index + 1] = Math.min(t, spanNs);
+  });
+  return { startNs: first, spanNs, timeAt };
+}
+
+/** Where a step sits on the axis, in nanoseconds after the axis start. */
+export function stepSpan(step: StepView, axis: TimeAxis): { start: number; end: number } {
+  const start = Number(BigInt(step.startNs) - axis.startNs);
+  return { start, end: Math.max(start, Number(BigInt(step.endEffectiveNs) - axis.startNs)) };
+}
+
+/** Round tick positions (1, 2 or 5 times a power of ten) from 0 to the span, at most `max` + 1 of them. */
+export function timeTicks(spanNs: number, max = 6): { step: number; ticks: number[] } {
+  if (!(spanNs > 0)) return { step: 0, ticks: [0] };
+  const raw = spanNs / Math.max(1, max);
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 5, 10].map((m) => m * magnitude).find((s) => s >= raw) ?? 10 * magnitude;
+  const ticks: number[] = [];
+  for (let k = 0; k * step <= spanNs * (1 + 1e-9); k += 1) ticks.push(k * step);
+  return { step, ticks };
+}
+
+/** An offset on the axis as a short label: "0", "250 µs", "40 ms", "1.5 s". `step` sets the precision. */
+export function formatOffset(ns: number, step = ns): string {
+  if (ns === 0) return "0";
+  if (ns < 1_000_000) return `${Math.round(ns / 1000)} µs`;
+  if (ns < 1_000_000_000) return `${Math.round(ns / 1_000_000)} ms`;
+  const seconds = ns / 1_000_000_000;
+  return `${step < 1_000_000_000 ? seconds.toFixed(1) : Number.isInteger(seconds) ? seconds.toFixed(0) : seconds.toFixed(1)} s`;
+}
+
+/** The sequence numbers of the content recorded for each step, in order. */
+export function contentByStep(events: readonly RunEvent[]): Map<string, number[]> {
+  const map = new Map<string, number[]>();
+  for (const event of events) {
+    if (event.type !== "ContentRecorded" || event.payload.stepId === null) continue;
+    const list = map.get(event.payload.stepId) ?? [];
+    list.push(event.sequenceNumber);
+    map.set(event.payload.stepId, list);
+  }
+  return map;
+}
+
+/** What the inspector shows for one recorded content value: its label, and either its text or the withheld size and fingerprint. */
+export function describeContent(event: Extract<RunEvent, { type: "ContentRecorded" }>): {
+  label: string;
+  withheld: { size: string; fingerprint: string } | null;
+  text: string;
+} {
+  const label = CONTENT_LABEL[event.payload.field] ?? "Content";
+  const value = event.payload.value;
+  if ("w" in value) return { label, withheld: { size: formatBytes(value.w.n), fingerprint: value.w.h.slice(0, 8) }, text: "" };
+  return { label, withheld: null, text: describeField(value, 2000).text };
+}
+
+/** The attribute a step's type was read from, and whether it is the standard one. Null when the run does not say. */
+export function kindSourceOf(event: RunEvent | undefined): { source: string; standard: boolean } | null {
+  if (event?.type !== "StepStarted") return null;
+  const source = event.payload.kindSource;
+  if (source === null || source === undefined) return null;
+  return { source, standard: source === STANDARD_KIND_SOURCE };
+}
+
+/** The attributes token counts were read from, when any of them is not a standard name. */
+export function usageSourceOf(event: RunEvent | undefined): string[] {
+  if (event?.type !== "UsageRecorded") return [];
+  const names: Array<string | null | undefined> = [event.payload.inputSource, event.payload.outputSource];
+  return names.filter((name): name is string => typeof name === "string" && !STANDARD_USAGE_SOURCES.has(name));
+}

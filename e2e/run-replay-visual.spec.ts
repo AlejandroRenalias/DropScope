@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectPicture } from "./fixtures/picture.js";
 import { createServer, type ViteDevServer } from "vite";
+import { chooseRun, openTool } from "./fixtures/replay.js";
 
 // The visual baseline of the run replay screen. Kept in its own file so the baseline can be reviewed and
 // approved before it is committed; never regenerate it just to get a green run.
@@ -36,8 +37,11 @@ test("captures the budget replay panel with a result", async ({ page }) => {
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
   await page.addStyleTag({ content: ".topbar { position: static !important; }" });
-  await page.setViewportSize({ width: 1440, height: 900 });
+  // Tall enough, with the tools panel enlarged, for the whole panel to show without scrolling.
+  await page.setViewportSize({ width: 1440, height: 1300 });
   const replay = page.getByRole("region", { name: "Agent run replay" });
+  await openTool(page, "Budget replay");
+  await page.getByRole("button", { name: "Enlarge the tools panel" }).click();
   const panel = replay.getByRole("region", { name: "Budget replay" });
   await panel.getByRole("button", { name: /Try an example/ }).click();
   await expect(panel.locator(".bp-result")).toContainText("would have stopped this run at event 31 of 42");
@@ -52,9 +56,11 @@ test("captures the claim check panel with results", async ({ page }) => {
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
   await page.addStyleTag({ content: ".topbar { position: static !important; }" });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByRole("button", { name: "Demo run with content stored" }).click();
+  await page.setViewportSize({ width: 1440, height: 1300 });
+  await chooseRun(page, "Demo run with content stored");
   const replay = page.getByRole("region", { name: "Agent run replay" });
+  await openTool(page, "Claim check");
+  await page.getByRole("button", { name: "Enlarge the tools panel" }).click();
   const panel = replay.getByRole("region", { name: "Claim check" });
   await panel.getByRole("button", { name: /Try an example/ }).click();
   await expect(panel.locator(".cc-summary")).toContainText("2 supported, 1 not supported");

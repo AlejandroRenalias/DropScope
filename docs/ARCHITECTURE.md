@@ -43,7 +43,7 @@ flowchart LR
 | Claim check | `src/claim-check.ts` | Does the recorded content support each claim? (needs `--full`) |
 | Run diff | `src/run-diff.ts` | Where do two runs first differ? |
 
-**Screens.** `src/frontend/run-replay-model.ts` has no React and no Node modules. It turns a history into steps, a step tree and plain-language text. `run-replay.tsx` and its panels (budget, claims, diff) draw that model. The screen opens the built-in demo run, or a run file chosen by the user and read inside the browser. The command line (`src/run-cli.ts`) calls the same importer, reader and checks.
+**Screens.** `src/frontend/run-replay-model.ts` has no React and no Node modules. It turns a history into steps, a step tree and plain-language text. `run-replay.tsx` draws that model as one workspace: the timeline (`run-timeline.tsx`), the trace waterfall (`run-waterfall.tsx`), the inspector (`run-inspector.tsx`) and the tabs (`run-dock.tsx`) that hold the event list, the importer notes and the panels (budget, claims, diff). Its tokens and styles are in `run-replay.css`. The screen opens the built-in demo run, or a run file chosen by the user and read inside the browser. The command line (`src/run-cli.ts`) calls the same importer, reader and checks.
 
 ## Rules that hold across the path
 

@@ -55,7 +55,7 @@ What to notice:
 
 ## Step 2: the state at any step
 
-**On screen.** On the **Run replay** page, drag the timeline to event 22 (or use the arrow keys on it). The event card says **Step failed**: the first refund attempt ended with an error after 500 ms. The "Steps at this event" tree shows which steps are running, finished or failed at that moment, and the token counts so far.
+**On screen.** On the **Run replay** page, drag the timeline to event 22 (or use the arrow keys on it). The inspector on the right says **Step failed**: the first refund attempt ended with an error after 500 ms. The trace in the middle shows which steps are running, finished or failed at that moment, each on one time axis with the playhead across it, and the header shows the token counts so far.
 
 **On the command line.**
 
@@ -77,7 +77,7 @@ Remember what this is. It is the state **as recorded in the trace**, in a derive
 
 ## Step 3: would a spending limit have stopped it?
 
-**On screen.** Scroll to the **Budget replay** card and press **Try an example (4,000 tokens)**.
+**On screen.** Open the **Budget replay** tab under the trace and press **Try an example (4,000 tokens)**.
 
 **On the command line.**
 
@@ -100,7 +100,7 @@ This is a what-if. DropScope never controls an agent; it re-applies your limits 
 
 ## Step 4: is a claim backed by the recording?
 
-This needs a run that kept its content. **On screen:** above the replay press **Demo run with content stored**, then in the **Claim check** card press **Try an example (3 claims)**.
+This needs a run that kept its content. **On screen:** open the run menu in the top bar and choose **Demo run with content stored**, then in the **Claim check** tab press **Try an example (3 claims)**.
 
 **On the command line.** Save this as `claims.json` anywhere:
 
@@ -135,7 +135,7 @@ Two things to notice:
 
 ## Step 5: where do two runs first differ?
 
-**On screen.** Back on the Replay view, find the **Compare with another run** card (run A is the run open above). Press **Compare with the demo variant**. You get a verdict, a side-by-side list of steps with the first difference marked, a "Go to event" button that moves the replay above to that moment, and a totals table.
+**On screen.** Back on the run replay, press **Compare** in the top bar (or open the **Compare runs** tab); run A is the run open now. Press **Compare with the demo variant**. You get a verdict, a side-by-side list of steps with the first difference marked, a "Go to event" button that moves the replay to that moment, and a totals table.
 
 **On the command line.**
 

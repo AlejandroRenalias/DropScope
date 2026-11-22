@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { group, formatSeconds } from "../budget-report.js";
 import { diffRuns, type DiffChange, type DiffItem, type RunTotals } from "../run-diff.js";
 import { changeText, diffCaveats, diffCountsLine, diffVerdictLine } from "../run-diff-report.js";
@@ -79,7 +79,7 @@ function Row({
       <span role="cell" className="rd-cell">
         {item.a ? <StepCell step={item.a} /> : <span className="rd-none">Not in run A</span>}
         {item.a && item.status !== "same" && (
-          <button type="button" className="quiet-button rd-go" onClick={() => setPosition((item.a as Step).startSequence)}>
+          <button type="button" className="ds-btn ds-btn-ghost rd-go" onClick={() => setPosition((item.a as Step).startSequence)}>
             Go to event {item.a.startSequence}
           </button>
         )}
@@ -126,6 +126,18 @@ export function RunDiffPanel({
     });
   const runA = sourceLabel.replace(/\.$/, "");
 
+  // A new comparison brings its first difference into view when the panel scrolls on its own.
+  const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!result) return;
+    const panel = panelRef.current;
+    const scroller = panel?.closest<HTMLElement>(".ds-dock-body");
+    const first = panel?.querySelector<HTMLElement>(".rd-first") ?? panel?.querySelector<HTMLElement>(".cc-summary");
+    if (!first || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+    const top = first.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+    scroller.scrollTop = Math.max(0, top - scroller.clientHeight / 3);
+  }, [result]);
+
   // Each choice of run B gets a number; a file that finishes reading after a newer choice is dropped.
   const choice = useRef(0);
   const openFile = async (file: File) => {
@@ -152,59 +164,60 @@ export function RunDiffPanel({
   };
 
   return (
-    <section className="panel-card cc rd" id="rr-compare" aria-labelledby={`${uid}-title`}>
-      <header className="surface-heading">
-        <div>
-          <span className="eyebrow">Where do two runs first differ?</span>
-          <h2 id={`${uid}-title`}>Compare with another run</h2>
+    <section className="ds-tool rd" id="rr-compare" aria-labelledby={`${uid}-title`} ref={panelRef}>
+      <header className="ds-panel-head">
+        <h2 id={`${uid}-title`}>Compare with another run</h2>
+        <span className="ds-badge is-neutral cc-badge">Compares two recordings</span>
+        <span className="ds-panel-spacer" />
+        <div className="bp-actions rd-actions">
+          <button
+            type="button"
+            className="ds-btn ds-btn-quiet"
+            onClick={() => showDemo(demoRunVariantText, "Demo variant (second refund fails)")}
+          >
+            Compare with the demo variant
+          </button>
+          <button type="button" className="ds-btn ds-btn-quiet" onClick={() => showDemo(demoRunFullText, "Demo run with content stored")}>
+            Compare with the demo run kept with content
+          </button>
+          <label className="cc-file-button ds-btn ds-btn-quiet">
+            Open a run file as run B
+            <input
+              type="file"
+              accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                e.currentTarget.value = "";
+                if (file) void openFile(file);
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className="ds-btn ds-btn-quiet"
+            onClick={() => {
+              choice.current += 1;
+              setOther(null);
+              setError(null);
+            }}
+            disabled={!other}
+          >
+            Clear run B
+          </button>
         </div>
-        <span className="badge cc-badge">Compares two recordings</span>
       </header>
-      <p className="bp-note">
-        Run A is the run open above ({runA}). Pick a second run to see where the two recordings first differ. A difference means the
+      <p className="bp-note ds-lede">
+        Run A is the run open now ({runA}). Pick a second run to see where the two recordings first differ. A difference means the
         recordings differ, not that either run is right. Both files are read in this browser and sent nowhere.
       </p>
 
-      <div className="bp-actions rd-actions">
-        <button type="button" className="quiet-button" onClick={() => showDemo(demoRunVariantText, "Demo variant (second refund fails)")}>
-          Compare with the demo variant
-        </button>
-        <button type="button" className="quiet-button" onClick={() => showDemo(demoRunFullText, "Demo run with content stored")}>
-          Compare with the demo run kept with content
-        </button>
-        <label className="cc-file-button">
-          Open a run file as run B
-          <input
-            type="file"
-            accept=".jsonl,.runlog,.txt,application/x-ndjson,text/plain"
-            onChange={(e) => {
-              const file = e.currentTarget.files?.[0];
-              e.currentTarget.value = "";
-              if (file) void openFile(file);
-            }}
-          />
-        </label>
-        <button
-          type="button"
-          className="quiet-button"
-          onClick={() => {
-            choice.current += 1;
-            setOther(null);
-            setError(null);
-          }}
-          disabled={!other}
-        >
-          Clear run B
-        </button>
-      </div>
-
       {error && (
-        <p className="inline-error" role="alert">
+        <p className="ds-error" role="alert">
           {error}
         </p>
       )}
       {!other && !error && (
-        <p className="bp-hint">
+        <p className="bp-hint ds-empty">
           Choose a second run to compare. Try the demo variant: it is the demo run, except the second refund attempt also fails.
         </p>
       )}

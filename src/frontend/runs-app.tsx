@@ -1,10 +1,22 @@
 import { ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
+import { useEffect } from "react";
 import { RunScreen } from "./replay-screen.js";
 
 /** The default screen: the agent run replay, with a secondary entry to the legacy mission simulator. */
 export function RunsApp() {
+  // A link to a section scrolls to it but leaves the focus behind: when the skip link is followed, move the focus there too.
+  useEffect(() => {
+    const follow = () => {
+      if (window.location.hash === "#rr-timeline") document.getElementById("rr-timeline")?.focus({ preventScroll: true });
+    };
+    window.addEventListener("hashchange", follow);
+    return () => window.removeEventListener("hashchange", follow);
+  }, []);
   return (
     <div className="app runs-app">
+      <a className="skip-link" href="#rr-timeline">
+        Skip to the timeline
+      </a>
       <header className="topbar">
         <div className="topbar-row">
           <div className="brand">

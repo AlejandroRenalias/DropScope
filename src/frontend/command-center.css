@@ -302,6 +302,9 @@
 @media (min-width: 761px) { .mnodes { display: none; } }
 
 /* ---------- shared page pieces ---------- */
+.skip-link { position: absolute; left: 12px; top: 8px; z-index: 100; padding: 10px 16px; border-radius: 8px; background: var(--brand-strong); color: #fff; font-weight: 600; text-decoration: none; transform: translateY(-200%); }
+.skip-link:focus { transform: none; outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 4px var(--focus); }
+#rr-timeline:focus { outline: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .pg-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; padding: 4px 2px 0; }
 .pg-head h1 { margin: 2px 0 0; font-size: 28px; line-height: 1.1; letter-spacing: -.02em; }

@@ -144,6 +144,19 @@ test("says when a step type and token counts were read from names other tools us
   );
 });
 
+test("offers a skip link first that moves the focus to the timeline", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const link = page.getByRole("link", { name: "Skip to the timeline" });
+  await expect(link).not.toBeInViewport();
+  await page.keyboard.press("Tab");
+  await expect(link).toBeFocused();
+  await expect(link).toBeInViewport();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#rr-timeline")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#rr-timeline").locator(":focus")).toHaveCount(1);
+});
+
 test("can be used with the keyboard alone", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const replay = await openRunReplay(page);

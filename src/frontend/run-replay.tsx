@@ -157,7 +157,7 @@ export function RunReplay({
         <a href="#rr-chronology">Chronology</a>
       </nav>
 
-      <section className="panel-card timeline-card" id="rr-timeline" aria-labelledby="rr-timeline-title">
+      <section className="panel-card timeline-card" id="rr-timeline" tabIndex={-1} aria-labelledby="rr-timeline-title">
         <div className="rr-timeline-head">
           <div className="eyebrow" id="rr-timeline-title">
             Timeline

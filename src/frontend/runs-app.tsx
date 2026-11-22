@@ -5,6 +5,21 @@ import { RunScreen } from "./replay-screen.js";
 export function RunsApp() {
   return (
     <div className="app runs-app">
+      <a
+        className="skip-link"
+        href="#rr-timeline"
+        onClick={(event) => {
+          // A link to a section scrolls to it but leaves the focus behind; move the focus there as well.
+          const target = document.getElementById("rr-timeline");
+          if (target) {
+            event.preventDefault();
+            target.focus();
+            target.scrollIntoView();
+          }
+        }}
+      >
+        Skip to the timeline
+      </a>
       <header className="topbar">
         <div className="topbar-row">
           <div className="brand">

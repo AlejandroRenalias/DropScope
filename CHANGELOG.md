@@ -14,6 +14,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
+- The run replay is one screen instead of a long page: a timeline with play controls, a trace waterfall on one time axis, an inspector for the event under the playhead, and tabs for the event list, budget replay, claim check, run comparison and importer notes. It has a light and a dark theme (following the system, with a switch), opens a run file dropped on the page, and turns the inspector into a drawer on tablets and into one column on phones. Every feature and check is the same.
+
 - Accessibility: labelled groups are `fieldset` elements instead of `div` elements with a role, buttons declare their type, the anchors that pointed at `#` point at the main content, and the 42 "Inspect" buttons of the run replay chronology say which event they open. The look is unchanged.
 
 - Run files use schema version 3 (contract v1.1, [ADR-029](docs/adr/ADR-029-name-mapping-for-common-emitters.md)). The importer now reads the step kinds and token counts that OpenInference, OpenLLMetry and the LangSmith export write, and records in each step which attribute it used. Version 2 run files still open.

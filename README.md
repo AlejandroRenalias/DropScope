@@ -25,10 +25,10 @@ With DropScope you can ask:
 | Feature | The question it answers | Command line | On screen |
 | --- | --- | --- | --- |
 | **Import** | Turn an OpenTelemetry GenAI trace (OTLP/JSON) into a saved, validated run file. | `import` | (command only) |
-| **State at a step** | What had the run recorded by step N? | `state --at N` | Scrub the timeline |
-| **Budget replay** | Where would a spending limit you choose have stopped this run? | `budget` | Budget replay card |
-| **Claim check** | Is each claim you wrote backed by what the run recorded? | `claims` | Claim check card |
-| **Run diff** | Where do two runs first differ? | `diff` | Compare with another run card |
+| **State at a step** | What had the run recorded by step N? | `state --at N` | Scrub the timeline; the trace and the inspector follow |
+| **Budget replay** | Where would a spending limit you choose have stopped this run? | `budget` | Budget replay tab |
+| **Claim check** | Is each claim you wrote backed by what the run recorded? | `claims` | Claim check tab |
+| **Run diff** | Where do two runs first differ? | `diff` | Compare runs tab |
 
 The screens are on the **Run replay** page, which is the page the app opens on.
 

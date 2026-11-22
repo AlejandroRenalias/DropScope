@@ -2,7 +2,7 @@
 
 Replay a recorded AI agent run, offline. DropScope shows what the run had recorded at any step, whether a spending limit would have stopped it, whether a claim is backed by the recording, and where two runs first differ.
 
-Replay checks make no model calls and send no data. Every answer is computed from a recorded run, the same way every time, so someone else can check it. It is not a tracing dashboard such as Langfuse or Arize Phoenix: it answers questions about a run that has already finished.
+Nothing it does makes a model call or a network request. Every answer is computed from a file on your computer, the same way every time, so someone else can check it. It is not a tracing dashboard such as Langfuse or Arize Phoenix: it answers questions about a run that has already finished.
 
 [Try it in your browser](https://alejandrorenalias.github.io/DropScope/).
 
@@ -13,7 +13,7 @@ Replay checks make no model calls and send no data. Every answer is computed fro
   <img src="docs/images/replay-dark.png" width="49%" alt="The same screen in the dark theme.">
 </p>
 
-> **Status.** The hosted demo comes with only built-in, invented demo runs and processes data entirely in your browser. There is no release or package yet.
+> **Status.** Every run shown in this repository is invented demo data. Real traces are kept out until a real access boundary exists (see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). The hosted demo comes with only built-in, invented demo runs and processes data entirely in your browser. There is no release or package yet.
 
 ## A small example
 

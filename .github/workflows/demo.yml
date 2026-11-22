@@ -1,9 +1,16 @@
 name: Demo site
 
 # Builds the static demo (the Replay screen with the bundled demo runs) and publishes it to GitHub Pages.
-# It runs only when started by hand, and needs Pages set to "GitHub Actions" in the repository settings.
+# Requires Pages set to "GitHub Actions" in the repository settings.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/frontend/**'
+      - 'index.html'
+      - 'vite.config.ts'
+      - 'package.json'
 
 permissions:
   contents: read

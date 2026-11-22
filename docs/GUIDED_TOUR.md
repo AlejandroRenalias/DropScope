@@ -10,7 +10,9 @@ A support agent is asked to refund order 1042. It plans, looks up the order, sea
 
 ## Before you start
 
-You need Node.js 24 and npm. From the repository root:
+For the on-screen steps, [try it in your browser](https://alejandrorenalias.github.io/DropScope/).
+
+For the command-line steps or to run the app locally, you need Node.js 24 and npm. From the repository root:
 
 ```bash
 npm install

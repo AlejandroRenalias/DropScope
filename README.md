@@ -2,7 +2,9 @@
 
 Replay a recorded AI agent run, offline. DropScope shows what the run had recorded at any step, whether a spending limit would have stopped it, whether a claim is backed by the recording, and where two runs first differ.
 
-Nothing it does makes a model call or a network request. Every answer is computed from a file on your computer, the same way every time, so someone else can check it. It is not a tracing dashboard such as Langfuse or Arize Phoenix: it answers questions about a run that has already finished.
+Replay checks make no model calls and send no data. Every answer is computed from a recorded run, the same way every time, so someone else can check it. It is not a tracing dashboard such as Langfuse or Arize Phoenix: it answers questions about a run that has already finished.
+
+[Try it in your browser](https://alejandrorenalias.github.io/DropScope/).
 
 ![Animation of the run replay: the scrubber moves from event 1 to event 22 while the trace fills in step by step; the first refund attempt fails and shows as a red bar, the inspector explains the failure, and comparing with the demo variant marks the first difference between the two runs.](docs/images/replay-demo.gif)
 
@@ -11,7 +13,7 @@ Nothing it does makes a model call or a network request. Every answer is compute
   <img src="docs/images/replay-dark.png" width="49%" alt="The same screen in the dark theme.">
 </p>
 
-> **Status.** Runs on Windows, Linux and macOS (the Linux and macOS file checks are newer and less tested). The browser screen needs no particular system. Every run shown in this repository is invented demo data. Real traces are kept out until a real access boundary exists (see [ADR-028](docs/adr/ADR-028-real-trace-admission-needs-a-real-boundary.md)). There is no release, package or hosted service yet.
+> **Status.** The hosted demo comes with only built-in, invented demo runs and processes data entirely in your browser. There is no release or package yet.
 
 ## A small example
 
@@ -37,9 +39,9 @@ With DropScope you can ask:
 
 The screens are on the **Run replay** page, which is the page the app opens on.
 
-## Try it
+## Run it locally
 
-You need Node.js 24 and npm.
+DropScope runs on Windows, Linux and macOS (the Linux and macOS file checks are newer and less tested). You need Node.js 24 and npm.
 
 ```bash
 npm install

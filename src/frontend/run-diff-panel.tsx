@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { group, formatSeconds } from "../budget-report.js";
 import { diffRuns, type DiffChange, type DiffItem, type RunTotals } from "../run-diff.js";
 import { changeText, diffCaveats, diffCountsLine, diffVerdictLine } from "../run-diff-report.js";
@@ -126,6 +126,18 @@ export function RunDiffPanel({
     });
   const runA = sourceLabel.replace(/\.$/, "");
 
+  // A new comparison brings its first difference into view when the panel scrolls on its own.
+  const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!result) return;
+    const panel = panelRef.current;
+    const scroller = panel?.closest<HTMLElement>(".ds-dock-body");
+    const first = panel?.querySelector<HTMLElement>(".rd-first") ?? panel?.querySelector<HTMLElement>(".cc-summary");
+    if (!first || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+    const top = first.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+    scroller.scrollTop = Math.max(0, top - scroller.clientHeight / 3);
+  }, [result]);
+
   // Each choice of run B gets a number; a file that finishes reading after a newer choice is dropped.
   const choice = useRef(0);
   const openFile = async (file: File) => {
@@ -152,7 +164,7 @@ export function RunDiffPanel({
   };
 
   return (
-    <section className="ds-tool rd" id="rr-compare" aria-labelledby={`${uid}-title`}>
+    <section className="ds-tool rd" id="rr-compare" aria-labelledby={`${uid}-title`} ref={panelRef}>
       <header className="ds-panel-head">
         <h2 id={`${uid}-title`}>Compare with another run</h2>
         <span className="ds-badge is-neutral cc-badge">Compares two recordings</span>

@@ -30,13 +30,6 @@ export function KindIcon({ kind, size = 14 }: { kind: StepKind; size?: number })
   return <Circle size={size} />;
 }
 
-/** Where the duration label goes so it never sits on its own bar: after it, before it, or (for a bar that spans nearly everything) inside it on a chip. */
-function labelSide(left: number, right: number): "after" | "before" | "inside" {
-  if (right <= 0.82) return "after";
-  if (left >= 0.18) return "before";
-  return "inside";
-}
-
 export function RunWaterfall({
   model,
   axis,
@@ -54,8 +47,8 @@ export function RunWaterfall({
   const [trackRef, trackWidth] = useWidth<HTMLDivElement>();
   const listRef = useRef<HTMLOListElement>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
-  // About one label per 80 pixels of the axis, so a phone gets fewer labels than a desktop.
-  const maxTicks = trackWidth > 0 ? Math.max(2, Math.min(6, Math.floor(trackWidth / 80))) : 6;
+  // About one label per 60 pixels of the axis, so a phone gets fewer labels than a desktop.
+  const maxTicks = trackWidth > 0 ? Math.max(2, Math.min(6, Math.floor(trackWidth / 60))) : 6;
   const { step: tickStep, ticks } = useMemo(() => timeTicks(axis.spanNs, maxTicks), [axis, maxTicks]);
   const span = axis.spanNs > 0 ? axis.spanNs : 1;
   const cursor = axis.timeAt[position] / span;
@@ -91,25 +84,17 @@ export function RunWaterfall({
     const left = start / span;
     const right = end / span;
     const progress = status === "running" && end > start ? Math.max(0, Math.min(1, (axis.timeAt[position] - start) / (end - start))) : 0;
-    const side = labelSide(left, right);
     const duration = formatDuration(step.startNs, step.endEffectiveNs);
+    // The label always sits after the whole planned bar, on a chip of its own, so neither the bar nor the playhead covers it.
     return (
       <span className="ds-wf-track" aria-hidden="true">
         <span className={`ds-wf-bar is-${status}`} style={{ left: `${left * 100}%`, width: `${(right - left) * 100}%` }}>
           {status === "running" && <span className="ds-wf-fill" style={{ width: `${progress * 100}%` }} />}
         </span>
-        <span
-          className={`ds-wf-dur is-${side}`}
-          style={
-            side === "after"
-              ? { left: `calc(${right * 100}% + 6px)` }
-              : side === "before"
-                ? { right: `calc(${(1 - left) * 100}% + 6px)` }
-                : { right: `calc(${(1 - right) * 100}% + 4px)` }
-          }
-        >
+        <span className="ds-wf-dur" style={{ left: `calc(${right * 100}% + 4px)` }}>
           {duration}
         </span>
+        <span className="ds-wf-rowcursor" style={{ left: `${cursor * 100}%` }} />
       </span>
     );
   };

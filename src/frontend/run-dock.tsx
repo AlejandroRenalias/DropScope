@@ -3,7 +3,7 @@ import { ArrowsInSimple, ArrowsOutSimple, CaretDown, CaretUp } from "./ds-icons.
 import type { BudgetPolicyInput, BudgetReplayResult } from "../budget-replay.js";
 import { BudgetReplayPanel } from "./budget-replay-panel.js";
 import { ClaimCheckPanel } from "./claim-check-panel.js";
-import { IconButton } from "./ds-ui.js";
+import { IconButton, PHONE, useMedia } from "./ds-ui.js";
 import { RunDiffPanel } from "./run-diff-panel.js";
 import { categoryOf, describeRunEvent, NOTE_LIST_LIMIT, type RunEventCategory, type RunModel } from "./run-replay-model.js";
 
@@ -11,6 +11,8 @@ export type DockTab = "events" | "budget" | "claims" | "compare" | "notes";
 type DockSize = "normal" | "collapsed" | "max";
 
 const LIST_RADIUS = 30;
+/** On a phone the list starts with this many events around the playhead. */
+const PHONE_ROWS = 10;
 
 /** The lower panel: the event chronology, the three tools and the importer notes, as tabs. Every panel stays mounted so its input survives a tab change. */
 export function RunDock({
@@ -167,7 +169,9 @@ function Chronology({
 }) {
   const total = model.events.length;
   const listRef = useRef<HTMLOListElement>(null);
-  const rows = useMemo(() => {
+  const phone = useMedia(PHONE);
+  const [showAll, setShowAll] = useState(false);
+  const near = useMemo(() => {
     const lo = Math.max(1, position - LIST_RADIUS * 3);
     const hi = Math.min(total, position + LIST_RADIUS * 3);
     const shown: number[] = [];
@@ -180,15 +184,30 @@ function Chronology({
     const before = shown.filter((n) => n < position).slice(-LIST_RADIUS);
     return [...before, ...after];
   }, [model, position, filters, total]);
+  // A phone shows the events around the playhead first: four before it, the current one, and five after.
+  const rows = useMemo(() => {
+    if (!phone || showAll) return near;
+    const at = Math.max(
+      0,
+      near.findIndex((n) => n >= position),
+    );
+    const from = Math.max(0, Math.min(at - 4, near.length - PHONE_ROWS));
+    return near.slice(from, from + PHONE_ROWS);
+  }, [near, phone, showAll, position]);
+  const wholeRun = near.length === total;
 
-  // Keep the current event in the middle of the list when the panel scrolls on its own.
+  // Bring the current event into view, a third of the way down, with the row above it whole.
   useEffect(() => {
     if (!active) return;
     const list = listRef.current;
     const scroller = list?.closest<HTMLElement>(".ds-dock-body");
-    const row = list?.querySelector<HTMLElement>(".ds-event.is-current") ?? list?.querySelector<HTMLElement>(".ds-event:not(.is-past)");
-    if (!row || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
-    scroller.scrollTop = Math.max(0, row.offsetTop - scroller.clientHeight / 2);
+    if (!list || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+    const current = list.querySelector<HTMLElement>(".ds-event.is-current") ?? list.querySelector<HTMLElement>(".ds-event:not(.is-past)");
+    if (!current) return;
+    const top = (el: HTMLElement) => el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+    const target = top(current) - scroller.clientHeight / 3;
+    const first = Array.from(list.querySelectorAll<HTMLElement>(".ds-event")).find((el) => top(el) >= target) ?? current;
+    scroller.scrollTop = Math.max(0, top(first) - 8);
   }, [position, active]);
 
   return (
@@ -204,24 +223,26 @@ function Chronology({
           const d = describeRunEvent(model.events[n - 1], model);
           return (
             <li className={`ds-event ${n <= position ? "is-past" : ""} ${n === position ? "is-current" : ""}`} key={n}>
-              <b className="ds-seq">{n}</b>
-              <i className={`ds-dot rr-dot-${d.category}`} aria-hidden="true" />
-              <span className="ds-ev-text">
-                <strong>{d.title}</strong>
-                <small>{d.summary.length > 160 ? `${d.summary.slice(0, 160)}…` : d.summary}</small>
-              </span>
-              <button
-                type="button"
-                className="ds-btn ds-btn-ghost"
-                aria-label={`Inspect event ${n}: ${d.title}`}
-                onClick={() => setPosition(n)}
-              >
-                Inspect
+              <button type="button" aria-label={`Inspect event ${n}: ${d.title}`} onClick={() => setPosition(n)}>
+                <b className="ds-seq">{n}</b>
+                <i className={`ds-dot rr-dot-${d.category}`} aria-hidden="true" />
+                <span className="ds-ev-text">
+                  <strong>{d.title}</strong>
+                  <small>{d.summary.length > 160 ? `${d.summary.slice(0, 160)}…` : d.summary}</small>
+                </span>
+                <span className="ds-ev-go" aria-hidden="true">
+                  Inspect
+                </span>
               </button>
             </li>
           );
         })}
       </ol>
+      {phone && near.length > PHONE_ROWS && (
+        <button type="button" className="ds-btn ds-btn-quiet ds-ev-more" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
+          {showAll ? "Show fewer events" : wholeRun ? `Show all ${total} events` : `Show ${near.length} events near this one`}
+        </button>
+      )}
     </section>
   );
 }

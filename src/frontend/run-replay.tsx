@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Info } from "./ds-icons.js";
 import { Popover } from "@radix-ui/themes";
 import { parseBudgetPolicy, replayBudget, type BudgetPolicyInput } from "../budget-replay.js";
 import { EXAMPLE_BUDGET } from "./budget-replay-panel.js";
+import { TABLET, useMedia } from "./ds-ui.js";
 import { RunDock, type DockTab } from "./run-dock.js";
 import { RunInspector } from "./run-inspector.js";
 import { RunTimeline } from "./run-timeline.js";
@@ -19,24 +20,6 @@ import {
 } from "./run-replay-model.js";
 
 export type { DockTab };
-
-/** Below this width the inspector is a drawer; the CSS uses the same breakpoints. */
-const DRAWER_FROM = 760;
-const DRAWER_UNTIL = 1279;
-
-function useDrawerLayout(): boolean {
-  const query = `(min-width: ${DRAWER_FROM}px) and (max-width: ${DRAWER_UNTIL}px)`;
-  const [match, setMatch] = useState(() => window.matchMedia?.(query).matches ?? false);
-  useEffect(() => {
-    const list = window.matchMedia?.(query);
-    if (!list) return;
-    const sync = () => setMatch(list.matches);
-    sync();
-    list.addEventListener("change", sync);
-    return () => list.removeEventListener("change", sync);
-  }, [query]);
-  return match;
-}
 
 export function RunReplay({
   model,
@@ -58,7 +41,7 @@ export function RunReplay({
   const [filters, setFilters] = useState<RunEventCategory[]>(runEventCategories.map((c) => c.id));
   const [budgetInput, setBudgetInput] = useState<BudgetPolicyInput>(EXAMPLE_BUDGET);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const drawer = useDrawerLayout();
+  const drawer = useMedia(TABLET);
 
   const axis = useMemo(() => buildTimeAxis(model), [model]);
   const parsedBudget = useMemo(() => parseBudgetPolicy(budgetInput), [budgetInput]);

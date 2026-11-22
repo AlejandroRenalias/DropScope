@@ -159,6 +159,22 @@ test("offers a skip link first that moves the focus to the timeline", async ({ p
   await expect(page.locator("#rr-timeline").locator(":focus")).toHaveCount(1);
 });
 
+test("keeps the focus where Tab moved it right after the skip link, even on a slow machine", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator("#rr-timeline")).toBeVisible();
+  // A slow processor widens the moment between the browser focusing the timeline and the hashchange event that follows.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#rr-timeline").locator(":focus")).toHaveCount(1);
+  // Long enough for a late hashchange to have been handled; the focus must still be where Tab put it.
+  await page.waitForTimeout(1500);
+  await expect(page.locator("#rr-timeline").locator(":focus")).toHaveCount(1);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+});
+
 test("can be used with the keyboard alone", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const replay = await openRunReplay(page);

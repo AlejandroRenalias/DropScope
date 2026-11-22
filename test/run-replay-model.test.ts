@@ -6,15 +6,21 @@ import { importNoteCodeSchema } from "../src/run-events.js";
 import { serializeRunLog } from "../src/run-store.js";
 import {
   buildRunModel,
+  buildTimeAxis,
   categoryOf,
+  contentByStep,
+  describeContent,
   describeField,
   describeNote,
   describeRunEvent,
   formatBytes,
   formatDuration,
   formatNumber,
+  formatOffset,
   loadRunFromBytes,
+  stepSpan,
   stepStatusAt,
+  timeTicks,
 } from "../src/frontend/run-replay-model.js";
 
 const asset = (name: string) => new URL(`../src/frontend/assets/${name}`, import.meta.url);
@@ -172,6 +178,48 @@ describe("formatting", () => {
     expect(describeField({ v: { t: "s", v: "hello" } })).toEqual({ withheld: false, text: "hello" });
     expect(describeField({ w: { n: 5, h: `abcdef01${"0".repeat(56)}` } }).text).toBe("withheld (5 bytes, fingerprint abcdef01)");
     expect(describeField({ v: { t: "s", v: "x".repeat(1000) } }, 10).text).toMatch(/^x{10}… \(/);
+  });
+});
+
+describe("waterfall time axis", () => {
+  const model = loadRunFromBytes(demoBytes());
+  const axis = buildTimeAxis(model);
+
+  it("spans the run from the first step start to the last step end", () => {
+    expect(axis.spanNs).toBe(9_100_000_000);
+    const root = stepSpan(model.steps[0], axis);
+    expect(root.start).toBe(0);
+    expect(root.end).toBe(9_100_000_000);
+  });
+
+  it("gives every event a recorded time that never goes back, from 0 to the end of the run", () => {
+    expect(axis.timeAt[1]).toBe(0);
+    for (let n = 2; n <= model.events.length; n += 1) expect(axis.timeAt[n]).toBeGreaterThanOrEqual(axis.timeAt[n - 1]);
+    expect(axis.timeAt[model.events.length]).toBe(axis.spanNs);
+    // At the start of a step the cursor sits at that step's start.
+    for (const step of model.steps) expect(axis.timeAt[step.startSequence]).toBeGreaterThanOrEqual(stepSpan(step, axis).start);
+  });
+
+  it("chooses round ticks and short labels", () => {
+    expect(timeTicks(9_100_000_000, 6)).toEqual({ step: 2_000_000_000, ticks: [0, 2e9, 4e9, 6e9, 8e9] });
+    expect(timeTicks(0)).toEqual({ step: 0, ticks: [0] });
+    expect(timeTicks(450_000, 4).ticks).toEqual([0, 200_000, 400_000]);
+    expect(formatOffset(0)).toBe("0");
+    expect(formatOffset(200_000, 100_000)).toBe("200 µs");
+    expect(formatOffset(40_000_000, 10_000_000)).toBe("40 ms");
+    expect(formatOffset(1_500_000_000, 500_000_000)).toBe("1.5 s");
+    expect(formatOffset(4_000_000_000, 2_000_000_000)).toBe("4 s");
+  });
+
+  it("lists the content of each step, withheld as size and fingerprint only", () => {
+    const content = contentByStep(model.events);
+    const total = [...content.values()].reduce((a, list) => a + list.length, 0);
+    expect(total).toBe(model.events.filter((e) => e.type === "ContentRecorded" && e.payload.stepId !== null).length);
+    const first = model.events[[...content.values()][0][0] - 1];
+    if (first.type !== "ContentRecorded") throw new Error("not content");
+    const shown = describeContent(first);
+    expect(shown.withheld?.fingerprint).toMatch(/^[0-9a-f]{8}$/);
+    expect(shown.text).toBe("");
   });
 });
 

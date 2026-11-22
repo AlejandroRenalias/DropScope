@@ -45,6 +45,8 @@ body { min-width: 320px; margin: 0; background: var(--ink); }
 button, select, input { font: inherit; }
 button, select, input[type="file"] { border-radius: 2px; }
 button { cursor: pointer; }
+/* A fieldset names a group of controls here (the browser default frame and padding would add space and a line). */
+fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { cursor: wait; opacity: .48; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

@@ -104,7 +104,7 @@ export function BudgetReplayPanel({
 
       {result && (
         <>
-          <div className="bp-gauges" role="group" aria-label="Budget used at this event">
+          <fieldset className="bp-gauges" aria-label="Budget used at this event">
             <span className="eyebrow">Used at event {position}</span>
             {gauges.map((g) => (
               <div key={g.limit} className={`bp-gauge ${g.over ? "over" : ""}`}>
@@ -120,7 +120,7 @@ export function BudgetReplayPanel({
                 </div>
               </div>
             ))}
-          </div>
+          </fieldset>
 
           {first === null ? (
             <p className="bp-result ok" role="status">

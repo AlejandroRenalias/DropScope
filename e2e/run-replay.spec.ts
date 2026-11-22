@@ -144,6 +144,82 @@ test("says when a step type and token counts were read from names other tools us
   );
 });
 
+test("can be used with the keyboard alone", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const replay = await openRunReplay(page);
+  const focusedName = () =>
+    page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el || el === document.body) return null;
+      const style = getComputedStyle(el);
+      const box = el.getBoundingClientRect();
+      const label = el.getAttribute("aria-label") ?? el.labels?.[0]?.textContent ?? el.textContent ?? "";
+      return {
+        id: el.id,
+        label: label.trim().replace(/\s+/g, " "),
+        onScreen: box.width > 0 && box.height > 0,
+        ring: (style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) > 0) || style.boxShadow !== "none",
+      };
+    });
+
+  // Walk the whole page with Tab: every stop is on screen and shows where the focus is, and the key controls are reachable.
+  const labels: string[] = [];
+  const ids: string[] = [];
+  for (let i = 0; i < 150; i++) {
+    await page.keyboard.press("Tab");
+    const stop = await focusedName();
+    if (stop === null) break;
+    expect(stop.onScreen, `stop ${i + 1} (${stop.label}) is on screen`).toBe(true);
+    // Focus rings may fade in, so look again for a moment before saying there is none.
+    await expect.poll(async () => (await focusedName())?.ring, { message: `stop ${i + 1} (${stop.label}) shows focus` }).toBe(true);
+    labels.push(stop.label);
+    ids.push(stop.id);
+  }
+  expect(labels.length).toBeGreaterThan(30);
+  expect(ids).toContain("rr-position");
+  for (const wanted of [
+    /^Open a run file/,
+    /^Try an example \(4,000 tokens\)/,
+    /^Compare with the demo variant/,
+    /^Go to the start of Agent/,
+    /^Inspect event [0-9]+:/,
+  ]) {
+    expect(
+      labels.some((label) => wanted.test(label)),
+      `reaches ${wanted}`,
+    ).toBe(true);
+  }
+  // The 42 chronology buttons are told apart by name.
+  const inspect = labels.filter((label) => label.startsWith("Inspect event"));
+  expect(new Set(inspect).size).toBe(inspect.length);
+
+  // Operate it without a pointer: the scrub bar, a step, a budget example and the run comparison.
+  await page.locator("#rr-position").focus();
+  await page.keyboard.press("Home");
+  await expect(replay).toContainText("Event 1 / 42");
+  await page.keyboard.press("ArrowRight");
+  await expect(replay).toContainText("Event 2 / 42");
+  await replay
+    .getByRole("button", { name: /Go to the start of Tool call: issue_refund/ })
+    .first()
+    .focus();
+  await page.keyboard.press("Enter");
+  await expect(replay.getByRole("heading", { name: "Tool call started" })).toBeVisible();
+  await replay.getByRole("button", { name: /Try an example \(4,000 tokens\)/ }).focus();
+  await page.keyboard.press("Space");
+  await expect(replay.locator(".bp-result")).toContainText("would have stopped this run at event 31 of 42");
+  await replay.getByRole("button", { name: "Compare with the demo variant" }).focus();
+  await page.keyboard.press("Enter");
+  const fold = replay
+    .getByRole("region", { name: "Compare with another run" })
+    .getByRole("button", { name: /steps that match in both runs/ })
+    .first();
+  await fold.focus();
+  await expect(fold).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Enter");
+  await expect(fold).toHaveAttribute("aria-expanded", "true");
+});
+
 test("refuses broken and tampered files with a sentence that never repeats their content", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openRunReplay(page);

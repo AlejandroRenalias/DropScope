@@ -14,6 +14,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
+- Accessibility: labelled groups are `fieldset` elements instead of `div` elements with a role, buttons declare their type, the anchors that pointed at `#` point at the main content, and the 42 "Inspect" buttons of the run replay chronology say which event they open. The look is unchanged.
+
 - Run files use schema version 3 (contract v1.1, [ADR-029](docs/adr/ADR-029-name-mapping-for-common-emitters.md)). The importer now reads the step kinds and token counts that OpenInference, OpenLLMetry and the LangSmith export write, and records in each step which attribute it used. Version 2 run files still open.
 
 - The package declares Node.js 22.12 or newer.

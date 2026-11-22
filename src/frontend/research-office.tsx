@@ -122,7 +122,7 @@ export function Constellation({
         <p className="stage-empty">No tasks are recorded in this replay yet.</p>
       ) : (
         <>
-          <div className="map" role="group" aria-label="Task dependency map">
+          <fieldset className="map" aria-label="Task dependency map">
             <svg viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true">
               <circle cx="500" cy="260" r="190" className="ring dotted" />
               <circle cx="500" cy="260" r="330" className="ring" />
@@ -163,7 +163,7 @@ export function Constellation({
                 </button>
               );
             })}
-          </div>
+          </fieldset>
           <ol className="mnodes" aria-label="Task dependencies">
             {ordered.map(({ task }) => (
               <li key={task.id}>
@@ -218,7 +218,7 @@ function Inspector({ task, record, onApproval }: { task?: Task; record?: AgentDe
           {task.role ?? "Not yet assigned"} · {stateText[task.state]}
         </small>
         {task.state === "BLOCKED" && (
-          <button className="approval-button" onClick={onApproval}>
+          <button type="button" className="approval-button" onClick={onApproval}>
             Open required approval
           </button>
         )}
@@ -265,7 +265,7 @@ function Roster({ agents, onApproval }: { agents: OfficeProjection["agents"]; on
               </div>
               <span className={`st ${agent.state.toLowerCase()}`}>{stateText[agent.state]}</span>
               {agent.state === "BLOCKED" && (
-                <button className="approval-button" onClick={onApproval}>
+                <button type="button" className="approval-button" onClick={onApproval}>
                   Open required approval
                 </button>
               )}

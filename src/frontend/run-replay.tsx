@@ -68,7 +68,7 @@ export function RunReplay({
   const bounded = Math.max(1, Math.min(position, total));
   const [filters, setFilters] = useState<RunEventCategory[]>(runEventCategories.map((c) => c.id));
   const [budgetInput, setBudgetInput] = useState<BudgetPolicyInput>(EXAMPLE_BUDGET);
-  const ticksRef = useRef<HTMLDivElement>(null);
+  const ticksRef = useRef<HTMLFieldSetElement>(null);
 
   const buckets = useMemo(() => buildBuckets(model.events), [model]);
   const parsedBudget = useMemo(() => parseBudgetPolicy(budgetInput), [budgetInput]);
@@ -162,7 +162,7 @@ export function RunReplay({
           <div className="eyebrow" id="rr-timeline-title">
             Timeline
           </div>
-          <div className="cats" role="group" aria-label="Event category filters">
+          <fieldset className="cats" aria-label="Event category filters">
             {runEventCategories.map((c) => (
               <button
                 type="button"
@@ -175,9 +175,9 @@ export function RunReplay({
                 {c.label}
               </button>
             ))}
-          </div>
+          </fieldset>
         </div>
-        <div className="ticks rr-ticks" role="group" aria-label="Recorded events" ref={ticksRef} onKeyDown={onTickKey}>
+        <fieldset className="ticks rr-ticks" aria-label="Recorded events" ref={ticksRef} onKeyDown={onTickKey}>
           {buckets.map((bucket, index) => {
             const isCurrent = index === currentBucket;
             const label = bucket.from === bucket.to ? `Event ${bucket.from}` : `Events ${bucket.from} to ${bucket.to}`;
@@ -202,7 +202,7 @@ export function RunReplay({
               </button>
             );
           })}
-        </div>
+        </fieldset>
         {breachEvent !== null && (
           <p className="rr-breach-legend">
             <i aria-hidden="true" /> Marked tick: where the budget limit you set would have been passed (event {breachEvent}).
@@ -413,7 +413,7 @@ export function RunReplay({
                   <strong>{d.title}</strong>
                   <small>{d.summary.length > 140 ? `${d.summary.slice(0, 140)}…` : d.summary}</small>
                 </span>
-                <button type="button" onClick={() => setPosition(n)}>
+                <button type="button" aria-label={`Inspect event ${n}: ${d.title}`} onClick={() => setPosition(n)}>
                   Inspect
                 </button>
               </article>

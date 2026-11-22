@@ -43,7 +43,7 @@ export function MissionReplay({
   const current = records[bounded - 1];
   const event = history[bounded - 1];
   const numberEvery = Math.max(1, Math.ceil(records.length / 12));
-  const ticksRef = useRef<HTMLDivElement>(null);
+  const ticksRef = useRef<HTMLFieldSetElement>(null);
 
   let projection: OfficeProjection | null = null;
   let previous: OfficeProjection | null = null;
@@ -105,7 +105,7 @@ export function MissionReplay({
         <div className="eyebrow" id="timeline-title">
           Timeline
         </div>
-        <div className="ticks" role="group" aria-label="Recorded events" ref={ticksRef} onKeyDown={onTickKey}>
+        <fieldset className="ticks" aria-label="Recorded events" ref={ticksRef} onKeyDown={onTickKey}>
           {records.map((record) => (
             <button
               type="button"
@@ -124,7 +124,7 @@ export function MissionReplay({
               )}
             </button>
           ))}
-        </div>
+        </fieldset>
         <label className="sr-only" htmlFor="replay-position">
           Timeline position
         </label>
@@ -143,7 +143,7 @@ export function MissionReplay({
           {announcement}
         </p>
         <div className="timeline-tools">
-          <div className="cats" role="group" aria-label="Event category filters">
+          <fieldset className="cats" aria-label="Event category filters">
             {categories.map((category) => (
               <button
                 type="button"
@@ -156,7 +156,7 @@ export function MissionReplay({
                 {category.label}
               </button>
             ))}
-          </div>
+          </fieldset>
           <div className="replay-scenarios">
             <span>{activeHistory ? "Demo histories (unavailable while a saved mission is loaded)" : "History"}</span>
             {(Object.keys(officeHistories) as OfficeScenario[]).map((name) => (

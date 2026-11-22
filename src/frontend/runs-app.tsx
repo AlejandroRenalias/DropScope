@@ -45,10 +45,14 @@ export function RunsApp() {
     };
   }, [theme]);
 
-  // A link to a section scrolls to it but leaves the focus behind: when the skip link is followed, move the focus there too.
+  // A link to a section scrolls to it but may leave the focus behind: when the skip link is followed, move the focus there too.
+  // The browser usually focuses the timeline itself, and hashchange arrives a moment later. By then the user may have pressed
+  // Tab into the timeline, so the focus moves only when it is still outside it.
   useEffect(() => {
     const follow = () => {
-      if (window.location.hash === "#rr-timeline") document.getElementById("rr-timeline")?.focus({ preventScroll: true });
+      const timeline = document.getElementById("rr-timeline");
+      if (window.location.hash !== "#rr-timeline" || !timeline || timeline.contains(document.activeElement)) return;
+      timeline.focus({ preventScroll: true });
     };
     window.addEventListener("hashchange", follow);
     return () => window.removeEventListener("hashchange", follow);

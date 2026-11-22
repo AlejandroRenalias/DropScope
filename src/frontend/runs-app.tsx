@@ -13,7 +13,7 @@ export function RunsApp() {
             <em>Agent run forensics</em>
           </div>
           <nav className="workspace-nav runs-nav" aria-label="Primary navigation">
-            <a className="active" href="#" aria-current="page">
+            <a className="active" href="#main" aria-current="page">
               <span className="nav-icon" aria-hidden="true">
                 <ClockCounterClockwise size={17} weight="fill" />
               </span>

@@ -120,10 +120,11 @@ function Office() {
     );
   const demoRuntimeUnavailable = !activeMission && runtimeState === "error" && runtimeMessage.startsWith("Local runtime is unavailable.");
   const previewStates = (
-    <div className="scenario-switcher" role="group" aria-label="Replay state">
+    <fieldset className="scenario-switcher" aria-label="Replay state">
       <span>{view === "floor" ? "Preview state" : activeMission ? "Demo fallback" : "Replay state"}</span>
       {(Object.keys(officeHistories) as OfficeScenario[]).map((name) => (
         <button
+          type="button"
           className={scenario === name ? "selected" : ""}
           onClick={() => {
             setScenario(name);
@@ -134,7 +135,7 @@ function Office() {
           {name}
         </button>
       ))}
-    </div>
+    </fieldset>
   );
   const runtimeSetupNote = (
     <p className="runtime-start-note">
@@ -329,6 +330,7 @@ function Office() {
             <span className="brand-mark" aria-hidden="true" />
             <span className="brand-name">DropScope</span>
           </div>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: Escape closes the menu from anywhere inside it; the buttons in it stay the interactive elements. */}
           <div
             className={`research-navigation ${workspaceOpen ? "is-open" : ""}`}
             onKeyDown={(event) => {
@@ -397,7 +399,7 @@ function Office() {
                 : "Inspect attempt provenance before treating findings as market evidence."}
             </span>
           </span>
-          <a className="legacy-return" href="#">
+          <a className="legacy-return" href="#main">
             Mission simulator (legacy): back to agent run replay
           </a>
           <details className="source-details">
@@ -417,7 +419,7 @@ function Office() {
               </p>
             </details>
             {showMissionNextActions && (
-              <button className="quiet-button" onClick={() => setView("report")}>
+              <button type="button" className="quiet-button" onClick={() => setView("report")}>
                 Read final report
               </button>
             )}
@@ -454,17 +456,17 @@ function Office() {
                 <small>{selectedFixture.description}</small>
               </div>
               <div className="runtime-buttons">
-                <button className="primary-action" onClick={() => void launch()} disabled={runtimeState === "loading"}>
+                <button type="button" className="primary-action" onClick={() => void launch()} disabled={runtimeState === "loading"}>
                   Launch local mission
                 </button>
-                <button onClick={() => void reload()} disabled={runtimeState === "loading"}>
+                <button type="button" onClick={() => void reload()} disabled={runtimeState === "loading"}>
                   Reload saved mission
                 </button>
               </div>
             </div>
             {!activeMission && (
               <>
-                <div className="mission-route" aria-label="First mission path">
+                <fieldset className="mission-route" aria-label="First mission path">
                   <span>
                     <strong>Choose fixture</strong>
                     <small>Fixed research scope</small>
@@ -481,7 +483,7 @@ function Office() {
                     <strong>Read decision</strong>
                     <small>Verdict and next action</small>
                   </span>
-                </div>
+                </fieldset>
                 {view === "floor" ? (
                   <details className="runtime-start-disclosure">
                     <summary>Local setup instructions</summary>
@@ -494,7 +496,7 @@ function Office() {
             )}
             <div className="prototype-settings">
               {previewStates}
-              <button className="quiet-button" onClick={() => setReduced(!reduced)}>
+              <button type="button" className="quiet-button" onClick={() => setReduced(!reduced)}>
                 {reduced ? "Motion off" : "Reduce motion"}
               </button>
             </div>
@@ -508,8 +510,12 @@ function Office() {
               </span>
               {showMissionNextActions && (
                 <span className="runtime-next-actions">
-                  <button onClick={() => setView("agent")}>Inspect evidence</button>
-                  <button onClick={() => setView("report")}>Read final report</button>
+                  <button type="button" onClick={() => setView("agent")}>
+                    Inspect evidence
+                  </button>
+                  <button type="button" onClick={() => setView("report")}>
+                    Read final report
+                  </button>
                 </span>
               )}
             </span>

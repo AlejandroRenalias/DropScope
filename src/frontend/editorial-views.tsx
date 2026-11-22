@@ -31,6 +31,7 @@ export function WorkspaceNavigation({ view, onChange }: { view: OfficeView; onCh
     <nav className="workspace-nav" aria-label="Primary navigation">
       {navigation.map(({ view: target, label, icon: Icon }) => (
         <button
+          type="button"
           aria-label={label}
           className={view === target ? "active" : ""}
           onClick={() => onChange(target)}
@@ -261,6 +262,7 @@ function AgentDesk(props: DecisionViewProps) {
                 )}
                 {props.onGoogleTrendsCapture && (
                   <button
+                    type="button"
                     onClick={props.onGoogleTrendsCapture}
                     disabled={props.googleTrendsCaptureLoading || !props.googleTrendsCaptureEligible}
                   >
@@ -321,6 +323,7 @@ function AgentDesk(props: DecisionViewProps) {
                 <small>Subscription usage not itemized.</small>
                 {props.onSubscriptionPreflight && (
                   <button
+                    type="button"
                     onClick={props.onSubscriptionPreflight}
                     disabled={props.subscriptionPreflightLoading || runtime.access !== "LOCAL_SUBSCRIPTION_NOT_CHECKED"}
                   >
@@ -344,6 +347,7 @@ function AgentDesk(props: DecisionViewProps) {
                 </small>
                 {props.subscriptionConfirmationEligible && props.onSubscriptionConfirmation && (
                   <button
+                    type="button"
                     onClick={props.onSubscriptionConfirmation}
                     disabled={
                       props.subscriptionConfirmationLoading ||
@@ -362,6 +366,7 @@ function AgentDesk(props: DecisionViewProps) {
                 )}
                 {props.subscriptionConfirmationEligible && props.onSubscriptionRun && (
                   <button
+                    type="button"
                     onClick={props.onSubscriptionRun}
                     disabled={
                       props.subscriptionRunLoading ||

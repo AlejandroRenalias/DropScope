@@ -44,16 +44,6 @@
         // A callback that returns a value in forEach, or an expression such as `fail()` that never returns, is deliberate.
         "useIterableCallbackReturn": "off"
       },
-      "a11y": {
-        // These ask for different markup (semantic elements instead of ARIA roles, a type on every button). The markup
-        // is covered by the browser tests, so changing it is a separate, reviewed accessibility pass, not a lint fix.
-        "useSemanticElements": "off",
-        "useButtonType": "off",
-        "useFocusableInteractive": "off",
-        "useValidAnchor": "off",
-        "useAriaPropsSupportedByRole": "off",
-        "noStaticElementInteractions": "off"
-      },
       "correctness": {
         // `return fail(...)` where `fail` never returns is a pattern of the readers and the reducer.
         "noVoidTypeReturn": "off"
@@ -70,6 +60,12 @@
           "correctness": { "noUnusedFunctionParameters": "off", "noPrecisionLoss": "off" }
         }
       }
+    },
+    {
+      // The run comparison is a table laid out with CSS grid: its rows are grid containers, and fold buttons sit between
+      // them, so a native table cannot hold it. It uses the ARIA table roles instead.
+      "includes": ["src/frontend/run-diff-panel.tsx"],
+      "linter": { "rules": { "a11y": { "useSemanticElements": "off", "useFocusableInteractive": "off" } } }
     }
   ]
 }

@@ -64,129 +64,132 @@ export function BudgetReplayPanel({
   );
 
   return (
-    <section className="panel-card bp" id="rr-budget" aria-labelledby={`${uid}-title`}>
-      <header className="surface-heading">
-        <div>
-          <span className="eyebrow">What if there had been a budget?</span>
-          <h2 id={`${uid}-title`}>Budget replay</h2>
-        </div>
-        <span className="badge bp-badge">Counterfactual</span>
-      </header>
-      <p className="bp-note">{COUNTERFACTUAL_NOTE}</p>
-
-      <form className="bp-form" onSubmit={(e) => e.preventDefault()} aria-label="Budget limits">
-        <div className="bp-grid">{FIELDS.map(field)}</div>
-        <details className="bp-cost" open={Boolean(input.maxCost || input.inputPrice || input.outputPrice)}>
-          <summary>Add a cost limit (needs your own prices)</summary>
-          <div className="bp-grid">{COST_FIELDS.map(field)}</div>
-        </details>
+    <section className="ds-tool bp" id="rr-budget" aria-labelledby={`${uid}-title`}>
+      <header className="ds-panel-head">
+        <h2 id={`${uid}-title`}>Budget replay</h2>
+        <span className="ds-badge is-budget bp-badge">Counterfactual</span>
+        <span className="ds-panel-spacer" />
         <div className="bp-actions">
-          <button type="button" className="quiet-button" onClick={() => setInput(EXAMPLE_BUDGET)}>
+          <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setInput(EXAMPLE_BUDGET)}>
             Try an example (4,000 tokens)
           </button>
-          <button type="button" className="quiet-button" onClick={() => setInput({})} disabled={!touched}>
+          <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setInput({})} disabled={!touched}>
             Clear limits
           </button>
         </div>
-      </form>
+      </header>
+      <p className="bp-note ds-lede">{COUNTERFACTUAL_NOTE}</p>
 
-      {errors.length > 0 && touched && (
-        <ul className="bp-errors" role="status" aria-live="polite">
-          {errors.map((message) => (
-            <li key={message}>{message}</li>
-          ))}
-        </ul>
-      )}
-      {!touched && <p className="bp-hint">Type one or more limits to see where a guard would have stopped this run.</p>}
-      {input.maxTotalTokens === EXAMPLE_BUDGET.maxTotalTokens && Object.keys(input).length === 1 && (
-        <p className="bp-hint">This is the example limit (4,000 total tokens). Change it or clear it to try your own.</p>
-      )}
+      <div className="ds-tool-grid">
+        <div className="ds-tool-input">
+          <form className="bp-form" onSubmit={(e) => e.preventDefault()} aria-label="Budget limits">
+            <div className="bp-grid">{FIELDS.map(field)}</div>
+            <details className="bp-cost" open={Boolean(input.maxCost || input.inputPrice || input.outputPrice)}>
+              <summary>Add a cost limit (needs your own prices)</summary>
+              <div className="bp-grid">{COST_FIELDS.map(field)}</div>
+            </details>
+          </form>
+          {errors.length > 0 && touched && (
+            <ul className="bp-errors" role="status" aria-live="polite">
+              {errors.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          )}
+          {input.maxTotalTokens === EXAMPLE_BUDGET.maxTotalTokens && Object.keys(input).length === 1 && (
+            <p className="bp-hint">This is the example limit (4,000 total tokens). Change it or clear it to try your own.</p>
+          )}
+        </div>
 
-      {result && (
-        <>
-          <fieldset className="bp-gauges" aria-label="Budget used at this event">
-            <span className="eyebrow">Used at event {position}</span>
-            {gauges.map((g) => (
-              <div key={g.limit} className={`bp-gauge ${g.over ? "over" : ""}`}>
-                <div className="bp-gauge-head">
-                  <strong>{g.label}</strong>
-                  <span>
-                    {g.used} of {g.max}
-                    {g.over ? " · over the limit" : ""}
-                  </span>
-                </div>
-                <div className="bp-bar" role="presentation">
-                  <i style={{ width: `${g.percent}%` }} />
-                </div>
-              </div>
-            ))}
-          </fieldset>
+        <div className="ds-tool-output">
+          {!touched && <p className="bp-hint ds-empty">Type one or more limits to see where a guard would have stopped this run.</p>}
+          {result && (
+            <>
+              <fieldset className="bp-gauges" aria-label="Budget used at this event">
+                <legend className="ds-sublabel">Used at event {position}</legend>
+                {gauges.map((g) => (
+                  <div key={g.limit} className={`bp-gauge ${g.over ? "over" : ""}`}>
+                    <div className="bp-gauge-head">
+                      <strong>{g.label}</strong>
+                      <span>
+                        {g.used} of {g.max}
+                        {g.over ? " · over the limit" : ""}
+                      </span>
+                    </div>
+                    <div className="bp-bar" role="presentation">
+                      <i style={{ width: `${g.percent}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </fieldset>
 
-          {first === null ? (
-            <p className="bp-result ok" role="status">
-              <strong>No limit would have been exceeded.</strong> The whole recorded run fits inside every limit you set.
-            </p>
-          ) : (
-            <div className="bp-result stop" role="status">
-              <strong>
-                A guard with these limits would have stopped this run at event {first.breachEvent} of {model.events.length}.
-              </strong>
-              <p>{describeBreach(first, result.policy, model.events, titleOf)}</p>
-              {result.alsoAtSameStop.length > 0 && (
-                <p>Also exceeded at the same point: {result.alsoAtSameStop.map((l) => LIMIT_LABEL[l].toLowerCase()).join(", ")}.</p>
-              )}
-              <button type="button" className="quiet-button" onClick={() => setPosition(first.breachEvent)}>
-                Go to event {first.breachEvent}
-              </button>
-              <div className="bp-after">
-                <span className="eyebrow">What would not have happened</span>
-                {rest &&
-                  [rest.notStarted, rest.inFlight].map((lines, i) => (
-                    <div key={i}>
-                      <p>{lines[0]}</p>
-                      {lines.length > 1 && (
+              {first === null ? (
+                <p className="bp-result ok" role="status">
+                  <strong>No limit would have been exceeded.</strong> The whole recorded run fits inside every limit you set.
+                </p>
+              ) : (
+                <div className="bp-result stop" role="status">
+                  <strong className="bp-headline">
+                    A guard with these limits would have stopped this run at event {first.breachEvent} of {model.events.length}.
+                  </strong>
+                  <p>{describeBreach(first, result.policy, model.events, titleOf)}</p>
+                  {result.alsoAtSameStop.length > 0 && (
+                    <p>Also exceeded at the same point: {result.alsoAtSameStop.map((l) => LIMIT_LABEL[l].toLowerCase()).join(", ")}.</p>
+                  )}
+                  <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setPosition(first.breachEvent)}>
+                    Go to event {first.breachEvent}
+                  </button>
+                  <div className="bp-after">
+                    <span className="ds-sublabel">What would not have happened</span>
+                    {rest &&
+                      [rest.notStarted, rest.inFlight].map((lines, i) => (
+                        <div key={i}>
+                          <p>{lines[0]}</p>
+                          {lines.length > 1 && (
+                            <ul>
+                              {lines.slice(1).map((l, n) => (
+                                <li key={`${n}-${l}`}>{l}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    {rest && (
+                      <div>
+                        <p>Usage recorded after that point:</p>
                         <ul>
-                          {lines.slice(1).map((l, n) => (
+                          {rest.tokens.map((l, n) => (
                             <li key={`${n}-${l}`}>{l}</li>
                           ))}
                         </ul>
-                      )}
-                    </div>
-                  ))}
-                {rest && (
-                  <div>
-                    <p>Usage recorded after that point:</p>
-                    <ul>
-                      {rest.tokens.map((l, n) => (
-                        <li key={`${n}-${l}`}>{l}</li>
+                      </div>
+                    )}
+                  </div>
+                  {result.breaches.length > 1 && (
+                    <ul className="bp-others">
+                      {result.breaches.map((b) => (
+                        <li key={b.limit}>
+                          {LIMIT_LABEL[b.limit]}: exceeded at event {b.breachEvent}
+                          {b === first ? " (first)" : ""}
+                        </li>
                       ))}
                     </ul>
-                  </div>
-                )}
-              </div>
-              {result.breaches.length > 1 && (
-                <ul className="bp-others">
-                  {result.breaches.map((b) => (
-                    <li key={b.limit}>
-                      {LIMIT_LABEL[b.limit]}: exceeded at event {b.breachEvent}
-                      {b === first ? " (first)" : ""}
-                    </li>
+                  )}
+                </div>
+              )}
+
+              <details className="bp-caveats">
+                <summary>What this does and does not tell you</summary>
+                <ul>
+                  {budgetCaveats(result).map((note) => (
+                    <li key={note}>{note}</li>
                   ))}
                 </ul>
-              )}
-            </div>
+              </details>
+            </>
           )}
-
-          <details className="bp-caveats">
-            <summary>What this does and does not tell you</summary>
-            <ul>
-              {budgetCaveats(result).map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          </details>
-        </>
-      )}
+        </div>
+      </div>
     </section>
   );
 }
